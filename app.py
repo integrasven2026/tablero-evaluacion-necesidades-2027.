@@ -66,17 +66,17 @@ if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
-# --- CARGA Y EXTRACCIÓN DE DICCIONARIOS DESDE EL DISEÑO DEL FORMULARIO Kobo ---
+# --- CARGAR DICCIONARIOS OFICIALES DE LA HOJA CHOICES ---
 @st.cache_data
 def cargar_diccionarios_kobo():
     excel_path = 'aDLGup9ApcZVFUy8JTo7qZ(3).xlsx'
     if os.path.exists(excel_path):
         try:
             choices_df = pd.read_excel(excel_path, sheet_name='choices')
-            est_dict = dict(zip(choices_df[choices_df['list_name']=='Estado']['name'], choices_df[choices_df['list_name']=='Estado']['label']))
-            mun_dict = dict(zip(choices_df[choices_df['list_name']=='Municipio']['name'], choices_df[choices_df['list_name']=='Municipio']['label']))
-            par_dict = dict(zip(choices_df[choices_df['list_name']=='Parroquia']['name'], choices_df[choices_df['list_name']=='Parroquia']['label']))
-            soc_dict = dict(zip(choices_df[choices_df['list_name']=='socio']['name'], choices_df[choices_df['list_name']=='socio']['label']))
+            est_dict = dict(zip(choices_df[choices_df['list_name']=='Estado']['name'].astype(str).str.strip(), choices_df[choices_df['list_name']=='Estado']['label']))
+            mun_dict = dict(zip(choices_df[choices_df['list_name']=='Municipio']['name'].astype(str).str.strip(), choices_df[choices_df['list_name']=='Municipio']['label']))
+            par_dict = dict(zip(choices_df[choices_df['list_name']=='Parroquia']['name'].astype(str).str.strip(), choices_df[choices_df['list_name']=='Parroquia']['label']))
+            soc_dict = dict(zip(choices_df[choices_df['list_name']=='socio']['name'].astype(str).str.strip(), choices_df[choices_df['list_name']=='socio']['label']))
             return est_dict, mun_dict, par_dict, soc_dict
         except Exception:
             pass
@@ -84,7 +84,7 @@ def cargar_diccionarios_kobo():
 
 est_dict, mun_dict, par_dict, soc_dict = cargar_diccionarios_kobo()
 
-# --- LIMPIEZA Y NORMALIZACIÓN DE COLUMNAS ---
+# --- LIMPIEZA Y TRADUCCIÓN DE COLUMNAS ---
 def find_col(df, keywords):
     for col in df.columns:
         for kw in keywords:
@@ -102,7 +102,7 @@ col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 df_clean = df_raw.copy()
 
-# Traducción usando los diccionarios de Kobo
+# Mapeo exacto usando los diccionarios de Kobo
 raw_socio = df_raw[col_socio].astype(str).str.strip() if col_socio else pd.Series(['no especificado']*len(df_raw))
 df_clean['socio_clean'] = raw_socio.map(soc_dict).fillna(raw_socio).str.upper()
 
