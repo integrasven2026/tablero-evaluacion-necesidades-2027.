@@ -66,7 +66,7 @@ if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
-# --- CARGAR DICCIONARIOS OFICIALES DE LA HOJA CHOICES (SEGUNDA HOJA) ---
+# --- CARGAR DICCIONARIOS DESDE LA HOJA CHOICES ---
 @st.cache_data
 def cargar_diccionarios_kobo():
     excel_path = 'aDLGup9ApcZVFUy8JTo7qZ(3).xlsx'
@@ -84,30 +84,45 @@ def cargar_diccionarios_kobo():
 
 est_dict, mun_dict, par_dict, soc_dict = cargar_diccionarios_kobo()
 
-# --- MAPEO Y TRADUCCIÓN DE COLUMNAS DE KOBO ---
-col_socio = 'socio' if 'socio' in df_raw.columns else None
-col_estado = 'Estado' if 'Estado' in df_raw.columns else None
-col_municipio = 'Municipio' if 'Municipio' in df_raw.columns else None
-col_parroquia = 'Parroquia' if 'Parroquia' in df_raw.columns else None
-col_comunidad = 'comunidad' if 'comunidad' in df_raw.columns else None
-col_sexo = 'sexo' if 'sexo' in df_raw.columns else None
-col_edu = 'nivel_educativo' if 'nivel_educativo' in df_raw.columns else None
+# --- LIMPIEZA Y MAPEO INTELIGENTE DE COLUMNAS ---
+def find_col(df, keywords):
+    for col in df.columns:
+        for kw in keywords:
+            if kw.lower() in col.lower():
+                return col
+    return None
+
+col_socio = find_col(df_raw, ['socio'])
+col_estado = find_col(df_raw, ['estado'])
+col_municipio = find_col(df_raw, ['municipio'])
+col_parroquia = find_col(df_raw, ['parroquia'])
+col_comunidad = find_col(df_raw, ['comunidad'])
+col_sexo = find_col(df_raw, ['sexo', 'biologico'])
+col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 df_clean = df_raw.copy()
 
-# Traducción exacta usando los diccionarios de la hoja choices
-raw_socio = df_raw[col_socio].astype(str).str.strip() if col_socio else pd.Series(['no especificado']*len(df_raw))
-df_clean['socio_clean'] = raw_socio.map(soc_dict).fillna(raw_socio).str.upper()
+def limpiar_y_mapear(serie, diccionario):
+    if serie is None:
+        return pd.Series(['No especificado'] * len(df_raw))
+    
+    res = []
+    for val in serie:
+        v_str = str(val).strip()
+        # Si está en el diccionario de códigos de Kobo, lo traducimos
+        if v_str in diccionario:
+            res.append(str(diccionario[v_str]))
+        elif v_str.lower() in ['nan', 'none', '', 'nat']:
+            res.append('No especificado')
+        else:
+            # Si ya venía en texto plano, lo conservamos capitalizado
+            res.append(v_str.title() if not v_str.isupper() else v_str)
+    return pd.Series(res)
 
-raw_estado = df_raw[col_estado].astype(str).str.strip() if col_estado else pd.Series(['no especificado']*len(df_raw))
-df_clean['estado_clean'] = raw_estado.map(est_dict).fillna(raw_estado)
-
-raw_muni = df_raw[col_municipio].astype(str).str.strip() if col_municipio else pd.Series(['no especificado']*len(df_raw))
-df_clean['municipio_clean'] = raw_muni.map(mun_dict).fillna(raw_muni)
-
-raw_parr = df_raw[col_parroquia].astype(str).str.strip() if col_parroquia else pd.Series(['no especificado']*len(df_raw))
-df_clean['parroquia_clean'] = raw_parr.map(par_dict).fillna(raw_parr)
-
+df_clean['socio_clean'] = limpiar_y_mapear(df_raw[col_socio] if col_socio else None, soc_dict).str.upper()
+df_clean['estado_clean'] = limpiar_y_mapear(df_raw[col_estado] if col_estado else None, est_dict)
+df_clean['municipio_clean'] = limpiar_y_mapear(df_raw[col_municipio] if col_municipio else None, mun_dict)
+df_clean['parroquia_clean'] = limpiar_y_mapear(df_raw[col_parroquia] if col_parroquia else None, par_dict)
 df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if col_comunidad else 'No especificado'
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
@@ -115,7 +130,7 @@ df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 
 st.success(f"✅ Kobo sincronizado con éxito. Total de registros analizados: {len(df_clean)}")
 
 # --- PROCESAMIENTO DE COORDENADAS GPS ---
-gps_col = 'ubicacion_gps' if 'ubicacion_gps' in df_raw.columns else None
+gps_col = find_col(df_raw, ['ubicacion_gps', 'geopoint', 'gps'])
 if gps_col:
     def parse_lat(val):
         try:
@@ -150,10 +165,12 @@ if st.sidebar.button('🔄 Actualizar Datos', use_container_width=True):
 
 st.sidebar.markdown("---")
 
-socios_disp = sorted(df_clean['socio_clean'].dropna().unique().tolist())
+socios_disp = sorted(df_clean['socio_clean'][df_clean['socio_clean'] != 'NO ESPECIFICADO'].dropna().unique().tolist())
+if not socios_disp: socios_disp = sorted(df_clean['socio_clean'].dropna().unique().tolist())
 selected_socio = st.sidebar.multiselect("Organización Socio", options=socios_disp, default=socios_disp)
 
-estados_disp = sorted(df_clean['estado_clean'].dropna().unique().tolist())
+estados_disp = sorted(df_clean['estado_clean'][df_clean['estado_clean'] != 'No Especificado'].dropna().unique().tolist())
+if not estados_disp: estados_disp = sorted(df_clean['estado_clean'].dropna().unique().tolist())
 selected_estado = st.sidebar.multiselect("Estado", options=estados_disp, default=estados_disp)
 
 df_filtered = df_clean.copy()
