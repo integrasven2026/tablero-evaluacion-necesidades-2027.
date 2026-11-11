@@ -3,7 +3,7 @@ pandas
 numpy
 requests
 plotly
-pydeck
+plotly-express
 openpyxl
 folium
 streamlit-folium
