@@ -50,7 +50,6 @@ if df_raw.empty:
     st.stop()
 
 # --- LIMPIEZA Y NORMALIZACIÓN DE COLUMNAS DE KOBO ---
-# Buscamos columnas independientemente de mayúsculas o prefijos de grupos
 def find_col(df, keywords):
     for col in df.columns:
         for kw in keywords:
@@ -66,28 +65,14 @@ col_comunidad = find_col(df_raw, ['comunidad'])
 col_sexo = find_col(df_raw, ['sexo', 'biologico'])
 col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
-# Estandarizamos nombres para el trabajo interno del tablero
 df_clean = df_raw.copy()
-if col_socio: df_clean['socio_clean'] = df_raw[col_socio]
-else: df_clean['socio_clean'] = 'No especificado'
-
-if col_estado: df_clean['estado_clean'] = df_raw[col_estado]
-else: df_clean['estado_clean'] = 'No especificado'
-
-if col_municipio: df_clean['municipio_clean'] = df_raw[col_municipio]
-else: df_clean['municipio_clean'] = 'No especificado'
-
-if col_parroquia: df_clean['parroquia_clean'] = df_raw[col_parroquia]
-else: df_clean['parroquia_clean'] = 'No especificado'
-
-if col_comunidad: df_clean['comunidad_clean'] = df_raw[col_comunidad]
-else: df_clean['comunidad_clean'] = 'No especificado'
-
-if col_sexo: df_clean['sexo_clean'] = df_raw[col_sexo]
-else: df_clean['sexo_clean'] = 'No especificado'
-
-if col_edu: df_clean['edu_clean'] = df_raw[col_edu]
-else: df_clean['edu_clean'] = 'No especificado'
+df_clean['socio_clean'] = df_raw[col_socio].astype(str) if col_socio else 'No especificado'
+df_clean['estado_clean'] = df_raw[col_estado].astype(str) if col_estado else 'No especificado'
+df_clean['municipio_clean'] = df_raw[col_municipio].astype(str) if col_municipio else 'No especificado'
+df_clean['parroquia_clean'] = df_raw[col_parroquia].astype(str) if col_parroquia else 'No especificado'
+df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str) if col_comunidad else 'No especificado'
+df_clean['sexo_clean'] = df_raw[col_sexo].astype(str) if col_sexo else 'No especificado'
+df_clean['edu_clean'] = df_raw[col_edu].astype(str) if col_edu else 'No especificado'
 
 st.success(f"✅ Kobo sincronizado con éxito. Total de registros analizados: {len(df_clean)}")
 
@@ -137,7 +122,7 @@ selected_parroquia = st.sidebar.multiselect("Parroquia", options=parroquias_disp
 if selected_parroquia:
     df_filtered = df_filtered[df_filtered['parroquia_clean'].isin(selected_parroquia)]
 
-# KPIs Principales con métricas reales de los 1,005 registros
+# KPIs Principales
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Encuestas Aplicadas", len(df_filtered))
 col2.metric("Estados Monitoreados", df_filtered['estado_clean'].nunique())
@@ -162,15 +147,15 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
 
 with tab1:
     st.subheader("Mapa Georreferenciado y Cobertura Territorial")
-    if not df_filtered['lat'].isna().all():
-        map_df = df_filtered.dropna(subset=['lat', 'lon'])
+    map_df = df_filtered.dropna(subset=['lat', 'lon'])
+    if not map_df.empty:
         st.pydeck_chart(pdk.Deck(
             map_style='mapbox://styles/mapbox/light-v9',
             initial_view_state=pdk.ViewState(
-                latitude=map_df['lat'].mean() if not map_df.empty else 10.4806,
-                longitude=map_df['lon'].mean() if not map_df.empty else -66.9036,
-                zoom=11,
-                pitch=40,
+                latitude=float(map_df['lat'].mean()),
+                longitude=float(map_df['lon'].mean()),
+                zoom=10,
+                pitch=30,
             ),
             layers=[
                 pdk.Layer(
@@ -178,23 +163,27 @@ with tab1:
                     data=map_df,
                     get_position='[lon, lat]',
                     get_color='[220, 50, 30, 160]',
-                    get_radius=250,
+                    get_radius=200,
                     pickable=True
                 )
             ],
-            tooltip={"text": "Comunidad: {comunidad_clean}\nMunicipio: {municipio_clean}\nParroquia: {parroquia_clean}"}
+            tooltip={"text": "Comunidad: {comunidad_clean}\nMunicipio: {municipio_clean}"}
         ))
     else:
-        st.info("No hay coordenadas GPS disponibles en el filtro actual.")
+        st.info("No hay coordenadas válidas para mostrar en el mapa con los filtros actuales.")
 
 with tab2:
     st.subheader("Condiciones Sociodemográficas, Vivienda y WASH")
     c1, c2 = st.columns(2)
     with c1:
-        fig = px.pie(df_filtered, names='sexo_clean', title="Distribución por Sexo Biológico", hole=0.4)
+        sex_counts = df_filtered['sexo_clean'].value_counts().reset_index()
+        sex_counts.columns = ['sexo', 'count']
+        fig = px.pie(sex_counts, names='sexo', values='count', title="Distribución por Sexo Biológico", hole=0.4)
         st.plotly_chart(fig, use_container_width=True)
     with c2:
-        fig = px.bar(df_filtered['edu_clean'].value_counts().reset_index(), x='index', y='edu_clean', title="Nivel Educativo Principal")
+        edu_counts = df_filtered['edu_clean'].value_counts().reset_index()
+        edu_counts.columns = ['nivel', 'count']
+        fig = px.bar(edu_counts, x='nivel', y='count', title="Nivel Educativo Principal")
         st.plotly_chart(fig, use_container_width=True)
 
 with tab3:
