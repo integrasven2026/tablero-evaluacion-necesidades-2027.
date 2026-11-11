@@ -66,25 +66,29 @@ if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
-# --- CARGAR DICCIONARIOS DESDE LA HOJA CHOICES ---
+# --- CARGAR DICCIONARIOS DESDE LA HOJA CHOICES DE MANERA SEGURA ---
 @st.cache_data
 def cargar_diccionarios_kobo():
     excel_path = 'aDLGup9ApcZVFUy8JTo7qZ(3).xlsx'
     if os.path.exists(excel_path):
         try:
             choices_df = pd.read_excel(excel_path, sheet_name='choices')
-            est_dict = dict(zip(choices_df[choices_df['list_name']=='Estado']['name'].astype(str).str.strip(), choices_df[choices_df['list_name']=='Estado']['label']))
-            mun_dict = dict(zip(choices_df[choices_df['list_name']=='Municipio']['name'].astype(str).str.strip(), choices_df[choices_df['list_name']=='Municipio']['label']))
-            par_dict = dict(zip(choices_df[choices_df['list_name']=='Parroquia']['name'].astype(str).str.strip(), choices_df[choices_df['list_name']=='Parroquia']['label']))
-            soc_dict = dict(zip(choices_df[choices_df['list_name']=='socio']['name'].astype(str).str.strip(), choices_df[choices_df['list_name']=='socio']['label']))
+            # Limpiar nombres y etiquetas
+            choices_df['name'] = choices_df['name'].astype(str).str.strip()
+            choices_df['label'] = choices_df['label'].astype(str).str.strip()
+            
+            est_dict = dict(zip(choices_df[choices_df['list_name']=='Estado']['name'], choices_df[choices_df['list_name']=='Estado']['label']))
+            mun_dict = dict(zip(choices_df[choices_df['list_name']=='Municipio']['name'], choices_df[choices_df['list_name']=='Municipio']['label']))
+            par_dict = dict(zip(choices_df[choices_df['list_name']=='Parroquia']['name'], choices_df[choices_df['list_name']=='Parroquia']['label']))
+            soc_dict = dict(zip(choices_df[choices_df['list_name']=='socio']['name'], choices_df[choices_df['list_name']=='socio']['label']))
             return est_dict, mun_dict, par_dict, soc_dict
-        except Exception:
-            pass
+        except Exception as e:
+            st.error(f"Error cargando hoja choices: {e}")
     return {}, {}, {}, {}
 
 est_dict, mun_dict, par_dict, soc_dict = cargar_diccionarios_kobo()
 
-# --- LIMPIEZA Y MAPEO INTELIGENTE DE COLUMNAS ---
+# --- DETECCIÓN Y LIMPIEZA DE COLUMNAS ---
 def find_col(df, keywords):
     for col in df.columns:
         for kw in keywords:
@@ -102,27 +106,26 @@ col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 df_clean = df_raw.copy()
 
-def limpiar_y_mapear(serie, diccionario):
+def traducir_campo(serie, diccionario):
     if serie is None:
         return pd.Series(['No especificado'] * len(df_raw))
-    
-    res = []
+    resultado = []
     for val in serie:
         v_str = str(val).strip()
-        # Si está en el diccionario de códigos de Kobo, lo traducimos
-        if v_str in diccionario:
-            res.append(str(diccionario[v_str]))
+        if v_str in diccionario and diccionario[v_str] != 'nan' and diccionario[v_str] != '':
+            resultado.append(diccionario[v_str])
         elif v_str.lower() in ['nan', 'none', '', 'nat']:
-            res.append('No especificado')
+            resultado.append('No especificado')
         else:
-            # Si ya venía en texto plano, lo conservamos capitalizado
-            res.append(v_str.title() if not v_str.isupper() else v_str)
-    return pd.Series(res)
+            # Si no está en el diccionario pero tiene texto, lo dejamos limpio
+            resultado.append(v_str)
+    return pd.Series(resultado)
 
-df_clean['socio_clean'] = limpiar_y_mapear(df_raw[col_socio] if col_socio else None, soc_dict).str.upper()
-df_clean['estado_clean'] = limpiar_y_mapear(df_raw[col_estado] if col_estado else None, est_dict)
-df_clean['municipio_clean'] = limpiar_y_mapear(df_raw[col_municipio] if col_municipio else None, mun_dict)
-df_clean['parroquia_clean'] = limpiar_y_mapear(df_raw[col_parroquia] if col_parroquia else None, par_dict)
+df_clean['socio_clean'] = traducir_campo(df_raw[col_socio] if col_socio else None, soc_dict).str.upper()
+df_clean['estado_clean'] = traducir_campo(df_raw[col_estado] if col_estado else None, est_dict)
+df_clean['municipio_clean'] = traducir_campo(df_raw[col_municipio] if col_municipio else None, mun_dict)
+df_clean['parroquia_clean'] = traducir_campo(df_raw[col_parroquia] if col_parroquia else None, par_dict)
+
 df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if col_comunidad else 'No especificado'
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
@@ -165,12 +168,10 @@ if st.sidebar.button('🔄 Actualizar Datos', use_container_width=True):
 
 st.sidebar.markdown("---")
 
-socios_disp = sorted(df_clean['socio_clean'][df_clean['socio_clean'] != 'NO ESPECIFICADO'].dropna().unique().tolist())
-if not socios_disp: socios_disp = sorted(df_clean['socio_clean'].dropna().unique().tolist())
+socios_disp = sorted(df_clean['socio_clean'].dropna().unique().tolist())
 selected_socio = st.sidebar.multiselect("Organización Socio", options=socios_disp, default=socios_disp)
 
-estados_disp = sorted(df_clean['estado_clean'][df_clean['estado_clean'] != 'No Especificado'].dropna().unique().tolist())
-if not estados_disp: estados_disp = sorted(df_clean['estado_clean'].dropna().unique().tolist())
+estados_disp = sorted(df_clean['estado_clean'].dropna().unique().tolist())
 selected_estado = st.sidebar.multiselect("Estado", options=estados_disp, default=estados_disp)
 
 df_filtered = df_clean.copy()
