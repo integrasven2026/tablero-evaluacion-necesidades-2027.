@@ -66,17 +66,23 @@ if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
-# --- DICCIONARIOS DE TRADUCCIÓN (MAPEO DESDE LA ESTRUCTURA DEL FORMULARIO) ---
-# Diccionarios oficiales basados en los catálogos del Consorcio Íntegras
-MAPA_ESTADOS = {
-    'VE01': 'Distrito Capital', 'VE07': 'Bolívar', 'VE10': 'Delta Amacuro',
-    'VE15': 'Miranda', 'VE19': 'Sucre', 'VE24': 'La Guaira', 'VE25': 'Zulia', 'VE26': 'Táchira'
-}
+# --- CARGA Y EXTRACCIÓN DE DICCIONARIOS DESDE EL DISEÑO DEL FORMULARIO Kobo ---
+@st.cache_data
+def cargar_diccionarios_kobo():
+    excel_path = 'aDLGup9ApcZVFUy8JTo7qZ(3).xlsx'
+    if os.path.exists(excel_path):
+        try:
+            choices_df = pd.read_excel(excel_path, sheet_name='choices')
+            est_dict = dict(zip(choices_df[choices_df['list_name']=='Estado']['name'], choices_df[choices_df['list_name']=='Estado']['label']))
+            mun_dict = dict(zip(choices_df[choices_df['list_name']=='Municipio']['name'], choices_df[choices_df['list_name']=='Municipio']['label']))
+            par_dict = dict(zip(choices_df[choices_df['list_name']=='Parroquia']['name'], choices_df[choices_df['list_name']=='Parroquia']['label']))
+            soc_dict = dict(zip(choices_df[choices_df['list_name']=='socio']['name'], choices_df[choices_df['list_name']=='socio']['label']))
+            return est_dict, mun_dict, par_dict, soc_dict
+        except Exception:
+            pass
+    return {}, {}, {}, {}
 
-MAPA_SOCIOS = {
-    'coopi': 'COOPI', 'hias': 'HIAS VENEZUELA', 'flm': 'FEDERACIÓN LUTERANA MUNDIAL (FLM)',
-    'paluz': 'PALUZ', 'plafam': 'PLAFAM', 'otro': 'Otra organización'
-}
+est_dict, mun_dict, par_dict, soc_dict = cargar_diccionarios_kobo()
 
 # --- LIMPIEZA Y NORMALIZACIÓN DE COLUMNAS ---
 def find_col(df, keywords):
@@ -96,17 +102,19 @@ col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 df_clean = df_raw.copy()
 
-# Mapeo y limpieza de socio
-raw_socio = df_raw[col_socio].astype(str).str.lower().str.strip() if col_socio else pd.Series(['no especificado']*len(df_raw))
-df_clean['socio_clean'] = raw_socio.map(MAPA_SOCIOS).fillna(df_raw[col_socio] if col_socio else 'No especificado').astype(str)
+# Traducción usando los diccionarios de Kobo
+raw_socio = df_raw[col_socio].astype(str).str.strip() if col_socio else pd.Series(['no especificado']*len(df_raw))
+df_clean['socio_clean'] = raw_socio.map(soc_dict).fillna(raw_socio).str.upper()
 
-# Mapeo y limpieza de Estado
 raw_estado = df_raw[col_estado].astype(str).str.strip() if col_estado else pd.Series(['no especificado']*len(df_raw))
-df_clean['estado_clean'] = raw_estado.map(MAPA_ESTADOS).fillna(raw_estado)
+df_clean['estado_clean'] = raw_estado.map(est_dict).fillna(raw_estado)
 
-# Limpieza de Municipio y Parroquia (si vienen como códigos, los dejamos limpios o titulados)
-df_clean['municipio_clean'] = df_raw[col_municipio].astype(str).str.strip() if col_municipio else 'No especificado'
-df_clean['parroquia_clean'] = df_raw[col_parroquia].astype(str).str.strip() if col_parroquia else 'No especificado'
+raw_muni = df_raw[col_municipio].astype(str).str.strip() if col_municipio else pd.Series(['no especificado']*len(df_raw))
+df_clean['municipio_clean'] = raw_muni.map(mun_dict).fillna(raw_muni)
+
+raw_parr = df_raw[col_parroquia].astype(str).str.strip() if col_parroquia else pd.Series(['no especificado']*len(df_raw))
+df_clean['parroquia_clean'] = raw_parr.map(par_dict).fillna(raw_parr)
+
 df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if col_comunidad else 'No especificado'
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
@@ -134,7 +142,6 @@ else:
     df_clean['lat'] = 10.4806
     df_clean['lon'] = -66.9036
 
-# Coordenadas aproximadas por defecto para municipios clave en Venezuela si el GPS está ausente
 COORD_MUNICIPIOS_DEF = {
     'Libertador': [10.50, -66.91], 'Sucre': [10.48, -66.81], 'Chacao': [10.49, -66.85],
     'Baruta': [10.44, -66.87], 'El Hatillo': [10.42, -66.82], 'Vargas': [10.60, -66.93],
@@ -204,11 +211,9 @@ with tab1:
         for _, row in map_df.iterrows():
             lat = row['lat']
             lon = row['lon']
-            # Si no hay GPS exacto, asignamos una coordenada estimada según el municipio
             if pd.isna(lat) or pd.isna(lon) or (lat == 10.4806 and lon == -66.9036):
                 muni_name = str(row['municipio_clean'])
                 default_coord = COORD_MUNICIPIOS_DEF.get(muni_name, [10.48, -66.90])
-                # Añadir un pequeño temblor aleatorio para que no se encimen todos los puntos del mismo municipio
                 lat = default_coord[0] + np.random.uniform(-0.02, 0.02)
                 lon = default_coord[1] + np.random.uniform(-0.02, 0.02)
             
