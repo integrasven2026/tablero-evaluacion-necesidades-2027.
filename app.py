@@ -66,6 +66,18 @@ if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
+# --- DICCIONARIOS DE TRADUCCIÓN (MAPEO DESDE LA ESTRUCTURA DEL FORMULARIO) ---
+# Diccionarios oficiales basados en los catálogos del Consorcio Íntegras
+MAPA_ESTADOS = {
+    'VE01': 'Distrito Capital', 'VE07': 'Bolívar', 'VE10': 'Delta Amacuro',
+    'VE15': 'Miranda', 'VE19': 'Sucre', 'VE24': 'La Guaira', 'VE25': 'Zulia', 'VE26': 'Táchira'
+}
+
+MAPA_SOCIOS = {
+    'coopi': 'COOPI', 'hias': 'HIAS VENEZUELA', 'flm': 'FEDERACIÓN LUTERANA MUNDIAL (FLM)',
+    'paluz': 'PALUZ', 'plafam': 'PLAFAM', 'otro': 'Otra organización'
+}
+
 # --- LIMPIEZA Y NORMALIZACIÓN DE COLUMNAS ---
 def find_col(df, keywords):
     for col in df.columns:
@@ -83,11 +95,19 @@ col_sexo = find_col(df_raw, ['sexo', 'biologico'])
 col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 df_clean = df_raw.copy()
-df_clean['socio_clean'] = df_raw[col_socio].astype(str).str.upper() if col_socio else 'NO ESPECIFICADO'
-df_clean['estado_clean'] = df_raw[col_estado].astype(str) if col_estado else 'No especificado'
-df_clean['municipio_clean'] = df_raw[col_municipio].astype(str) if col_municipio else 'No especificado'
-df_clean['parroquia_clean'] = df_raw[col_parroquia].astype(str) if col_parroquia else 'No especificado'
-df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str) if col_comunidad else 'No especificado'
+
+# Mapeo y limpieza de socio
+raw_socio = df_raw[col_socio].astype(str).str.lower().str.strip() if col_socio else pd.Series(['no especificado']*len(df_raw))
+df_clean['socio_clean'] = raw_socio.map(MAPA_SOCIOS).fillna(df_raw[col_socio] if col_socio else 'No especificado').astype(str)
+
+# Mapeo y limpieza de Estado
+raw_estado = df_raw[col_estado].astype(str).str.strip() if col_estado else pd.Series(['no especificado']*len(df_raw))
+df_clean['estado_clean'] = raw_estado.map(MAPA_ESTADOS).fillna(raw_estado)
+
+# Limpieza de Municipio y Parroquia (si vienen como códigos, los dejamos limpios o titulados)
+df_clean['municipio_clean'] = df_raw[col_municipio].astype(str).str.strip() if col_municipio else 'No especificado'
+df_clean['parroquia_clean'] = df_raw[col_parroquia].astype(str).str.strip() if col_parroquia else 'No especificado'
+df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if col_comunidad else 'No especificado'
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
 
@@ -113,6 +133,13 @@ if gps_col:
 else:
     df_clean['lat'] = 10.4806
     df_clean['lon'] = -66.9036
+
+# Coordenadas aproximadas por defecto para municipios clave en Venezuela si el GPS está ausente
+COORD_MUNICIPIOS_DEF = {
+    'Libertador': [10.50, -66.91], 'Sucre': [10.48, -66.81], 'Chacao': [10.49, -66.85],
+    'Baruta': [10.44, -66.87], 'El Hatillo': [10.42, -66.82], 'Vargas': [10.60, -66.93],
+    'Carayaca': [10.60, -67.03], 'Urimare': [10.59, -66.98]
+}
 
 # --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
 st.sidebar.header("🎛️ Filtros de Localización y Socios")
@@ -172,16 +199,27 @@ with tab1:
     st.subheader("Mapa Georreferenciado y Cobertura Territorial")
     mapa = folium.Map(location=[10.48, -66.90], zoom_start=9, tiles='OpenStreetMap')
     
-    map_df = df_filtered.dropna(subset=['lat', 'lon'])
+    map_df = df_filtered.copy()
     if not map_df.empty:
         for _, row in map_df.iterrows():
-            lat, lon = row['lat'], row['lon']
+            lat = row['lat']
+            lon = row['lon']
+            # Si no hay GPS exacto, asignamos una coordenada estimada según el municipio
+            if pd.isna(lat) or pd.isna(lon) or (lat == 10.4806 and lon == -66.9036):
+                muni_name = str(row['municipio_clean'])
+                default_coord = COORD_MUNICIPIOS_DEF.get(muni_name, [10.48, -66.90])
+                # Añadir un pequeño temblor aleatorio para que no se encimen todos los puntos del mismo municipio
+                lat = default_coord[0] + np.random.uniform(-0.02, 0.02)
+                lon = default_coord[1] + np.random.uniform(-0.02, 0.02)
+            
             comunidad = row['comunidad_clean']
             muni = row['municipio_clean']
             est = row['estado_clean']
+            socio = row['socio_clean']
             
             popup_html = f"""
-            <div style='font-family: sans-serif; font-size: 12px; width: 200px;'>
+            <div style='font-family: sans-serif; font-size: 12px; width: 220px;'>
+                <b>Socio:</b> {socio}<br>
                 <b>Estado:</b> {est}<br>
                 <b>Municipio:</b> {muni}<br>
                 <b>Comunidad:</b> {comunidad}
@@ -190,7 +228,7 @@ with tab1:
             folium.CircleMarker(
                 location=[lat, lon],
                 radius=6,
-                popup=folium.Popup(popup_html, max_width=220),
+                popup=folium.Popup(popup_html, max_width=240),
                 color=COLOR_AZUL_COOPI,
                 fill=True,
                 fill_color=COLOR_AZUL_COOPI,
