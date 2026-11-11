@@ -66,29 +66,7 @@ if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
-# --- CARGAR DICCIONARIOS DESDE LA HOJA CHOICES CON CLAVES EN MINÚSCULAS ---
-@st.cache_data
-def cargar_diccionarios_kobo():
-    excel_path = 'aDLGup9ApcZVFUy8JTo7qZ(3).xlsx'
-    if os.path.exists(excel_path):
-        try:
-            choices_df = pd.read_excel(excel_path, sheet_name='choices')
-            # Claves en minúsculas y sin espacios para evitar errores de coincidencia
-            choices_df['name_clean'] = choices_df['name'].astype(str).str.strip().str.lower()
-            choices_df['label_clean'] = choices_df['label'].astype(str).str.strip()
-            
-            est_dict = dict(zip(choices_df[choices_df['list_name']=='Estado']['name_clean'], choices_df[choices_df['list_name']=='Estado']['label_clean']))
-            mun_dict = dict(zip(choices_df[choices_df['list_name']=='Municipio']['name_clean'], choices_df[choices_df['list_name']=='Municipio']['label_clean']))
-            par_dict = dict(zip(choices_df[choices_df['list_name']=='Parroquia']['name_clean'], choices_df[choices_df['list_name']=='Parroquia']['label_clean']))
-            soc_dict = dict(zip(choices_df[choices_df['list_name']=='socio']['name_clean'], choices_df[choices_df['list_name']=='socio']['label_clean']))
-            return est_dict, mun_dict, par_dict, soc_dict
-        except Exception as e:
-            st.error(f"Error cargando hoja choices: {e}")
-    return {}, {}, {}, {}
-
-est_dict, mun_dict, par_dict, soc_dict = cargar_diccionarios_kobo()
-
-# --- DETECCIÓN Y TRADUCCIÓN ROBUSTA DE COLUMNAS ---
+# --- LIMPIEZA Y NORMALIZACIÓN DE COLUMNAS ---
 def find_col(df, keywords):
     for col in df.columns:
         for kw in keywords:
@@ -105,30 +83,11 @@ col_sexo = find_col(df_raw, ['sexo', 'biologico'])
 col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 df_clean = df_raw.copy()
-
-def traducir_campo_robusto(serie, diccionario):
-    if serie is None:
-        return pd.Series(['No especificado'] * len(df_raw))
-    
-    resultado = []
-    for val in serie:
-        v_str = str(val).strip()
-        v_lower = v_str.lower()
-        if v_lower in diccionario and diccionario[v_lower] not in ['nan', '', 'None']:
-            resultado.append(diccionario[v_lower])
-        elif v_lower in ['nan', 'none', '', 'nat']:
-            resultado.append('No especificado')
-        else:
-            # Si no está en el diccionario, intentamos formatearlo limpio
-            resultado.append(v_str.title() if not v_str.isupper() else v_str)
-    return pd.Series(resultado)
-
-df_clean['socio_clean'] = traducir_campo_robusto(df_raw[col_socio] if col_socio else None, soc_dict).str.upper()
-df_clean['estado_clean'] = traducir_campo_robusto(df_raw[col_estado] if col_estado else None, est_dict)
-df_clean['municipio_clean'] = traducir_campo_robusto(df_raw[col_municipio] if col_municipio else None, mun_dict)
-df_clean['parroquia_clean'] = traducir_campo_robusto(df_raw[col_parroquia] if col_parroquia else None, par_dict)
-
-df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if col_comunidad else 'No especificado'
+df_clean['socio_clean'] = df_raw[col_socio].astype(str).str.upper() if col_socio else 'NO ESPECIFICADO'
+df_clean['estado_clean'] = df_raw[col_estado].astype(str) if col_estado else 'No especificado'
+df_clean['municipio_clean'] = df_raw[col_municipio].astype(str) if col_municipio else 'No especificado'
+df_clean['parroquia_clean'] = df_raw[col_parroquia].astype(str) if col_parroquia else 'No especificado'
+df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str) if col_comunidad else 'No especificado'
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
 
@@ -154,12 +113,6 @@ if gps_col:
 else:
     df_clean['lat'] = 10.4806
     df_clean['lon'] = -66.9036
-
-COORD_MUNICIPIOS_DEF = {
-    'Libertador': [10.50, -66.91], 'Sucre': [10.48, -66.81], 'Chacao': [10.49, -66.85],
-    'Baruta': [10.44, -66.87], 'El Hatillo': [10.42, -66.82], 'Vargas': [10.60, -66.93],
-    'Carayaca': [10.60, -67.03], 'Urimare': [10.59, -66.98]
-}
 
 # --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
 st.sidebar.header("🎛️ Filtros de Localización y Socios")
@@ -219,25 +172,16 @@ with tab1:
     st.subheader("Mapa Georreferenciado y Cobertura Territorial")
     mapa = folium.Map(location=[10.48, -66.90], zoom_start=9, tiles='OpenStreetMap')
     
-    map_df = df_filtered.copy()
+    map_df = df_filtered.dropna(subset=['lat', 'lon'])
     if not map_df.empty:
         for _, row in map_df.iterrows():
-            lat = row['lat']
-            lon = row['lon']
-            if pd.isna(lat) or pd.isna(lon) or (lat == 10.4806 and lon == -66.9036):
-                muni_name = str(row['municipio_clean'])
-                default_coord = COORD_MUNICIPIOS_DEF.get(muni_name, [10.48, -66.90])
-                lat = default_coord[0] + np.random.uniform(-0.02, 0.02)
-                lon = default_coord[1] + np.random.uniform(-0.02, 0.02)
-            
+            lat, lon = row['lat'], row['lon']
             comunidad = row['comunidad_clean']
             muni = row['municipio_clean']
             est = row['estado_clean']
-            socio = row['socio_clean']
             
             popup_html = f"""
-            <div style='font-family: sans-serif; font-size: 12px; width: 220px;'>
-                <b>Socio:</b> {socio}<br>
+            <div style='font-family: sans-serif; font-size: 12px; width: 200px;'>
                 <b>Estado:</b> {est}<br>
                 <b>Municipio:</b> {muni}<br>
                 <b>Comunidad:</b> {comunidad}
@@ -246,7 +190,7 @@ with tab1:
             folium.CircleMarker(
                 location=[lat, lon],
                 radius=6,
-                popup=folium.Popup(popup_html, max_width=240),
+                popup=folium.Popup(popup_html, max_width=220),
                 color=COLOR_AZUL_COOPI,
                 fill=True,
                 fill_color=COLOR_AZUL_COOPI,
