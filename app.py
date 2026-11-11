@@ -66,7 +66,7 @@ if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
-# --- CARGAR DICCIONARIOS OFICIALES DE LA HOJA CHOICES ---
+# --- CARGAR DICCIONARIOS OFICIALES DE LA HOJA CHOICES (SEGUNDA HOJA) ---
 @st.cache_data
 def cargar_diccionarios_kobo():
     excel_path = 'aDLGup9ApcZVFUy8JTo7qZ(3).xlsx'
@@ -84,25 +84,18 @@ def cargar_diccionarios_kobo():
 
 est_dict, mun_dict, par_dict, soc_dict = cargar_diccionarios_kobo()
 
-# --- LIMPIEZA Y TRADUCCIÓN DE COLUMNAS ---
-def find_col(df, keywords):
-    for col in df.columns:
-        for kw in keywords:
-            if kw.lower() in col.lower():
-                return col
-    return None
-
-col_socio = find_col(df_raw, ['socio'])
-col_estado = find_col(df_raw, ['estado'])
-col_municipio = find_col(df_raw, ['municipio'])
-col_parroquia = find_col(df_raw, ['parroquia'])
-col_comunidad = find_col(df_raw, ['comunidad'])
-col_sexo = find_col(df_raw, ['sexo', 'biologico'])
-col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
+# --- MAPEO Y TRADUCCIÓN DE COLUMNAS DE KOBO ---
+col_socio = 'socio' if 'socio' in df_raw.columns else None
+col_estado = 'Estado' if 'Estado' in df_raw.columns else None
+col_municipio = 'Municipio' if 'Municipio' in df_raw.columns else None
+col_parroquia = 'Parroquia' if 'Parroquia' in df_raw.columns else None
+col_comunidad = 'comunidad' if 'comunidad' in df_raw.columns else None
+col_sexo = 'sexo' if 'sexo' in df_raw.columns else None
+col_edu = 'nivel_educativo' if 'nivel_educativo' in df_raw.columns else None
 
 df_clean = df_raw.copy()
 
-# Mapeo exacto usando los diccionarios de Kobo
+# Traducción exacta usando los diccionarios de la hoja choices
 raw_socio = df_raw[col_socio].astype(str).str.strip() if col_socio else pd.Series(['no especificado']*len(df_raw))
 df_clean['socio_clean'] = raw_socio.map(soc_dict).fillna(raw_socio).str.upper()
 
@@ -122,7 +115,7 @@ df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 
 st.success(f"✅ Kobo sincronizado con éxito. Total de registros analizados: {len(df_clean)}")
 
 # --- PROCESAMIENTO DE COORDENADAS GPS ---
-gps_col = find_col(df_raw, ['ubicacion_gps', 'geopoint', 'gps'])
+gps_col = 'ubicacion_gps' if 'ubicacion_gps' in df_raw.columns else None
 if gps_col:
     def parse_lat(val):
         try:
