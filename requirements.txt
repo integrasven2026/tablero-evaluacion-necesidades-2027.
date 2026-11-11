@@ -5,3 +5,5 @@ requests
 plotly
 pydeck
 openpyxl
+folium
+streamlit-folium
