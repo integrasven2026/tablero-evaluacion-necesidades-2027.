@@ -4,14 +4,32 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import plotly.express as px
-import pydeck as pdk
+import plotly.graph_objects as go
+import folium
+from streamlit_folium import st_folium
 
-# Configuración de la página
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN DE PÁGINA Y ESTILOS
+# -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Tablero Evaluación de Necesidades - Consorcio ÍNTEGRAS (ECHO HIP 2027)",
     page_icon="📊",
     layout="wide"
 )
+
+COLOR_AZUL_COOPI = '#0072CE'
+COLOR_VERDE_COOPI = '#28A745'
+PALETA_COOPI = [COLOR_AZUL_COOPI, COLOR_VERDE_COOPI, '#17C3B2', '#D89FE3', '#E5B130', '#08327D']
+
+st.markdown("""
+<style>
+    .titulo-principal {
+        color: #0072CE !important;
+        font-weight: 800 !important;
+        font-size: 1.5rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Constantes de conexión API KoboToolbox (Europa)
 KOBO_URL = "https://eu.kobotoolbox.org/api/v2/assets/aDLGup9ApcZVFUy8JTo7qZ/data/?format=json"
@@ -22,7 +40,6 @@ def load_kobo_data():
     headers = {"Authorization": f"Token {TOKEN}"}
     all_results = []
     url = KOBO_URL
-    
     try:
         while url:
             response = requests.get(url, headers=headers, timeout=15)
@@ -42,14 +59,14 @@ def load_kobo_data():
 df_raw = load_kobo_data()
 
 # Título principal
-st.title("📊 Tablero Dinámico de Evaluación de Necesidades - ECHO HIP 2027")
+st.markdown("<h1 class='titulo-principal'>📊 Tablero Dinámico de Evaluación de Necesidades - ECHO HIP 2027</h1>", unsafe_allow_html=True)
 st.markdown("**Consorcio ÍNTEGRAS:** COOPI, HIAS, FLM, PLAFAM, PALUZ | Monitoreo Multisectorial Post-Sismos y Crisis Estructural")
 
 if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
-# --- LIMPIEZA Y NORMALIZACIÓN DE COLUMNAS DE KOBO ---
+# --- LIMPIEZA Y NORMALIZACIÓN DE COLUMNAS ---
 def find_col(df, keywords):
     for col in df.columns:
         for kw in keywords:
@@ -66,13 +83,13 @@ col_sexo = find_col(df_raw, ['sexo', 'biologico'])
 col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 df_clean = df_raw.copy()
-df_clean['socio_clean'] = df_raw[col_socio].astype(str) if col_socio else 'No especificado'
+df_clean['socio_clean'] = df_raw[col_socio].astype(str).str.upper() if col_socio else 'NO ESPECIFICADO'
 df_clean['estado_clean'] = df_raw[col_estado].astype(str) if col_estado else 'No especificado'
 df_clean['municipio_clean'] = df_raw[col_municipio].astype(str) if col_municipio else 'No especificado'
 df_clean['parroquia_clean'] = df_raw[col_parroquia].astype(str) if col_parroquia else 'No especificado'
 df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str) if col_comunidad else 'No especificado'
-df_clean['sexo_clean'] = df_raw[col_sexo].astype(str) if col_sexo else 'No especificado'
-df_clean['edu_clean'] = df_raw[col_edu].astype(str) if col_edu else 'No especificado'
+df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
+df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
 
 st.success(f"✅ Kobo sincronizado con éxito. Total de registros analizados: {len(df_clean)}")
 
@@ -100,10 +117,16 @@ else:
 # --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
 st.sidebar.header("🎛️ Filtros de Localización y Socios")
 
-socios_disp = df_clean['socio_clean'].dropna().unique().tolist()
+if st.sidebar.button('🔄 Actualizar Datos', use_container_width=True):
+    st.cache_data.clear()
+    st.rerun()
+
+st.sidebar.markdown("---")
+
+socios_disp = sorted(df_clean['socio_clean'].dropna().unique().tolist())
 selected_socio = st.sidebar.multiselect("Organización Socio", options=socios_disp, default=socios_disp)
 
-estados_disp = df_clean['estado_clean'].dropna().unique().tolist()
+estados_disp = sorted(df_clean['estado_clean'].dropna().unique().tolist())
 selected_estado = st.sidebar.multiselect("Estado", options=estados_disp, default=estados_disp)
 
 df_filtered = df_clean.copy()
@@ -112,22 +135,22 @@ if selected_socio:
 if selected_estado:
     df_filtered = df_filtered[df_filtered['estado_clean'].isin(selected_estado)]
 
-municipios_disp = df_filtered['municipio_clean'].dropna().unique().tolist()
+municipios_disp = sorted(df_filtered['municipio_clean'].dropna().unique().tolist())
 selected_municipio = st.sidebar.multiselect("Municipio", options=municipios_disp, default=municipios_disp)
 if selected_municipio:
     df_filtered = df_filtered[df_filtered['municipio_clean'].isin(selected_municipio)]
 
-parroquias_disp = df_filtered['parroquia_clean'].dropna().unique().tolist()
+parroquias_disp = sorted(df_filtered['parroquia_clean'].dropna().unique().tolist())
 selected_parroquia = st.sidebar.multiselect("Parroquia", options=parroquias_disp, default=parroquias_disp)
 if selected_parroquia:
     df_filtered = df_filtered[df_filtered['parroquia_clean'].isin(selected_parroquia)]
 
 # KPIs Principales
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Encuestas Aplicadas", len(df_filtered))
-col2.metric("Estados Monitoreados", df_filtered['estado_clean'].nunique())
-col3.metric("Municipios Afectados", df_filtered['municipio_clean'].nunique())
-col4.metric("Comunidades / Albergues", df_filtered['comunidad_clean'].nunique())
+col1.metric("Total Encuestas Aplicadas", f"{len(df_filtered):,}")
+col2.metric("Estados Monitoreados", f"{df_filtered['estado_clean'].nunique():,}")
+col3.metric("Municipios Afectados", f"{df_filtered['municipio_clean'].nunique():,}")
+col4.metric("Comunidades / Albergues", f"{df_filtered['comunidad_clean'].nunique():,}")
 
 st.markdown("---")
 
@@ -147,30 +170,34 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
 
 with tab1:
     st.subheader("Mapa Georreferenciado y Cobertura Territorial")
+    mapa = folium.Map(location=[10.48, -66.90], zoom_start=9, tiles='OpenStreetMap')
+    
     map_df = df_filtered.dropna(subset=['lat', 'lon'])
     if not map_df.empty:
-        st.pydeck_chart(pdk.Deck(
-            map_style='mapbox://styles/mapbox/light-v9',
-            initial_view_state=pdk.ViewState(
-                latitude=float(map_df['lat'].mean()),
-                longitude=float(map_df['lon'].mean()),
-                zoom=10,
-                pitch=30,
-            ),
-            layers=[
-                pdk.Layer(
-                    'ScatterplotLayer',
-                    data=map_df,
-                    get_position='[lon, lat]',
-                    get_color='[220, 50, 30, 160]',
-                    get_radius=200,
-                    pickable=True
-                )
-            ],
-            tooltip={"text": "Comunidad: {comunidad_clean}\nMunicipio: {municipio_clean}"}
-        ))
-    else:
-        st.info("No hay coordenadas válidas para mostrar en el mapa con los filtros actuales.")
+        for _, row in map_df.iterrows():
+            lat, lon = row['lat'], row['lon']
+            comunidad = row['comunidad_clean']
+            muni = row['municipio_clean']
+            est = row['estado_clean']
+            
+            popup_html = f"""
+            <div style='font-family: sans-serif; font-size: 12px; width: 200px;'>
+                <b>Estado:</b> {est}<br>
+                <b>Municipio:</b> {muni}<br>
+                <b>Comunidad:</b> {comunidad}
+            </div>
+            """
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=6,
+                popup=folium.Popup(popup_html, max_width=220),
+                color=COLOR_AZUL_COOPI,
+                fill=True,
+                fill_color=COLOR_AZUL_COOPI,
+                fill_opacity=0.7
+            ).add_to(mapa)
+    
+    st_folium(mapa, width='100%', height=450)
 
 with tab2:
     st.subheader("Condiciones Sociodemográficas, Vivienda y WASH")
@@ -178,12 +205,12 @@ with tab2:
     with c1:
         sex_counts = df_filtered['sexo_clean'].value_counts().reset_index()
         sex_counts.columns = ['sexo', 'count']
-        fig = px.pie(sex_counts, names='sexo', values='count', title="Distribución por Sexo Biológico", hole=0.4)
+        fig = px.pie(sex_counts, names='sexo', values='count', title="Distribución por Sexo Biológico", hole=0.4, color_discrete_sequence=PALETA_COOPI)
         st.plotly_chart(fig, use_container_width=True)
     with c2:
         edu_counts = df_filtered['edu_clean'].value_counts().reset_index()
         edu_counts.columns = ['nivel', 'count']
-        fig = px.bar(edu_counts, x='nivel', y='count', title="Nivel Educativo Principal")
+        fig = px.bar(edu_counts, x='nivel', y='count', title="Nivel Educativo Principal", color_discrete_sequence=[COLOR_AZUL_COOPI])
         st.plotly_chart(fig, use_container_width=True)
 
 with tab3:
