@@ -213,4 +213,22 @@ with tab6:
     st.subheader("Protección de Niñas, Niños y Adolescentes (NNA)")
     st.markdown("Riesgos de protección infantil, trabajo infantil y separación en albergues temporales.")
 
-with
+with tab7:
+    st.subheader("Violencia Basada en Género (VBG) y Enfoque de Género")
+    st.markdown("Percepción de seguridad, riesgos en espacios comunitarios y barreras para la atención.")
+
+with tab8:
+    st.subheader("Educación en Emergencias (EiE)")
+    st.markdown("Afectación estructural en escuelas, uso como refugios y continuidad escolar.")
+
+with tab9:
+    st.subheader("Salud, Salud Sexual y Reproductiva (SSR) y Crónicos")
+    st.markdown("Acceso a medicamentos para hipertensión/diabetes, métodos anticonceptivos y atención materno-infantil.")
+
+with tab10:
+    st.subheader("Personas con Discapacidad y Salud Mental")
+    st.markdown("Evaluación bajo el enfoque del Grupo de Washington y primeros auxilios psicológicos.")
+
+# Footer
+st.markdown("---")
+st.markdown("**Sistema MEAL COOPI Venezuela** | Consorcio ÍNTEGRAS - ECHO HIP 2027")
