@@ -13,22 +13,35 @@ st.set_page_config(
     layout="wide"
 )
 
-# Constantes de conexión API KoboToolbox (Dominio humanitario Europa)
-KOBO_URL = "https://kobo.humanitarianresponse.info/api/v2/assets/aDLGup9ApcZVFUy8JTo7qZ/data/?format=json"
+# Constantes de conexión API KoboToolbox (Europa)
+KOBO_URL = "https://eu.kobotoolbox.org/api/v2/assets/aDLGup9ApcZVFUy8JTo7qZ/data/?format=json"
 TOKEN = "a18c017a2e697f4ea1272375dae261ccec6b19d7"
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=300)
 def load_kobo_data():
     headers = {"Authorization": f"Token {TOKEN}"}
+    all_results = []
+    url = KOBO_URL
+    
     try:
-        response = requests.get(KOBO_URL, headers=headers)
-        if response.status_code == 200:
-            data = response.json().get('results', [])
-            if data:
-                return pd.DataFrame(data)
+        # Bucle para manejar paginación si Kobo retorna lotes grandes (>1000 registros)
+        while url:
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+                all_results.extend(results)
+                # Verificar si hay página siguiente
+                url = data.get('next')
+            else:
+                st.error(f"Error en API Kobo: Código de estado {response.status_code}")
+                break
+        
+        if all_results:
+            return pd.DataFrame(all_results)
         return pd.DataFrame()
     except Exception as e:
-        st.error(f"Error conectando con la API de KoboToolbox: {e}")
+        st.error(f"Excepción al conectar con KoboToolbox: {e}")
         return pd.DataFrame()
 
 df_raw = load_kobo_data()
@@ -37,23 +50,26 @@ df_raw = load_kobo_data()
 st.title("📊 Tablero Dinámico de Evaluación de Necesidades - ECHO HIP 2027")
 st.markdown("**Consorcio ÍNTEGRAS:** COOPI, HIAS, FLM, PLAFAM, PALUZ | Monitoreo Multisectorial Post-Sismos y Crisis Estructural")
 
-# Si el API no devuelve registros todavía, cargamos un set de datos base demostrativo para evitar errores visuales
+# Validación si el dataframe está vacío
 if df_raw.empty:
-    st.info("ℹ️ Conectado exitosamente al API de KoboToolbox. Actualmente el formulario no registra envíos activos, mostrando la estructura interactiva lista para recibir datos.")
+    st.warning("⚠️ No se pudieron extraer datos de la API de KoboToolbox. Verifique que el formulario tenga envíos sincronizados y el token sea válido.")
+    # Datos de respaldo mínimos para evitar colapso visual
     df_raw = pd.DataFrame({
-        'socio': ['coopi', 'hias', 'flm', 'plafam', 'paluz', 'coopi', 'hias'],
-        'Estado': ['Distrito Capital', 'La Guaira', 'Miranda', 'Distrito Capital', 'Miranda', 'La Guaira', 'Distrito Capital'],
-        'Municipio': ['Libertador', 'Carayaca', 'Chacao', 'Sucre', 'Paz Castillo', 'Urimare', 'Libertador'],
-        'Parroquia': ['La Vega', 'Carayaca', 'Chacao', 'Petare', 'Santa Lucía', 'Urimare', 'La Pastora'],
-        'comunidad': ['Refugio Maripérez', 'San Julián', 'Chacao Centro', 'Petare Sur', 'Cuá Central', 'Catia La Mar', 'Propatria'],
-        'sexo': ['femenino', 'masculino', 'femenino', 'femenino', 'masculino', 'femenino', 'masculino'],
-        'nivel_educativo': ['secundaria', 'universitaria', 'primaria', 'secundaria', 'ninguno', 'universitaria', 'primaria'],
-        'lat': [10.4806, 10.6000, 10.4900, 10.4850, 10.3200, 10.5980, 10.5100],
-        'lon': [-66.9036, -67.0000, -66.8500, -66.8100, -66.6800, -67.0300, -66.9300]
+        'socio': ['coopi', 'hias'],
+        'Estado': ['Distrito Capital', 'La Guaira'],
+        'Municipio': ['Libertador', 'Carayaca'],
+        'Parroquia': ['La Vega', 'Urimare'],
+        'comunidad': ['Comunidad Demo 1', 'Comunidad Demo 2'],
+        'sexo': ['femenino', 'masculino'],
+        'nivel_educativo': ['secundaria', 'universitaria'],
+        'lat': [10.4806, 10.6000],
+        'lon': [-66.9036, -67.0000]
     })
+else:
+    st.success(f"✅ Conexión exitosa con KoboToolbox. Total de registros cargados: {len(df_raw)}")
 
 # --- PROCESAMIENTO DE COORDENADAS GPS ---
-if 'ubicacion_gps' in df_raw.columns and 'lat' not in df_raw.columns:
+if 'ubicacion_gps' in df_raw.columns:
     def parse_lat(val):
         try:
             parts = str(val).split()
@@ -76,10 +92,10 @@ if 'lat' not in df_raw.columns:
 # --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
 st.sidebar.header("🎛️ Filtros de Localización y Socios")
 
-socios_disp = df_raw['socio'].unique().tolist() if 'socio' in df_raw.columns else []
+socios_disp = df_raw['socio'].dropna().unique().tolist() if 'socio' in df_raw.columns else []
 selected_socio = st.sidebar.multiselect("Organización Socio", options=socios_disp, default=socios_disp)
 
-estados_disp = df_raw['Estado'].unique().tolist() if 'Estado' in df_raw.columns else []
+estados_disp = df_raw['Estado'].dropna().unique().tolist() if 'Estado' in df_raw.columns else []
 selected_estado = st.sidebar.multiselect("Estado", options=estados_disp, default=estados_disp)
 
 df_filtered = df_raw.copy()
@@ -88,17 +104,17 @@ if selected_socio and 'socio' in df_filtered.columns:
 if selected_estado and 'Estado' in df_filtered.columns:
     df_filtered = df_filtered[df_filtered['Estado'].isin(selected_estado)]
 
-municipios_disp = df_filtered['Municipio'].unique().tolist() if 'Municipio' in df_filtered.columns else []
+municipios_disp = df_filtered['Municipio'].dropna().unique().tolist() if 'Municipio' in df_filtered.columns else []
 selected_municipio = st.sidebar.multiselect("Municipio", options=municipios_disp, default=municipios_disp)
 if selected_municipio and 'Municipio' in df_filtered.columns:
     df_filtered = df_filtered[df_filtered['Municipio'].isin(selected_municipio)]
 
-parroquias_disp = df_filtered['Parroquia'].unique().tolist() if 'Parroquia' in df_filtered.columns else []
+parroquias_disp = df_filtered['Parroquia'].dropna().unique().tolist() if 'Parroquia' in df_filtered.columns else []
 selected_parroquia = st.sidebar.multiselect("Parroquia", options=parroquias_disp, default=parroquias_disp)
 if selected_parroquia and 'Parroquia' in df_filtered.columns:
     df_filtered = df_filtered[df_filtered['Parroquia'].isin(selected_parroquia)]
 
-# KPIs Principales
+# KPIs Principales con conteos reales
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Encuestas Aplicadas", len(df_filtered))
 col2.metric("Estados Monitoreados", df_filtered['Estado'].nunique() if 'Estado' in df_filtered.columns else 0)
@@ -107,7 +123,7 @@ col4.metric("Comunidades / Albergues", df_filtered['comunidad'].nunique() if 'co
 
 st.markdown("---")
 
-# --- PESTAÑAS DE ANÁLISIS SEGÚN ESTRUCTURA SOLICITADA ---
+# --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "🗺️ 1. Mapa y Localización",
     "🏠 2. Sociodemografía & Vivienda / WASH",
