@@ -157,7 +157,6 @@ df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if c
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
 
-# Normalización robusta de columnas numéricas (evita ceros por tipos de datos string)
 cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
 for col_num in cols_num_familia:
     if col_num in df_clean.columns:
@@ -213,4 +212,108 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "💼 2. Socioeconómico & Ingresos",
     "🍲 3. Seguridad Alimentaria & Nutrición",
     "⚖️ 4. Acceso a Derechos",
-    "
+    "🧸 5. Protección NNA",
+    "🛡️ 6. VBG y Género",
+    "📚 7. Educación en Emergencias",
+    "🩺 8. Salud & Discapacidad"
+])
+
+with tab1:
+    st.subheader("Análisis Sociodemográfico y Grupo Familiar")
+    
+    mujeres_0_17 = df_filtered['i1'].sum()
+    mujeres_18_49 = df_filtered['i2'].sum()
+    mujeres_50_plus = df_filtered['i3'].sum()
+    
+    hombres_0_17 = df_filtered['i12'].sum()
+    hombres_18_49 = df_filtered['i13'].sum()
+    hombres_50_plus = df_filtered['i14'].sum()
+    
+    otro_0_17 = df_filtered['i23'].sum()
+    otro_18_49 = df_filtered['i24'].sum()
+    otro_50_plus = df_filtered['i25'].sum()
+
+    total_mujeres = mujeres_0_17 + mujeres_18_49 + mujeres_50_plus
+    total_hombres = hombres_0_17 + hombres_18_49 + hombres_50_plus
+    total_niños = mujeres_0_17 + hombres_0_17 + otro_0_17
+    total_otro = otro_0_17 + otro_18_49 + otro_50_plus
+
+    c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+    c_m1.metric("Mujeres Totales (Familias)", f"{int(total_mujeres):,}")
+    c_m2.metric("Hombres Totales (Familias)", f"{int(total_hombres):,}")
+    c_m3.metric("Niños y Niñas (0-17 años)", f"{int(total_niños):,}")
+    c_m4.metric("Otro Género / No Binario", f"{int(total_otro):,}")
+
+    st.markdown("---")
+
+    col_pyr1, col_pyr2 = st.columns(2)
+    with col_pyr1:
+        st.markdown("#### 👥 Pirámide Poblacional del Grupo Familiar")
+        pyramid_data = pd.DataFrame({
+            'Rango Etario': ['0 a 17 años', '18 a 49 años', '50+ años', '0 a 17 años', '18 a 49 años', '50+ años'],
+            'Género': ['Hombre', 'Hombre', 'Hombre', 'Mujer', 'Mujer', 'Mujer'],
+            'Cantidad': [-hombres_0_17, -hombres_18_49, -hombres_50_plus, mujeres_0_17, mujeres_18_49, mujeres_50_plus]
+        })
+        fig_pyramid = px.bar(
+            pyramid_data, x='Cantidad', y='Rango Etario', color='Género', orientation='h',
+            title="Distribución por Edad y Género",
+            color_discrete_sequence=[COLOR_AZUL_COOPI, COLOR_VERDE_COOPI]
+        )
+        fig_pyramid.update_layout(bargap=0.1)
+        st.plotly_chart(fig_pyramid, use_container_width=True)
+
+    with col_pyr2:
+        st.markdown("#### 📚 Nivel Educativo de los Participantes")
+        if 'edu_clean' in df_filtered.columns:
+            edu_counts = df_filtered['edu_clean'].value_counts().reset_index()
+            edu_counts.columns = ['Nivel Educativo', 'Cantidad']
+            fig_edu = px.bar(edu_counts, x='Nivel Educativo', y='Cantidad', color_discrete_sequence=[COLOR_AZUL_COOPI])
+            st.plotly_chart(fig_edu, use_container_width=True)
+
+    st.markdown("---")
+    
+    col_v1, col_v2, col_v3, col_v4 = st.columns(4)
+    
+    lgbti_count = df_filtered['Igtbiq'].dropna().astype(str).str.lower().isin(['si', 'sí', '1', 'true']).sum() if 'Igtbiq' in df_filtered.columns else 0
+    indigena_count = df_filtered['etnia_indigena'].dropna().count() if 'etnia_indigena' in df_filtered.columns else 0
+    disc_count = df_filtered['discapacidad_selec'].dropna().count() if 'discapacidad_selec' in df_filtered.columns else 0
+    
+    valid_hogares = df_filtered['personas_vivienda'][df_filtered['personas_vivienda'] > 0]
+    avg_hogar = valid_hogares.mean() if not valid_hogares.empty else 0.0
+
+    col_v1.metric("Población LGBTIQ+", f"{int(lgbti_count):,}")
+    col_v2.metric("Población Indígena", f"{int(indigena_count):,}")
+    col_v3.metric("Personas con Discapacidad", f"{int(disc_count):,}")
+    col_v4.metric("Promedio Personas por Hogar", f"{avg_hogar:.1f}")
+
+with tab2:
+    st.subheader("Características Socioeconómicas y Medios de Vida")
+    st.markdown("Evaluación de fuentes de ingresos, impacto de la crisis económica y estrategias de afrontamiento.")
+
+with tab3:
+    st.subheader("Seguridad Alimentaria y Nutrición")
+    st.markdown("Patrones de consumo alimentario, acceso a raciones y tamizaje nutricional en menores de 5 años.")
+
+with tab4:
+    st.subheader("Acceso a Derechos y Servicios")
+    st.markdown("Pérdida de documentación de identidad por sismos y barreras de acceso a la asistencia humanitaria.")
+
+with tab5:
+    st.subheader("Protección de Niñas, Niños y Adolescentes (NNA)")
+    st.markdown("Riesgos de protección infantil, trabajo infantil y separación en albergues temporales.")
+
+with tab6:
+    st.subheader("Violencia Basada en Género (VBG) y Enfoque de Género")
+    st.markdown("Percepción de seguridad, riesgos en espacios comunitarios y barreras para la atención.")
+
+with tab7:
+    st.subheader("Educación en Emergencias (EiE)")
+    st.markdown("Afectación estructural en escuelas, uso como refugios y continuidad escolar.")
+
+with tab8:
+    st.subheader("Salud, Salud Sexual y Reproductiva (SSR) y Discapacidad")
+    st.markdown("Acceso a medicamentos para hipertensión/diabetes, métodos anticonceptivos y salud mental.")
+
+# Footer
+st.markdown("---")
+st.markdown("**Sistema MEAL COOPI Venezuela** | Consorcio ÍNTEGRAS - ECHO HIP 2027")
