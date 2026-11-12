@@ -134,6 +134,24 @@ MAPA_EDUCACION = {
     'univ_comp': 'Universitario completo'
 }
 
+MAPA_PUEBLOS_INDIGENAS = {
+    'ind_01': 'Akawayo', 'ind_02': 'Añú (Paraujano)', 'ind_03': 'Arawako', 'ind_04': 'Baniva',
+    'ind_05': 'Barí', 'ind_06': 'Chaima', 'ind_07': 'Eñepá (Panare)', 'ind_08': 'Hoti',
+    'ind_09': 'Jivi (Guajibo)', 'ind_10': 'Kariña', 'ind_11': 'Mapoyo', 'ind_12': 'Pemón',
+    'ind_13': 'Piaroa', 'ind_14': 'Puinave', 'ind_15': 'Pumé (Yaruro)', 'ind_16': 'Sanemá',
+    'ind_17': 'Sapé', 'ind_18': 'Uruak (Arutani)', 'ind_19': 'Warao', 'ind_20': 'Warekena',
+    'ind_21': 'Wayúu (Guajiro)', 'ind_22': 'Yabarana', 'ind_23': 'Yanomami', 'ind_24': 'Yekuana', 'ind_25': 'Yukpa'
+}
+
+MAPA_DISCAPACIDADES = {
+    'audi': 'Auditiva', 'coogni': 'Cognitiva', 'habla': 'En el habla',
+    'moto': 'Motora', 'no': 'No posee', 'ns_ns': 'Ns/Nc', 'vis': 'Visual'
+}
+
+MAPA_NACIONALIDAD = {
+    'venezolana': 'Venezolana', 'extranjera': 'Extranjera'
+}
+
 # --- PROCEDIMIENTO ROBUSTO DE NORMALIZACIÓN Y LIMPIEZA KOBO ---
 def find_col(df, keywords):
     for col in df.columns:
@@ -150,9 +168,11 @@ col_comunidad = find_col(df_raw, ['comunidad'])
 col_sexo = find_col(df_raw, ['sexo', 'biologico'])
 col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
+col_nac = find_col(df_raw, ['nacionalidad'])
+col_ind = find_col(df_raw, ['etnia_indigena'])
+col_disc = find_col(df_raw, ['discapacidad_selec'])
+col_gestantes = find_col(df_raw, ['num_gestantes'])
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
-indigena_col = find_col(df_raw, ['etnia_indigena', 'indigena'])
-disc_col = find_col(df_raw, ['discapacidad_selec', 'discapacidad'])
 
 df_clean = df_raw.copy()
 
@@ -175,10 +195,16 @@ df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if c
 df_clean['sexo_clean'] = df_raw[col_sexo].apply(lambda x: limpiar_codigo(x, { 'masculino': 'Hombre', 'femenino': 'Mujer' })) if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].apply(lambda x: limpiar_codigo(x, MAPA_EDUCACION)) if col_edu else 'No especificado'
 
-# Normalizar columnas de vulnerabilidad para filtros
+# Normalizar nacionalidad, pueblo indígena y discapacidad
+df_clean['nacionalidad_clean'] = df_raw[col_nac].apply(lambda x: limpiar_codigo(x, MAPA_NACIONALIDAD)) if col_nac else 'No especificado'
+df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codigo(x, MAPA_PUEBLOS_INDIGENAS)) if col_ind else 'No especificado'
+df_clean['discapacidad_clean'] = df_raw[col_disc].apply(lambda x: limpiar_codigo(x, MAPA_DISCAPACIDADES)) if col_disc else 'No especificado'
+df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes else 0
+
+# Normalizar vulnerabilidades para filtros
 df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
-df_clean['indigena_clean'] = df_raw[indigena_col].apply(lambda x: 'Sí (Pueblo Indígena)' if pd.notna(x) and str(x).strip() not in ['', 'nan', 'none', 'no'] else 'No') if indigena_col else 'No'
-df_clean['disc_clean'] = df_raw[disc_col].apply(lambda x: 'Sí (Con Discapacidad)' if pd.notna(x) and str(x).strip() not in ['', 'nan', 'none', 'no'] else 'No') if disc_col else 'No'
+df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 'Sí (Pueblo Indígena)' if x != 'No Especificado' else 'No')
+df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['No Especificado', 'No Posee'] else 'No')
 
 cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
 for col_num in cols_num_familia:
@@ -240,9 +266,9 @@ selected_disc = st.sidebar.multiselect("Personas con Discapacidad", options=['S�
 if selected_lgbti:
     df_filtered = df_filtered[df_filtered['lgbti_clean'].isin(selected_lgbti)]
 if selected_indigena:
-    df_filtered = df_filtered[df_filtered['indigena_clean'].isin(selected_indigena)]
+    df_filtered = df_filtered[df_filtered['indigena_filtro'].isin(selected_indigena)]
 if selected_disc:
-    df_filtered = df_filtered[df_filtered['disc_clean'].isin(selected_disc)]
+    df_filtered = df_filtered[df_filtered['disc_filtro'].isin(selected_disc)]
 
 # KPIs Principales
 col1, col2, col3, col4 = st.columns(4)
@@ -293,10 +319,24 @@ with tab1:
 
     st.markdown("---")
 
+    # Nuevas métricas solicitadas: Nacionalidad, Gestantes y Vulnerabilidades
+    total_extranjeros = (df_filtered['nacionalidad_clean'] == 'Extranjera').sum()
+    total_venezolanos = (df_filtered['nacionalidad_clean'] == 'Venezolana').sum()
+    total_embarazadas = df_filtered['gestantes_val'].sum()
+    total_indigenas_reg = (df_filtered['pueblo_indigena_clean'] != 'No Especificado').sum()
+
+    st.markdown("#### Indicadores Clave de Población y Vulnerabilidad")
+    k_e1, k_e2, k_e3, k_e4 = st.columns(4)
+    k_e1.metric("Población Venezolana", f"{int(total_venezolanos):,}")
+    k_e2.metric("Población Extranjera", f"{int(total_extranjeros):,}")
+    k_e3.metric("Mujeres Embarazadas (Gestantes)", f"{int(total_embarazadas):,}")
+    k_e4.metric("Población Indígena Identificada", f"{int(total_indigenas_reg):,}")
+
+    st.markdown("---")
+
     col_pyr1, col_pyr2 = st.columns(2)
     with col_pyr1:
         st.markdown("#### Pirámide Poblacional del Grupo Familiar")
-        
         total_pob_fam = hombres_0_17 + hombres_18_49 + hombres_50_plus + mujeres_0_17 + mujeres_18_49 + mujeres_50_plus
         if total_pob_fam == 0: total_pob_fam = 1
         
@@ -339,12 +379,48 @@ with tab1:
             st.plotly_chart(fig_edu, use_container_width=True)
 
     st.markdown("---")
+
+    # Gráficos detallados de Pueblos Indígenas y Principales Discapacidades
+    col_ind_g, col_disc_g = st.columns(2)
+    
+    with col_ind_g:
+        st.markdown("#### Principales Pueblos Indígenas")
+        df_ind = df_filtered[df_filtered['pueblo_indigena_clean'] != 'No Especificado']
+        if not df_ind.empty:
+            ind_counts = df_ind['pueblo_indigena_clean'].value_counts().reset_index()
+            ind_counts.columns = ['Pueblo Indígena', 'Cantidad']
+            tot_ind = ind_counts['Cantidad'].sum()
+            ind_counts['Porcentaje'] = (ind_counts['Cantidad'] / (tot_ind if tot_ind > 0 else 1)) * 100
+            ind_counts['Etiqueta'] = ind_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+            
+            fig_ind = px.bar(ind_counts, x='Cantidad', y='Pueblo Indígena', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_AZUL_OSCURO])
+            fig_ind.update_traces(textposition='outside')
+            st.plotly_chart(fig_ind, use_container_width=True)
+        else:
+            st.info("No hay registros de pueblos indígenas para los filtros seleccionados.")
+
+    with col_disc_g:
+        st.markdown("#### Principales Discapacidades")
+        df_disc = df_filtered[~df_filtered['discapacidad_clean'].isin(['No Especificado', 'No Posee'])]
+        if not df_disc.empty:
+            disc_counts = df_disc['discapacidad_clean'].value_counts().reset_index()
+            disc_counts.columns = ['Tipo de Discapacidad', 'Cantidad']
+            tot_disc = disc_counts['Cantidad'].sum()
+            disc_counts['Porcentaje'] = (disc_counts['Cantidad'] / (tot_disc if tot_disc > 0 else 1)) * 100
+            disc_counts['Etiqueta'] = disc_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+            
+            fig_disc = px.bar(disc_counts, x='Cantidad', y='Tipo de Discapacidad', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_TURQUESA])
+            fig_disc.update_traces(textposition='outside')
+            st.plotly_chart(fig_disc, use_container_width=True)
+        else:
+            st.info("No hay registros de discapacidad para los filtros seleccionados.")
+
+    st.markdown("---")
     
     col_v1, col_v2, col_v3, col_v4 = st.columns(4)
-    
     lgbti_count = (df_filtered['lgbti_clean'] == 'Sí').sum()
-    indigena_count = (df_filtered['indigena_clean'] == 'Sí (Pueblo Indígena)').sum()
-    disc_count = (df_filtered['disc_clean'] == 'Sí (Con Discapacidad)').sum()
+    indigena_count = (df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)').sum()
+    disc_count = (df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum()
     
     viv_col = find_col(df_filtered, ['personas_vivienda'])
     if viv_col:
