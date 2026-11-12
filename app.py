@@ -294,7 +294,7 @@ if viv_col:
 else:
     avg_hogar = 0.0
 
-# KPIs Principales (4 columnas arriba incluyendo Total Participantes y Promedio Hogar)
+# KPIs Principales (4 columnas arriba)
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Encuestas Aplicadas", f"{len(df_filtered):,}")
 col2.metric("Total Participantes", f"{int(total_participantes):,}")
@@ -346,6 +346,8 @@ with tab1:
     total_extranjeros = (df_filtered['nacionalidad_clean'] == 'Extranjera').sum()
     total_venezolanos = (df_filtered['nacionalidad_clean'] == 'Venezolana').sum()
     total_embarazadas = df_filtered['gestantes_val'].sum()
+    
+    # CORREGIDO: Conteo exacto de registros/encuestas únicas con pueblo indígena identificado
     total_indigenas_reg = (df_filtered['pueblo_indigena_clean'] != 'No Especificado').sum()
 
     st.markdown("#### Indicadores Clave de Población y Vulnerabilidad")
