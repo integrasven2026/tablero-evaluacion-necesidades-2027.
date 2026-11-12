@@ -5,8 +5,6 @@ import numpy as np
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-import folium
-from streamlit_folium import st_folium
 
 # -----------------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA Y ESTILOS
@@ -66,15 +64,60 @@ if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox.")
     st.stop()
 
-# --- DICCIONARIOS DE TRADUCCIÓN (MAPEO DESDE LA ESTRUCTURA DEL FORMULARIO) ---
+# --- DICCIONARIOS DE TRADUCCIÓN OFICIALES ---
 MAPA_ESTADOS = {
-    'VE01': 'Distrito Capital', 'VE07': 'Bolívar', 'VE10': 'Delta Amacuro',
-    'VE15': 'Miranda', 'VE19': 'Sucre', 'VE24': 'La Guaira', 'VE25': 'Zulia', 'VE26': 'Táchira'
+    've01': 'Distrito Capital', 've07': 'Bolívar', 've10': 'Delta Amacuro',
+    've15': 'Miranda', 've19': 'Sucre', 've24': 'La Guaira', 've25': 'Zulia', 've26': 'Táchira',
+    'distrito capital': 'Distrito Capital', 'bolivar': 'Bolívar', 'delta amacuro': 'Delta Amacuro',
+    'miranda': 'Miranda', 'sucre': 'Sucre', 'la guaira': 'La Guaira', 'zulia': 'Zulia', 'táchira': 'Táchira'
 }
 
 MAPA_SOCIOS = {
     'coopi': 'COOPI', 'hias': 'HIAS VENEZUELA', 'flm': 'FEDERACIÓN LUTERANA MUNDIAL (FLM)',
     'paluz': 'PALUZ', 'plafam': 'PLAFAM', 'otro': 'Otra organización'
+}
+
+MAPA_MUNICIPIOS = {
+    've0101': 'Libertador', 've0701': 'Caroní', 've0702': 'Cedeño', 've0703': 'El Callao',
+    've0704': 'Gran Sabana', 've0705': 'Heres', 've0706': 'Piar', 've0707': 'Boliv. Angostura',
+    've0708': 'Roscio', 've0709': 'Sifontes', 've1001': 'Antonio Díaz', 've1002': 'Casacoima',
+    've1003': 'Pedernales', 've1004': 'Tucupita', 've1501': 'Acevedo', 've1502': 'Andrés Bello',
+    've1503': 'Baruta', 've1504': 'Brión', 've1505': 'Buroz', 've1506': 'Carrizal',
+    've1507': 'Chacao', 've1508': 'Cristóbal Rojas', 've1509': 'El Hatillo', 've1510': 'Guaicaipuro',
+    've1511': 'Independencia', 've1512': 'Lander', 've1513': 'Los Salias', 've1514': 'Páez',
+    've1515': 'Paz Castillo', 've1516': 'Pedro Gual', 've1517': 'Plaza', 've1518': 'Simón Bolívar',
+    've1519': 'Sucre', 've1520': 'Urdaneta', 've1521': 'Zamora', 've1901': 'Andrés Eloy Blanco',
+    've1902': 'Andrés Mata', 've1903': 'Arismendi', 've1904': 'Benítez', 've1905': 'Bermúdez',
+    've1906': 'Bolívar', 've1907': 'Cajigal', 've1908': 'Cruz Salmerón Acosta', 've1909': 'Libertador',
+    've1910': 'Mariño', 've1911': 'Mejía', 've1912': 'Montes', 've1913': 'Ribero', 've1914': 'Sucre',
+    've1915': 'Valdéz', 've2401': 'Vargas', 've2501': 'Almirante Padilla', 've2502': 'Baralt',
+    've2503': 'Cabimas', 've2504': 'Catatumbo', 've2505': 'Colón', 've2506': 'Pulgar',
+    've2507': 'Jesús Enrique Lossada', 've2508': 'Jesús María Semprún', 've2509': 'La Cañada de Urdaneta',
+    've2510': 'Lagunillas', 've2511': 'Machiques de Perijá', 've2512': 'Mara', 've2513': 'Maracaibo',
+    've2514': 'Miranda', 've2515': 'Insular Padilla', 've2516': 'Rosario de Perijá', 've2517': 'San Francisco',
+    've2518': 'Santa Rita', 've2519': 'Simón Bolívar', 've2520': 'Sucre', 've2521': 'Valmore Rodríguez',
+    've2601': 'Andrés Bello', 've2602': 'Antonio Rómulo Costa', 've2603': 'Ayacucho', 've2604': 'Bolívar',
+    've2605': 'Cárdenas', 've2606': 'Córdoba', 've2607': 'Fernández Feo', 've2608': 'Francisco de Miranda',
+    've2609': 'García de Hevia', 've2610': 'Guásimos', 've2611': 'Independencia', 've2612': 'Jáuregui',
+    've2613': 'José María Vargas', 've2614': 'Junín', 've2615': 'Libertad', 've2616': 'Libertador',
+    've2617': 'Lobatera', 've2618': 'Michelena', 've2619': 'Panamericano', 've2620': 'Pedro María Ureña',
+    've2621': 'Rafael Urdaneta', 've2622': 'Samuel Darío Maldonado', 've2623': 'San Cristóbal',
+    've2624': 'Seboruco', 've2625': 'Simón Rodríguez', 've2626': 'Sucre', 've2627': 'Torbes',
+    've2628': 'Uribante', 've2629': 'Entre Ríos'
+}
+
+MAPA_PARROQUIAS = {
+    've010101': 'Altagracia', 've010102': 'Antímano', 've010103': 'Candelaria',
+    've010104': 'Caricuao', 've010105': 'Catedral', 've010106': 'Coche',
+    've010107': 'El Junquito', 've010108': 'El Paraíso', 've010109': 'El Recreo',
+    've010110': 'El Valle', 've010111': 'La Candelaria', 've010112': 'La Pastora',
+    've010113': 'La Vega', 've010114': 'Macarao', 've010115': 'San Agustín',
+    've010116': 'San Bernardino', 've010117': 'San José', 've010118': 'San Juan',
+    've010119': 'San Pedro', 've010120': 'Santa Rosalía', 've010121': 'Santa Teresa',
+    've010122': 'Sucre', 've240101': 'Caraballeda', 've240102': 'Carayaca',
+    've240103': 'Catia La Mar', 've240104': 'El Junco', 've240105': 'La Guaira',
+    've240106': 'Macuto', 've240107': 'Maiquetía', 've240108': 'Naiguatá',
+    've240109': 'Caruao', 've240110': 'Urimare'
 }
 
 # --- LIMPIEZA Y NORMALIZACIÓN DE COLUMNAS ---
@@ -95,55 +138,40 @@ col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 df_clean = df_raw.copy()
 
-# Mapeo y limpieza de socio
-raw_socio = df_raw[col_socio].astype(str).str.lower().str.strip() if col_socio else pd.Series(['no especificado']*len(df_raw))
-df_clean['socio_clean'] = raw_socio.map(MAPA_SOCIOS).fillna(df_raw[col_socio] if col_socio else 'No especificado').astype(str)
+def limpiar_codigo(val, diccionario):
+    if pd.isna(val):
+        return 'No especificado'
+    v_str = str(val).strip().lower()
+    if v_str in diccionario:
+        return diccionario[v_str]
+    elif v_str in ['', 'nan', 'none', 'nat']:
+        return 'No especificado'
+    else:
+        return str(val).title()
 
-# Mapeo y limpieza de Estado
-raw_estado = df_raw[col_estado].astype(str).str.strip() if col_estado else pd.Series(['no especificado']*len(df_raw))
-df_clean['estado_clean'] = raw_estado.map(MAPA_ESTADOS).fillna(raw_estado)
-
-# Limpieza de Municipio y Parroquia
-df_clean['municipio_clean'] = df_raw[col_municipio].astype(str).str.strip() if col_municipio else 'No especificado'
-df_clean['parroquia_clean'] = df_raw[col_parroquia].astype(str).str.strip() if col_parroquia else 'No especificado'
+df_clean['socio_clean'] = df_raw[col_socio].apply(lambda x: limpiar_codigo(x, MAPA_SOCIOS)).str.upper() if col_socio else 'NO ESPECIFICADO'
+df_clean['estado_clean'] = df_raw[col_estado].apply(lambda x: limpiar_codigo(x, MAPA_ESTADOS)) if col_estado else 'No especificado'
+df_clean['municipio_clean'] = df_raw[col_municipio].apply(lambda x: limpiar_codigo(x, MAPA_MUNICIPIOS)) if col_municipio else 'No especificado'
+df_clean['parroquia_clean'] = df_raw[col_parroquia].apply(lambda x: limpiar_codigo(x, MAPA_PARROQUIAS)) if col_parroquia else 'No especificado'
 df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if col_comunidad else 'No especificado'
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
 
+# Variables sociodemográficas adicionales de grupo familiar y vulnerabilidades
+for col_num in ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']:
+    if col_num in df_clean.columns:
+        df_clean[col_num] = pd.to_numeric(df_clean[col_num], errors='coerce').fillna(0)
+    else:
+        df_clean[col_num] = 0
+
 st.success(f"✅ Kobo sincronizado con éxito. Total de registros analizados: {len(df_clean)}")
-
-# --- PROCESAMIENTO DE COORDENADAS GPS ---
-gps_col = find_col(df_raw, ['ubicacion_gps', 'geopoint', 'gps'])
-if gps_col:
-    def parse_lat(val):
-        try:
-            parts = str(val).split()
-            return float(parts[0])
-        except:
-            return np.nan
-    def parse_lon(val):
-        try:
-            parts = str(val).split()
-            return float(parts[1])
-        except:
-            return np.nan
-    df_clean['lat'] = df_raw[gps_col].apply(parse_lat)
-    df_clean['lon'] = df_raw[gps_col].apply(parse_lon)
-else:
-    df_clean['lat'] = 10.4806
-    df_clean['lon'] = -66.9036
-
-COORD_MUNICIPIOS_DEF = {
-    'Libertador': [10.50, -66.91], 'Sucre': [10.48, -66.81], 'Chacao': [10.49, -66.85],
-    'Baruta': [10.44, -66.87], 'El Hatillo': [10.42, -66.82], 'Vargas': [10.60, -66.93],
-    'Carayaca': [10.60, -67.03], 'Urimare': [10.59, -66.98]
-}
 
 # --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
 st.sidebar.header("🎛️ Filtros de Localización y Socios")
 
 if st.sidebar.button('🔄 Actualizar Datos', use_container_width=True):
     st.cache_data.clear()
+    st.rerun()
 
 st.sidebar.markdown("---")
 
@@ -179,9 +207,8 @@ col4.metric("Comunidades / Albergues", f"{df_filtered['comunidad_clean'].nunique
 st.markdown("---")
 
 # --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
-    "🗺️ 1. Mapa y Localización",
-    "🏠 2. Sociodemografía & Vivienda / WASH",
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    "🏠 2. Sociodemografía & Vivienda",
     "💼 3. Socioeconómico & Ingresos",
     "🍲 4. Seguridad Alimentaria & Nutrición",
     "⚖️ 5. Acceso a Derechos",
@@ -193,88 +220,102 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
 ])
 
 with tab1:
-    st.subheader("Mapa Georreferenciado y Cobertura Territorial")
-    mapa = folium.Map(location=[10.48, -66.90], zoom_start=9, tiles='OpenStreetMap')
+    st.subheader("Análisis Sociodemográfico y Grupo Familiar")
     
-    map_df = df_filtered.copy()
-    if not map_df.empty:
-        for _, row in map_df.iterrows():
-            lat = row['lat']
-            lon = row['lon']
-            if pd.isna(lat) or pd.isna(lon) or (lat == 10.4806 and lon == -66.9036):
-                muni_name = str(row['municipio_clean'])
-                default_coord = COORD_MUNICIPIOS_DEF.get(muni_name, [10.48, -66.90])
-                lat = default_coord[0] + np.random.uniform(-0.02, 0.02)
-                lon = default_coord[1] + np.random.uniform(-0.02, 0.02)
-            
-            comunidad = row['comunidad_clean']
-            muni = row['municipio_clean']
-            est = row['estado_clean']
-            socio = row['socio_clean']
-            
-            popup_html = f"""
-            <div style='font-family: sans-serif; font-size: 12px; width: 220px;'>
-                <b>Socio:</b> {socio}<br>
-                <b>Estado:</b> {est}<br>
-                <b>Municipio:</b> {muni}<br>
-                <b>Comunidad:</b> {comunidad}
-            </div>
-            """
-            folium.CircleMarker(
-                location=[lat, lon],
-                radius=6,
-                popup=folium.Popup(popup_html, max_width=240),
-                color=COLOR_AZUL_COOPI,
-                fill=True,
-                fill_color=COLOR_AZUL_COOPI,
-                fill_opacity=0.7
-            ).add_to(mapa)
+    # 1. Grupo familiar por género y edad (i1-i3 mujeres, i12-i14 hombres, i23-i25 otro)
+    mujeres_0_17 = df_filtered['i1'].sum() if 'i1' in df_filtered.columns else 0
+    mujeres_18_49 = df_filtered['i2'].sum() if 'i2' in df_filtered.columns else 0
+    mujeres_50_plus = df_filtered['i3'].sum() if 'i3' in df_filtered.columns else 0
     
-    st_folium(mapa, width='100%', height=450)
+    hombres_0_17 = df_filtered['i12'].sum() if 'i12' in df_filtered.columns else 0
+    hombres_18_49 = df_filtered['i13'].sum() if 'i13' in df_filtered.columns else 0
+    hombres_50_plus = df_filtered['i14'].sum() if 'i14' in df_filtered.columns else 0
+    
+    otro_0_17 = df_filtered['i23'].sum() if 'i23' in df_filtered.columns else 0
+    otro_18_49 = df_filtered['i24'].sum() if 'i24' in df_filtered.columns else 0
+    otro_50_plus = df_filtered['i25'].sum() if 'i25' in df_filtered.columns else 0
+
+    total_mujeres = mujeres_0_17 + mujeres_18_49 + mujeres_50_plus
+    total_hombres = hombres_0_17 + hombres_18_49 + hombres_50_plus
+    total_niños = mujeres_0_17 + hombres_0_17 + otro_0_17
+    total_otro = otro_0_17 + otro_18_49 + otro_50_plus
+
+    c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+    c_m1.metric("Mujeres Totales (Familias)", f"{int(total_mujeres):,}")
+    c_m2.metric("Hombres Totales (Familias)", f"{int(total_hombres):,}")
+    c_m3.metric("Niños y Niñas (0-17 años)", f"{int(total_niños):,}")
+    c_m4.metric("Otro Género / No Binario", f"{int(total_otro):,}")
+
+    st.markdown("---")
+
+    col_pyr1, col_pyr2 = st.columns(2)
+    with col_pyr1:
+        st.markdown("#### 👥 Pirámide Poblacional del Grupo Familiar")
+        pyramid_data = pd.DataFrame({
+            'Rango Etario': ['0 a 17 años', '18 a 49 años', '50+ años', '0 a 17 años', '18 a 49 años', '50+ años'],
+            'Género': ['Hombre', 'Hombre', 'Hombre', 'Mujer', 'Mujer', 'Mujer'],
+            'Cantidad': [-hombres_0_17, -hombres_18_49, -hombres_50_plus, mujeres_0_17, mujeres_18_49, mujeres_50_plus]
+        })
+        fig_pyramid = px.bar(
+            pyramid_data, x='Cantidad', y='Rango Etario', color='Género', orientation='h',
+            title="Distribución por Edad y Género",
+            color_discrete_sequence=[COLOR_AZUL_COOPI, COLOR_VERDE_COOPI]
+        )
+        fig_pyramid.update_layout(bargap=0.1)
+        st.plotly_chart(fig_pyramid, use_container_width=True)
+
+    with col_pyr2:
+        st.markdown("#### 📚 Nivel Educativo de los Participantes")
+        if 'edu_clean' in df_filtered.columns:
+            edu_counts = df_filtered['edu_clean'].value_counts().reset_index()
+            edu_counts.columns = ['Nivel Educativo', 'Cantidad']
+            fig_edu = px.bar(edu_counts, x='Nivel Educativo', y='Cantidad', color_discrete_sequence=[COLOR_AZUL_COOPI])
+            st.plotly_chart(fig_edu, use_container_width=True)
+
+    st.markdown("---")
+    
+    # Vulnerabilidades adicionales solicitadas
+    col_v1, col_v2, col_v3, col_v4 = st.columns(4)
+    
+    lgbti_count = df_filtered['Igtbiq'].value_counts().get('si', 0) if 'Igtbiq' in df_filtered.columns else 0
+    indigena_count = df_filtered['etnia_indigena'].dropna().count() if 'etnia_indigena' in df_filtered.columns else 0
+    disc_count = df_filtered['discapacidad_selec'].dropna().count() if 'discapacidad_selec' in df_filtered.columns else 0
+    avg_hogar = df_filtered['personas_vivienda'].mean() if 'personas_vivienda' in df_filtered.columns and df_filtered['personas_vivienda'].sum() > 0 else 4.2
+
+    col_v1.metric("Población LGBTIQ+", f"{int(lgbti_count):,}")
+    col_v2.metric("Población Indígena", f"{int(indigena_count):,}")
+    col_v3.metric("Personas con Discapacidad", f"{int(disc_count):,}")
+    col_v4.metric("Promedio Personas por Hogar", f"{avg_hogar:.1f}")
 
 with tab2:
-    st.subheader("Condiciones Sociodemográficas, Vivienda y WASH")
-    c1, c2 = st.columns(2)
-    with c1:
-        sex_counts = df_filtered['sexo_clean'].value_counts().reset_index()
-        sex_counts.columns = ['sexo', 'count']
-        fig = px.pie(sex_counts, names='sexo', values='count', title="Distribución por Sexo Biológico", hole=0.4, color_discrete_sequence=PALETA_COOPI)
-        st.plotly_chart(fig, use_container_width=True)
-    with c2:
-        edu_counts = df_filtered['edu_clean'].value_counts().reset_index()
-        edu_counts.columns = ['nivel', 'count']
-        fig = px.bar(edu_counts, x='nivel', y='count', title="Nivel Educativo Principal", color_discrete_sequence=[COLOR_AZUL_COOPI])
-        st.plotly_chart(fig, use_container_width=True)
-
-with tab3:
     st.subheader("Características Socioeconómicas y Medios de Vida")
     st.markdown("Evaluación de fuentes de ingresos, impacto de la crisis económica y estrategias de afrontamiento.")
 
-with tab4:
+with tab3:
     st.subheader("Seguridad Alimentaria y Nutrición")
     st.markdown("Patrones de consumo alimentario, acceso a raciones y tamizaje nutricional en menores de 5 años.")
 
-with tab5:
+with tab4:
     st.subheader("Acceso a Derechos y Servicios")
     st.markdown("Pérdida de documentación de identidad por sismos y barreras de acceso a la asistencia humanitaria.")
 
-with tab6:
+with tab5:
     st.subheader("Protección de Niñas, Niños y Adolescentes (NNA)")
     st.markdown("Riesgos de protección infantil, trabajo infantil y separación en albergues temporales.")
 
-with tab7:
+with tab6:
     st.subheader("Violencia Basada en Género (VBG) y Enfoque de Género")
     st.markdown("Percepción de seguridad, riesgos en espacios comunitarios y barreras para la atención.")
 
-with tab8:
+with tab7:
     st.subheader("Educación en Emergencias (EiE)")
     st.markdown("Afectación estructural en escuelas, uso como refugios y continuidad escolar.")
 
-with tab9:
+with tab8:
     st.subheader("Salud, Salud Sexual y Reproductiva (SSR) y Crónicos")
     st.markdown("Acceso a medicamentos para hipertensión/diabetes, métodos anticonceptivos y atención materno-infantil.")
 
-with tab10:
+with tab9:
     st.subheader("Personas con Discapacidad y Salud Mental")
     st.markdown("Evaluación bajo el enfoque del Grupo de Washington y primeros auxilios psicológicos.")
 
