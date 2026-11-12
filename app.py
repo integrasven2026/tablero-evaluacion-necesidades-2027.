@@ -115,4 +115,102 @@ MAPA_PARROQUIAS = {
     've010116': 'San Bernardino', 've010117': 'San José', 've010118': 'San Juan',
     've010119': 'San Pedro', 've010120': 'Santa Rosalía', 've010121': 'Santa Teresa',
     've010122': 'Sucre', 've240101': 'Caraballeda', 've240102': 'Carayaca',
-    've240103': 'Catia La Mar', 've240104': 'El Junco', 've240105
+    've240103': 'Catia La Mar', 've240104': 'El Junco', 've240105': 'La Guaira',
+    've240106': 'Macuto', 've240107': 'Maiquetía', 've240108': 'Naiguatá',
+    've240109': 'Caruao', 've240110': 'Urimare'
+}
+
+# --- PASO PREVIO: NORMALIZACIÓN Y LIMPIEZA DE DATOS ---
+def find_col(df, keywords):
+    for col in df.columns:
+        for kw in keywords:
+            if kw.lower() in col.lower():
+                return col
+    return None
+
+col_socio = find_col(df_raw, ['socio'])
+col_estado = find_col(df_raw, ['estado'])
+col_municipio = find_col(df_raw, ['municipio'])
+col_parroquia = find_col(df_raw, ['parroquia'])
+col_comunidad = find_col(df_raw, ['comunidad'])
+col_sexo = find_col(df_raw, ['sexo', 'biologico'])
+col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
+
+df_clean = df_raw.copy()
+
+def limpiar_codigo(val, diccionario):
+    if pd.isna(val):
+        return 'No especificado'
+    v_str = str(val).strip().lower()
+    if v_str in diccionario:
+        return diccionario[v_str]
+    elif v_str in ['', 'nan', 'none', 'nat']:
+        return 'No especificado'
+    else:
+        return str(val).title()
+
+df_clean['socio_clean'] = df_raw[col_socio].apply(lambda x: limpiar_codigo(x, MAPA_SOCIOS)).str.upper() if col_socio else 'NO ESPECIFICADO'
+df_clean['estado_clean'] = df_raw[col_estado].apply(lambda x: limpiar_codigo(x, MAPA_ESTADOS)) if col_estado else 'No especificado'
+df_clean['municipio_clean'] = df_raw[col_municipio].apply(lambda x: limpiar_codigo(x, MAPA_MUNICIPIOS)) if col_municipio else 'No especificado'
+df_clean['parroquia_clean'] = df_raw[col_parroquia].apply(lambda x: limpiar_codigo(x, MAPA_PARROQUIAS)) if col_parroquia else 'No especificado'
+df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if col_comunidad else 'No especificado'
+df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
+df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
+
+# Normalización robusta de columnas numéricas (evita ceros por tipos de datos string)
+cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
+for col_num in cols_num_familia:
+    if col_num in df_clean.columns:
+        df_clean[col_num] = pd.to_numeric(df_clean[col_num], errors='coerce').fillna(0)
+    else:
+        df_clean[col_num] = 0
+
+st.success(f"✅ Kobo normalizado y sincronizado con éxito. Total de registros analizados: {len(df_clean)}")
+
+# --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
+st.sidebar.header("🎛️ Filtros de Localización y Socios")
+
+if st.sidebar.button('🔄 Actualizar Datos', use_container_width=True):
+    st.cache_data.clear()
+    st.rerun()
+
+st.sidebar.markdown("---")
+
+socios_disp = sorted(df_clean['socio_clean'].dropna().unique().tolist())
+selected_socio = st.sidebar.multiselect("Organización Socio", options=socios_disp, default=socios_disp)
+
+estados_disp = sorted(df_clean['estado_clean'].dropna().unique().tolist())
+selected_estado = st.sidebar.multiselect("Estado", options=estados_disp, default=estados_disp)
+
+df_filtered = df_clean.copy()
+if selected_socio:
+    df_filtered = df_filtered[df_filtered['socio_clean'].isin(selected_socio)]
+if selected_estado:
+    df_filtered = df_filtered[df_filtered['estado_clean'].isin(selected_estado)]
+
+municipios_disp = sorted(df_filtered['municipio_clean'].dropna().unique().tolist())
+selected_municipio = st.sidebar.multiselect("Municipio", options=municipios_disp, default=municipios_disp)
+if selected_municipio:
+    df_filtered = df_filtered[df_filtered['municipio_clean'].isin(selected_municipio)]
+
+parroquias_disp = sorted(df_filtered['parroquia_clean'].dropna().unique().tolist())
+selected_parroquia = st.sidebar.multiselect("Parroquia", options=parroquias_disp, default=parroquias_disp)
+if selected_parroquia:
+    df_filtered = df_filtered[df_filtered['parroquia_clean'].isin(selected_parroquia)]
+
+# KPIs Principales
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total Encuestas Aplicadas", f"{len(df_filtered):,}")
+col2.metric("Estados Monitoreados", f"{df_filtered['estado_clean'].nunique():,}")
+col3.metric("Municipios Afectados", f"{df_filtered['municipio_clean'].nunique():,}")
+col4.metric("Comunidades / Albergues", f"{df_filtered['comunidad_clean'].nunique():,}")
+
+st.markdown("---")
+
+# --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL ---
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+    "🏠 1. Sociodemografía & Vivienda",
+    "💼 2. Socioeconómico & Ingresos",
+    "🍲 3. Seguridad Alimentaria & Nutrición",
+    "⚖️ 4. Acceso a Derechos",
+    "
