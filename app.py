@@ -347,8 +347,6 @@ with tab1:
     total_venezolanos = (df_filtered['nacionalidad_clean'] == 'Venezolana').sum()
     total_embarazadas = df_filtered['gestantes_val'].sum()
     total_indigenas_reg = int((df_filtered['pueblo_indigena_clean'].isin(MAPA_PUEBLOS_INDIGENAS.values())).sum())
-    
-    # Total de personas con discapacidad identificadas en los registros filtrados
     total_con_discapacidad = int((df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum())
 
     st.markdown("#### Indicadores Clave de Población y Vulnerabilidad")
@@ -407,17 +405,17 @@ with tab1:
 
     st.markdown("---")
 
-    # Gráficos adicionales: Gráfico de Torta por Sexo, Pueblos Indígenas y Discapacidades
+    # Gráfico de Torta de Jefes/as de Hogar por Sexo y Pueblos Indígenas
     col_sex_g, col_ind_g = st.columns(2)
     
     with col_sex_g:
-        st.markdown("#### Distribución de Participantes por Sexo")
+        st.markdown("#### Distribución de Jefes/as de Hogar por Sexo")
         sexo_counts = df_filtered['sexo_clean'].value_counts().reset_index()
         sexo_counts.columns = ['Sexo', 'Cantidad']
         if not sexo_counts.empty:
             fig_pie = px.pie(
                 sexo_counts, names='Sexo', values='Cantidad',
-                title="Proporción por Sexo (Cantidad y Porcentaje)",
+                title="Proporción de Jefes/as de Hogar por Sexo (Cantidad y Porcentaje)",
                 color_discrete_sequence=[COLOR_TURQUESA, COLOR_AZUL_OSCURO, COLOR_MORADO]
             )
             fig_pie.update_traces(textinfo='percent+label+value')
