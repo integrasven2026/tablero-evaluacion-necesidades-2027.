@@ -15,14 +15,17 @@ st.set_page_config(
     layout="wide"
 )
 
-COLOR_AZUL_COOPI = '#0072CE'
-COLOR_VERDE_COOPI = '#28A745'
-PALETA_COOPI = [COLOR_AZUL_COOPI, COLOR_VERDE_COOPI, '#17C3B2', '#D89FE3', '#E5B130', '#08327D']
+# Paleta oficial Consorcio ÍNTEGRAS
+COLOR_AZUL_OSCURO = '#08327D'
+COLOR_TURQUESA = '#00C2C7'
+COLOR_MORADO = '#D89FE3'
+COLOR_NARANJA = '#FFB84D'
+PALETA_INTEGRAS = [COLOR_AZUL_OSCURO, COLOR_TURQUESA, COLOR_MORADO, COLOR_NARANJA, '#28A745', '#E5B130']
 
 st.markdown("""
 <style>
     .titulo-principal {
-        color: #0072CE !important;
+        color: #08327D !important;
         font-weight: 800 !important;
         font-size: 1.5rem !important;
     }
@@ -157,12 +160,10 @@ df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if c
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
 
-# Limpieza y búsqueda inteligente de columnas de grupo familiar (por si vienen con nombres exactos o variantes en Kobo)
 cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
 for col_num in cols_num_familia:
     target_col = col_num
     if col_num not in df_clean.columns:
-        # Buscar si existe alguna columna que contenga el código exacto (ej. grupo/i1)
         match = find_col(df_clean, [col_num])
         if match:
             target_col = match
@@ -175,9 +176,9 @@ for col_num in cols_num_familia:
 st.success(f"✅ Kobo normalizado con éxito. Total de registros analizados: {len(df_clean)}")
 
 # --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
-st.sidebar.header("🎛️ Filtros de Localización y Socios")
+st.sidebar.header("Filtros de Localización y Socios")
 
-if st.sidebar.button('🔄 Actualizar Datos', use_container_width=True):
+if st.sidebar.button('Actualizar Datos', use_container_width=True):
     st.cache_data.clear()
     st.rerun()
 
@@ -216,14 +217,14 @@ st.markdown("---")
 
 # --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "🏠 1. Sociodemografía & Vivienda",
-    "💼 2. Socioeconómico & Ingresos",
-    "🍲 3. Seguridad Alimentaria & Nutrición",
-    "⚖️ 4. Acceso a Derechos",
-    "🧸 5. Protección NNA",
-    "🛡️ 6. VBG y Género",
-    "📚 7. Educación en Emergencias",
-    "🩺 8. Salud & Discapacidad"
+    "Sociodemografía & Vivienda",
+    "Socioeconómico & Ingresos",
+    "Seguridad Alimentaria & Nutrición",
+    "Acceso a Derechos",
+    "Protección NNA",
+    "VBG y Género",
+    "Educación en Emergencias",
+    "Salud & Discapacidad"
 ])
 
 with tab1:
@@ -256,7 +257,7 @@ with tab1:
 
     col_pyr1, col_pyr2 = st.columns(2)
     with col_pyr1:
-        st.markdown("#### 👥 Pirámide Poblacional del Grupo Familiar")
+        st.markdown("#### Pirámide Poblacional del Grupo Familiar")
         pyramid_data = pd.DataFrame({
             'Rango Etario': ['0 a 17 años', '18 a 49 años', '50+ años', '0 a 17 años', '18 a 49 años', '50+ años'],
             'Género': ['Hombre', 'Hombre', 'Hombre', 'Mujer', 'Mujer', 'Mujer'],
@@ -265,17 +266,17 @@ with tab1:
         fig_pyramid = px.bar(
             pyramid_data, x='Cantidad', y='Rango Etario', color='Género', orientation='h',
             title="Distribución por Edad y Género",
-            color_discrete_sequence=[COLOR_AZUL_COOPI, COLOR_VERDE_COOPI]
+            color_discrete_sequence=[COLOR_AZUL_OSCURO, COLOR_TURQUESA]
         )
         fig_pyramid.update_layout(bargap=0.1)
         st.plotly_chart(fig_pyramid, use_container_width=True)
 
     with col_pyr2:
-        st.markdown("#### 📚 Nivel Educativo de los Participantes")
+        st.markdown("#### Nivel Educativo de los Participantes")
         if 'edu_clean' in df_filtered.columns:
             edu_counts = df_filtered['edu_clean'].value_counts().reset_index()
             edu_counts.columns = ['Nivel Educativo', 'Cantidad']
-            fig_edu = px.bar(edu_counts, x='Nivel Educativo', y='Cantidad', color_discrete_sequence=[COLOR_AZUL_COOPI])
+            fig_edu = px.bar(edu_counts, x='Nivel Educativo', y='Cantidad', color_discrete_sequence=[COLOR_TURQUESA])
             st.plotly_chart(fig_edu, use_container_width=True)
 
     st.markdown("---")
