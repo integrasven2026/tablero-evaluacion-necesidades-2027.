@@ -347,15 +347,15 @@ with tab1:
     total_venezolanos = (df_filtered['nacionalidad_clean'] == 'Venezolana').sum()
     total_embarazadas = df_filtered['gestantes_val'].sum()
     
-    # CORREGIDO: Conteo exacto de registros/encuestas únicas con pueblo indígena identificado
-    total_indigenas_reg = (df_filtered['pueblo_indigena_clean'] != 'No Especificado').sum()
+    # CORREGIDO RIGUROSAMENTE: Conteo exacto de encuestas donde se seleccionó un pueblo indígena real
+    total_indigenas_reg = int((df_filtered['pueblo_indigena_clean'].isin(MAPA_PUEBLOS_INDIGENAS.values())).sum())
 
     st.markdown("#### Indicadores Clave de Población y Vulnerabilidad")
     k_e1, k_e2, k_e3, k_e4 = st.columns(4)
     k_e1.metric("Población Venezolana", f"{int(total_venezolanos):,}")
     k_e2.metric("Población Extranjera", f"{int(total_extranjeros):,}")
     k_e3.metric("Mujeres Embarazadas (Gestantes)", f"{int(total_embarazadas):,}")
-    k_e4.metric("Población Indígena Identificada", f"{int(total_indigenas_reg):,}")
+    k_e4.metric("Población Indígena Identificada", f"{total_indigenas_reg:,}")
 
     st.markdown("---")
 
@@ -410,7 +410,7 @@ with tab1:
     
     with col_ind_g:
         st.markdown("#### Principales Pueblos Indígenas")
-        df_ind = df_filtered[~df_filtered['pueblo_indigena_clean'].isin(['No Especificado', 'No especificado'])]
+        df_ind = df_filtered[df_filtered['pueblo_indigena_clean'].isin(MAPA_PUEBLOS_INDIGENAS.values())]
         if not df_ind.empty:
             ind_counts = df_ind['pueblo_indigena_clean'].value_counts().reset_index()
             ind_counts.columns = ['Pueblo Indígena', 'Cantidad']
