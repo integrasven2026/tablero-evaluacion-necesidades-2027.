@@ -123,7 +123,6 @@ MAPA_PARROQUIAS = {
     've240109': 'Caruao', 've240110': 'Urimare'
 }
 
-# Diccionario oficial para nivel educativo sin guiones bajos y con nombres completos
 MAPA_EDUCACION = {
     'ninguno': 'Sin educación formal',
     'primaria_inc': 'Primaria incompleta',
@@ -151,6 +150,10 @@ col_comunidad = find_col(df_raw, ['comunidad'])
 col_sexo = find_col(df_raw, ['sexo', 'biologico'])
 col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
+lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
+indigena_col = find_col(df_raw, ['etnia_indigena', 'indigena'])
+disc_col = find_col(df_raw, ['discapacidad_selec', 'discapacidad'])
+
 df_clean = df_raw.copy()
 
 def limpiar_codigo(val, diccionario):
@@ -172,6 +175,11 @@ df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if c
 df_clean['sexo_clean'] = df_raw[col_sexo].apply(lambda x: limpiar_codigo(x, { 'masculino': 'Hombre', 'femenino': 'Mujer' })) if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].apply(lambda x: limpiar_codigo(x, MAPA_EDUCACION)) if col_edu else 'No especificado'
 
+# Normalizar columnas de vulnerabilidad para filtros
+df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
+df_clean['indigena_clean'] = df_raw[indigena_col].apply(lambda x: 'Sí (Pueblo Indígena)' if pd.notna(x) and str(x).strip() not in ['', 'nan', 'none', 'no'] else 'No') if indigena_col else 'No'
+df_clean['disc_clean'] = df_raw[disc_col].apply(lambda x: 'Sí (Con Discapacidad)' if pd.notna(x) and str(x).strip() not in ['', 'nan', 'none', 'no'] else 'No') if disc_col else 'No'
+
 cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
 for col_num in cols_num_familia:
     target_col = col_num
@@ -185,9 +193,13 @@ for col_num in cols_num_familia:
     else:
         df_clean[col_num] = 0
 
-st.success(f"✅ Kobo normalizado con éxito. Total de registros analizados: {len(df_clean)}")
+# --- SECCIÓN 1: FILTROS LATERALES EN CASCADA Y LOGO DEL CONSORCIO ---
+if os.path.exists("integras.jpg"):
+    st.sidebar.image("integras.jpg", use_column_width=True)
+else:
+    st.sidebar.markdown("### Consorcio ÍNTEGRAS")
 
-# --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
+st.sidebar.markdown("---")
 st.sidebar.header("Filtros de Localización y Socios")
 
 if st.sidebar.button('Actualizar Datos', use_container_width=True):
@@ -217,6 +229,20 @@ parroquias_disp = sorted(df_filtered['parroquia_clean'].dropna().unique().tolist
 selected_parroquia = st.sidebar.multiselect("Parroquia", options=parroquias_disp, default=parroquias_disp)
 if selected_parroquia:
     df_filtered = df_filtered[df_filtered['parroquia_clean'].isin(selected_parroquia)]
+
+# Filtros adicionales de vulnerabilidad solicitados
+st.sidebar.markdown("---")
+st.sidebar.subheader("Filtros de Vulnerabilidad")
+selected_lgbti = st.sidebar.multiselect("Comunidad LGBTIQ+", options=['Sí', 'No'], default=['Sí', 'No'])
+selected_indigena = st.sidebar.multiselect("Comunidad Indígena", options=['Sí (Pueblo Indígena)', 'No'], default=['Sí (Pueblo Indígena)', 'No'])
+selected_disc = st.sidebar.multiselect("Personas con Discapacidad", options=['Sí (Con Discapacidad)', 'No'], default=['Sí (Con Discapacidad)', 'No'])
+
+if selected_lgbti:
+    df_filtered = df_filtered[df_filtered['lgbti_clean'].isin(selected_lgbti)]
+if selected_indigena:
+    df_filtered = df_filtered[df_filtered['indigena_clean'].isin(selected_indigena)]
+if selected_disc:
+    df_filtered = df_filtered[df_filtered['disc_clean'].isin(selected_disc)]
 
 # KPIs Principales
 col1, col2, col3, col4 = st.columns(4)
@@ -271,7 +297,6 @@ with tab1:
     with col_pyr1:
         st.markdown("#### Pirámide Poblacional del Grupo Familiar")
         
-        # Preparar datos para la pirámide con porcentajes y valores absolutos
         total_pob_fam = hombres_0_17 + hombres_18_49 + hombres_50_plus + mujeres_0_17 + mujeres_18_49 + mujeres_50_plus
         if total_pob_fam == 0: total_pob_fam = 1
         
@@ -317,14 +342,9 @@ with tab1:
     
     col_v1, col_v2, col_v3, col_v4 = st.columns(4)
     
-    lgbti_col = find_col(df_filtered, ['igtbiq', 'lgbti'])
-    lgbti_count = df_filtered[lgbti_col].dropna().astype(str).str.lower().isin(['si', 'sí', '1', 'true']).sum() if lgbti_col else 0
-    
-    indigena_col = find_col(df_filtered, ['etnia_indigena', 'indigena'])
-    indigena_count = df_filtered[indigena_col].dropna().count() if indigena_col else 0
-    
-    disc_col = find_col(df_filtered, ['discapacidad_selec', 'discapacidad'])
-    disc_count = df_filtered[disc_col].dropna().count() if disc_col else 0
+    lgbti_count = (df_filtered['lgbti_clean'] == 'Sí').sum()
+    indigena_count = (df_filtered['indigena_clean'] == 'Sí (Pueblo Indígena)').sum()
+    disc_count = (df_filtered['disc_clean'] == 'Sí (Con Discapacidad)').sum()
     
     viv_col = find_col(df_filtered, ['personas_vivienda'])
     if viv_col:
