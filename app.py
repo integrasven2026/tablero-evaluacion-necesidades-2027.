@@ -346,16 +346,18 @@ with tab1:
     total_extranjeros = (df_filtered['nacionalidad_clean'] == 'Extranjera').sum()
     total_venezolanos = (df_filtered['nacionalidad_clean'] == 'Venezolana').sum()
     total_embarazadas = df_filtered['gestantes_val'].sum()
-    
-    # CORREGIDO RIGUROSAMENTE: Conteo exacto de encuestas donde se seleccionó un pueblo indígena real
     total_indigenas_reg = int((df_filtered['pueblo_indigena_clean'].isin(MAPA_PUEBLOS_INDIGENAS.values())).sum())
+    
+    # Total de personas con discapacidad identificadas en los registros filtrados
+    total_con_discapacidad = int((df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum())
 
     st.markdown("#### Indicadores Clave de Población y Vulnerabilidad")
-    k_e1, k_e2, k_e3, k_e4 = st.columns(4)
+    k_e1, k_e2, k_e3, k_e4, k_e5 = st.columns(5)
     k_e1.metric("Población Venezolana", f"{int(total_venezolanos):,}")
     k_e2.metric("Población Extranjera", f"{int(total_extranjeros):,}")
-    k_e3.metric("Mujeres Embarazadas (Gestantes)", f"{int(total_embarazadas):,}")
-    k_e4.metric("Población Indígena Identificada", f"{total_indigenas_reg:,}")
+    k_e3.metric("Mujeres Embarazadas", f"{int(total_embarazadas):,}")
+    k_e4.metric("Población Indígena", f"{total_indigenas_reg:,}")
+    k_e5.metric("Personas con Discapacidad", f"{total_con_discapacidad:,}")
 
     st.markdown("---")
 
@@ -405,9 +407,24 @@ with tab1:
 
     st.markdown("---")
 
-    # Gráficos de Pueblos Indígenas y Principales Discapacidades optimizados
-    col_ind_g, col_disc_g = st.columns(2)
+    # Gráficos adicionales: Gráfico de Torta por Sexo, Pueblos Indígenas y Discapacidades
+    col_sex_g, col_ind_g = st.columns(2)
     
+    with col_sex_g:
+        st.markdown("#### Distribución de Participantes por Sexo")
+        sexo_counts = df_filtered['sexo_clean'].value_counts().reset_index()
+        sexo_counts.columns = ['Sexo', 'Cantidad']
+        if not sexo_counts.empty:
+            fig_pie = px.pie(
+                sexo_counts, names='Sexo', values='Cantidad',
+                title="Proporción por Sexo (Cantidad y Porcentaje)",
+                color_discrete_sequence=[COLOR_TURQUESA, COLOR_AZUL_OSCURO, COLOR_MORADO]
+            )
+            fig_pie.update_traces(textinfo='percent+label+value')
+            st.plotly_chart(fig_pie, use_container_width=True)
+        else:
+            st.info("No hay datos de sexo disponibles.")
+
     with col_ind_g:
         st.markdown("#### Principales Pueblos Indígenas")
         df_ind = df_filtered[df_filtered['pueblo_indigena_clean'].isin(MAPA_PUEBLOS_INDIGENAS.values())]
@@ -418,28 +435,28 @@ with tab1:
             ind_counts['Porcentaje'] = (ind_counts['Cantidad'] / (tot_ind if tot_ind > 0 else 1)) * 100
             ind_counts['Etiqueta'] = ind_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
             
-            fig_ind = px.bar(ind_counts, x='Cantidad', y='Pueblo Indígena', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_AZUL_OSCURO])
+            fig_ind = px.bar(ind_counts, x='Cantidad', y='Pueblo Indígena', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_AZUL_OSCURO], title="Pueblos Indígenas Registrados")
             fig_ind.update_traces(textposition='outside')
             st.plotly_chart(fig_ind, use_container_width=True)
         else:
             st.info("No hay registros de pueblos indígenas para los filtros seleccionados.")
 
-    with col_disc_g:
-        st.markdown("#### Principales Discapacidades (Top 5)")
-        excluir_disc = ['No Especificado', 'No especificado', 'No Posee', 'No posee', 'Ns/Nc', 'Ns/Nc']
-        df_disc = df_filtered[~df_filtered['discapacidad_clean'].isin(excluir_disc)]
-        if not df_disc.empty:
-            disc_counts = df_disc['discapacidad_clean'].value_counts().head(5).reset_index()
-            disc_counts.columns = ['Tipo de Discapacidad', 'Cantidad']
-            tot_disc = disc_counts['Cantidad'].sum()
-            disc_counts['Porcentaje'] = (disc_counts['Cantidad'] / (tot_disc if tot_disc > 0 else 1)) * 100
-            disc_counts['Etiqueta'] = disc_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
-            
-            fig_disc = px.bar(disc_counts, x='Cantidad', y='Tipo de Discapacidad', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_TURQUESA])
-            fig_disc.update_traces(textposition='outside')
-            st.plotly_chart(fig_disc, use_container_width=True)
-        else:
-            st.info("No hay registros de discapacidad para los filtros seleccionados.")
+    st.markdown("---")
+    st.markdown("#### Principales Discapacidades (Top 5)")
+    excluir_disc = ['No Especificado', 'No especificado', 'No Posee', 'No posee', 'Ns/Nc', 'Ns/Nc']
+    df_disc = df_filtered[~df_filtered['discapacidad_clean'].isin(excluir_disc)]
+    if not df_disc.empty:
+        disc_counts = df_disc['discapacidad_clean'].value_counts().head(5).reset_index()
+        disc_counts.columns = ['Tipo de Discapacidad', 'Cantidad']
+        tot_disc = disc_counts['Cantidad'].sum()
+        disc_counts['Porcentaje'] = (disc_counts['Cantidad'] / (tot_disc if tot_disc > 0 else 1)) * 100
+        disc_counts['Etiqueta'] = disc_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+        
+        fig_disc = px.bar(disc_counts, x='Cantidad', y='Tipo de Discapacidad', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_TURQUESA], title="Desglose por Tipo de Discapacidad")
+        fig_disc.update_traces(textposition='outside')
+        st.plotly_chart(fig_disc, use_container_width=True)
+    else:
+        st.info("No hay registros de discapacidad para los filtros seleccionados.")
 
 with tab2:
     st.subheader("Características Socioeconómicas y Medios de Vida")
