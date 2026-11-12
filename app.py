@@ -143,7 +143,6 @@ MAPA_PUEBLOS_INDIGENAS = {
     'ind_21': 'Wayúu (Guajiro)', 'ind_22': 'Yabarana', 'ind_23': 'Yanomami', 'ind_24': 'Yekuana', 'ind_25': 'Yukpa'
 }
 
-# Diccionario completo expandido para que se entiendan todas las combinaciones de discapacidad en Kobo
 MAPA_DISCAPACIDADES = {
     'audi': 'Auditiva', 'coogni': 'Cognitiva', 'habla': 'En el habla',
     'moto': 'Motora', 'no': 'No posee', 'ns_ns': 'Ns/Nc', 'vis': 'Visual',
@@ -191,7 +190,6 @@ def limpiar_codigo(val, diccionario):
     elif v_str in ['', 'nan', 'none', 'nat']:
         return 'No especificado'
     else:
-        # Reemplazo inteligente de abreviaciones comunes si vienen combinadas en Kobo
         for k, v in [('audi', 'Auditiva'), ('moto', 'Motora'), ('vis', 'Visual'), ('coogni', 'Cognitiva'), ('habla', 'En el habla')]:
             v_str = v_str.replace(k, v)
         return v_str.title()
@@ -212,6 +210,7 @@ df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce'
 df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
 df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 'Sí (Pueblo Indígena)' if x not in ['No Especificado', 'No especificado'] else 'No')
 df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['No Especificado', 'No especificado', 'No Posee', 'No posee'] else 'No')
+df_clean['gestantes_filtro'] = df_clean['gestantes_val'].apply(lambda x: 'Sí (Con Gestantes)' if x > 0 else 'No')
 
 cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
 for col_num in cols_num_familia:
@@ -268,6 +267,7 @@ st.sidebar.subheader("Filtros de Vulnerabilidad")
 selected_lgbti = st.sidebar.multiselect("Comunidad LGBTIQ+", options=['Sí', 'No'], default=['Sí', 'No'])
 selected_indigena = st.sidebar.multiselect("Comunidad Indígena", options=['Sí (Pueblo Indígena)', 'No'], default=['Sí (Pueblo Indígena)', 'No'])
 selected_disc = st.sidebar.multiselect("Personas con Discapacidad", options=['Sí (Con Discapacidad)', 'No'], default=['Sí (Con Discapacidad)', 'No'])
+selected_gestantes = st.sidebar.multiselect("Mujeres Embarazadas (Gestantes)", options=['Sí (Con Gestantes)', 'No'], default=['Sí (Con Gestantes)', 'No'])
 
 if selected_lgbti:
     df_filtered = df_filtered[df_filtered['lgbti_clean'].isin(selected_lgbti)]
@@ -275,8 +275,17 @@ if selected_indigena:
     df_filtered = df_filtered[df_filtered['indigena_filtro'].isin(selected_indigena)]
 if selected_disc:
     df_filtered = df_filtered[df_filtered['disc_filtro'].isin(selected_disc)]
+if selected_gestantes:
+    df_filtered = df_filtered[df_filtered['gestantes_filtro'].isin(selected_gestantes)]
 
-# Cálculo de Promedio Personas por Hogar para ubicarlo arriba
+# Cálculo del total de participantes (suma de todo el grupo familiar)
+total_participantes = (
+    df_filtered['i1'].sum() + df_filtered['i2'].sum() + df_filtered['i3'].sum() +
+    df_filtered['i12'].sum() + df_filtered['i13'].sum() + df_filtered['i14'].sum() +
+    df_filtered['i23'].sum() + df_filtered['i24'].sum() + df_filtered['i25'].sum()
+)
+
+# Cálculo de Promedio Personas por Hogar
 viv_col = find_col(df_filtered, ['personas_vivienda'])
 if viv_col:
     valid_hogares = pd.to_numeric(df_filtered[viv_col], errors='coerce').fillna(0)
@@ -285,11 +294,11 @@ if viv_col:
 else:
     avg_hogar = 0.0
 
-# KPIs Principales (4 columnas arriba incluyendo Promedio Personas por Hogar)
+# KPIs Principales (4 columnas arriba incluyendo Total Participantes y Promedio Hogar)
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Encuestas Aplicadas", f"{len(df_filtered):,}")
-col2.metric("Estados Monitoreados", f"{df_filtered['estado_clean'].nunique():,}")
-col3.metric("Municipios Afectados", f"{df_filtered['municipio_clean'].nunique():,}")
+col2.metric("Total Participantes", f"{int(total_participantes):,}")
+col3.metric("Estados Monitoreados", f"{df_filtered['estado_clean'].nunique():,}")
 col4.metric("Promedio Personas por Hogar", f"{avg_hogar:.1f}")
 
 st.markdown("---")
@@ -399,8 +408,7 @@ with tab1:
     
     with col_ind_g:
         st.markdown("#### Principales Pueblos Indígenas")
-        # Excluir explícitamente "No especificado" o variantes
-        df_ind = df_filtered[~df_filtered['pueblo_indigena_clean'].isin(['No Especificado', 'No especificado', 'No Especificado'])]
+        df_ind = df_filtered[~df_filtered['pueblo_indigena_clean'].isin(['No Especificado', 'No especificado'])]
         if not df_ind.empty:
             ind_counts = df_ind['pueblo_indigena_clean'].value_counts().reset_index()
             ind_counts.columns = ['Pueblo Indígena', 'Cantidad']
@@ -416,7 +424,6 @@ with tab1:
 
     with col_disc_g:
         st.markdown("#### Principales Discapacidades (Top 5)")
-        # Excluir "No posee", "Ns/Nc" y no especificados, y tomar las 5 principales
         excluir_disc = ['No Especificado', 'No especificado', 'No Posee', 'No posee', 'Ns/Nc', 'Ns/Nc']
         df_disc = df_filtered[~df_filtered['discapacidad_clean'].isin(excluir_disc)]
         if not df_disc.empty:
