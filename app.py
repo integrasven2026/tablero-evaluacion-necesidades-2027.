@@ -157,7 +157,7 @@ df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if c
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
 
-# Variables sociodemográficas adicionales de grupo familiar y vulnerabilidades
+# Conversión estricta de variables numéricas de grupo familiar para evitar ceros
 for col_num in ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']:
     if col_num in df_clean.columns:
         df_clean[col_num] = pd.to_numeric(df_clean[col_num], errors='coerce').fillna(0)
@@ -206,34 +206,33 @@ col4.metric("Comunidades / Albergues", f"{df_filtered['comunidad_clean'].nunique
 
 st.markdown("---")
 
-# --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-    "🏠 2. Sociodemografía & Vivienda",
-    "💼 3. Socioeconómico & Ingresos",
-    "🍲 4. Seguridad Alimentaria & Nutrición",
-    "⚖️ 5. Acceso a Derechos",
-    "🧸 6. Protección NNA",
-    "🛡️ 7. VBG y Género",
-    "📚 8. Educación en Emergencias",
-    "🩺 9. Salud & SSR",
-    "♿ 10. Discapacidad & Salud Mental"
+# --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL (SIN MAPA) ---
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+    "🏠 1. Sociodemografía & Vivienda",
+    "💼 2. Socioeconómico & Ingresos",
+    "🍲 3. Seguridad Alimentaria & Nutrición",
+    "⚖️ 4. Acceso a Derechos",
+    "🧸 5. Protección NNA",
+    "🛡️ 6. VBG y Género",
+    "📚 7. Educación en Emergencias",
+    "🩺 8. Salud & Discapacidad"
 ])
 
 with tab1:
     st.subheader("Análisis Sociodemográfico y Grupo Familiar")
     
-    # 1. Grupo familiar por género y edad (i1-i3 mujeres, i12-i14 hombres, i23-i25 otro)
-    mujeres_0_17 = df_filtered['i1'].sum() if 'i1' in df_filtered.columns else 0
-    mujeres_18_49 = df_filtered['i2'].sum() if 'i2' in df_filtered.columns else 0
-    mujeres_50_plus = df_filtered['i3'].sum() if 'i3' in df_filtered.columns else 0
+    # Cálculos corregidos de grupo familiar
+    mujeres_0_17 = df_filtered['i1'].sum()
+    mujeres_18_49 = df_filtered['i2'].sum()
+    mujeres_50_plus = df_filtered['i3'].sum()
     
-    hombres_0_17 = df_filtered['i12'].sum() if 'i12' in df_filtered.columns else 0
-    hombres_18_49 = df_filtered['i13'].sum() if 'i13' in df_filtered.columns else 0
-    hombres_50_plus = df_filtered['i14'].sum() if 'i14' in df_filtered.columns else 0
+    hombres_0_17 = df_filtered['i12'].sum()
+    hombres_18_49 = df_filtered['i13'].sum()
+    hombres_50_plus = df_filtered['i14'].sum()
     
-    otro_0_17 = df_filtered['i23'].sum() if 'i23' in df_filtered.columns else 0
-    otro_18_49 = df_filtered['i24'].sum() if 'i24' in df_filtered.columns else 0
-    otro_50_plus = df_filtered['i25'].sum() if 'i25' in df_filtered.columns else 0
+    otro_0_17 = df_filtered['i23'].sum()
+    otro_18_49 = df_filtered['i24'].sum()
+    otro_50_plus = df_filtered['i25'].sum()
 
     total_mujeres = mujeres_0_17 + mujeres_18_49 + mujeres_50_plus
     total_hombres = hombres_0_17 + hombres_18_49 + hombres_50_plus
@@ -274,13 +273,15 @@ with tab1:
 
     st.markdown("---")
     
-    # Vulnerabilidades adicionales solicitadas
+    # Vulnerabilidades adicionales
     col_v1, col_v2, col_v3, col_v4 = st.columns(4)
     
     lgbti_count = df_filtered['Igtbiq'].value_counts().get('si', 0) if 'Igtbiq' in df_filtered.columns else 0
     indigena_count = df_filtered['etnia_indigena'].dropna().count() if 'etnia_indigena' in df_filtered.columns else 0
     disc_count = df_filtered['discapacidad_selec'].dropna().count() if 'discapacidad_selec' in df_filtered.columns else 0
-    avg_hogar = df_filtered['personas_vivienda'].mean() if 'personas_vivienda' in df_filtered.columns and df_filtered['personas_vivienda'].sum() > 0 else 4.2
+    
+    valid_hogares = df_filtered['personas_vivienda'][df_filtered['personas_vivienda'] > 0]
+    avg_hogar = valid_hogares.mean() if not valid_hogares.empty else 4.2
 
     col_v1.metric("Población LGBTIQ+", f"{int(lgbti_count):,}")
     col_v2.metric("Población Indígena", f"{int(indigena_count):,}")
@@ -312,12 +313,8 @@ with tab7:
     st.markdown("Afectación estructural en escuelas, uso como refugios y continuidad escolar.")
 
 with tab8:
-    st.subheader("Salud, Salud Sexual y Reproductiva (SSR) y Crónicos")
-    st.markdown("Acceso a medicamentos para hipertensión/diabetes, métodos anticonceptivos y atención materno-infantil.")
-
-with tab9:
-    st.subheader("Personas con Discapacidad y Salud Mental")
-    st.markdown("Evaluación bajo el enfoque del Grupo de Washington y primeros auxilios psicológicos.")
+    st.subheader("Salud, Salud Sexual y Reproductiva (SSR) y Discapacidad")
+    st.markdown("Acceso a medicamentos para hipertensión/diabetes, métodos anticonceptivos y salud mental.")
 
 # Footer
 st.markdown("---")
