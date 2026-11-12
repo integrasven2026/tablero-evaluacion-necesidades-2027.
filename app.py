@@ -120,7 +120,7 @@ MAPA_PARROQUIAS = {
     've240109': 'Caruao', 've240110': 'Urimare'
 }
 
-# --- PASO PREVIO: NORMALIZACIÓN Y LIMPIEZA DE DATOS ---
+# --- PROCEDIMIENTO ROBUSTO DE NORMALIZACIÓN Y LIMPIEZA KOBO ---
 def find_col(df, keywords):
     for col in df.columns:
         for kw in keywords:
@@ -157,14 +157,22 @@ df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if c
 df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
 
+# Limpieza y búsqueda inteligente de columnas de grupo familiar (por si vienen con nombres exactos o variantes en Kobo)
 cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
 for col_num in cols_num_familia:
-    if col_num in df_clean.columns:
-        df_clean[col_num] = pd.to_numeric(df_clean[col_num], errors='coerce').fillna(0)
+    target_col = col_num
+    if col_num not in df_clean.columns:
+        # Buscar si existe alguna columna que contenga el código exacto (ej. grupo/i1)
+        match = find_col(df_clean, [col_num])
+        if match:
+            target_col = match
+    
+    if target_col in df_clean.columns:
+        df_clean[col_num] = pd.to_numeric(df_clean[target_col], errors='coerce').fillna(0)
     else:
         df_clean[col_num] = 0
 
-st.success(f"✅ Kobo normalizado y sincronizado con éxito. Total de registros analizados: {len(df_clean)}")
+st.success(f"✅ Kobo normalizado con éxito. Total de registros analizados: {len(df_clean)}")
 
 # --- SECCIÓN 1: FILTROS LATERALES EN CASCADA ---
 st.sidebar.header("🎛️ Filtros de Localización y Socios")
@@ -274,12 +282,22 @@ with tab1:
     
     col_v1, col_v2, col_v3, col_v4 = st.columns(4)
     
-    lgbti_count = df_filtered['Igtbiq'].dropna().astype(str).str.lower().isin(['si', 'sí', '1', 'true']).sum() if 'Igtbiq' in df_filtered.columns else 0
-    indigena_count = df_filtered['etnia_indigena'].dropna().count() if 'etnia_indigena' in df_filtered.columns else 0
-    disc_count = df_filtered['discapacidad_selec'].dropna().count() if 'discapacidad_selec' in df_filtered.columns else 0
+    lgbti_col = find_col(df_filtered, ['igtbiq', 'lgbti'])
+    lgbti_count = df_filtered[lgbti_col].dropna().astype(str).str.lower().isin(['si', 'sí', '1', 'true']).sum() if lgbti_col else 0
     
-    valid_hogares = df_filtered['personas_vivienda'][df_filtered['personas_vivienda'] > 0]
-    avg_hogar = valid_hogares.mean() if not valid_hogares.empty else 0.0
+    indigena_col = find_col(df_filtered, ['etnia_indigena', 'indigena'])
+    indigena_count = df_filtered[indigena_col].dropna().count() if indigena_col else 0
+    
+    disc_col = find_col(df_filtered, ['discapacidad_selec', 'discapacidad'])
+    disc_count = df_filtered[disc_col].dropna().count() if disc_col else 0
+    
+    viv_col = find_col(df_filtered, ['personas_vivienda'])
+    if viv_col:
+        valid_hogares = pd.to_numeric(df_filtered[viv_col], errors='coerce').fillna(0)
+        valid_hogares = valid_hogares[valid_hogares > 0]
+        avg_hogar = valid_hogares.mean() if not valid_hogares.empty else 0.0
+    else:
+        avg_hogar = 0.0
 
     col_v1.metric("Población LGBTIQ+", f"{int(lgbti_count):,}")
     col_v2.metric("Población Indígena", f"{int(indigena_count):,}")
