@@ -123,6 +123,18 @@ MAPA_PARROQUIAS = {
     've240109': 'Caruao', 've240110': 'Urimare'
 }
 
+# Diccionario oficial para nivel educativo sin guiones bajos y con nombres completos
+MAPA_EDUCACION = {
+    'ninguno': 'Sin educación formal',
+    'primaria_inc': 'Primaria incompleta',
+    'primaria_com': 'Primaria completa',
+    'secundaria_inc': 'Secundaria incompleta',
+    'secundaria_com': 'Secundaria completa',
+    'terciario_univ': 'Técnico superior Universitario',
+    'univ_incomp': 'Universitario incompleto',
+    'univ_comp': 'Universitario completo'
+}
+
 # --- PROCEDIMIENTO ROBUSTO DE NORMALIZACIÓN Y LIMPIEZA KOBO ---
 def find_col(df, keywords):
     for col in df.columns:
@@ -157,8 +169,8 @@ df_clean['estado_clean'] = df_raw[col_estado].apply(lambda x: limpiar_codigo(x, 
 df_clean['municipio_clean'] = df_raw[col_municipio].apply(lambda x: limpiar_codigo(x, MAPA_MUNICIPIOS)) if col_municipio else 'No especificado'
 df_clean['parroquia_clean'] = df_raw[col_parroquia].apply(lambda x: limpiar_codigo(x, MAPA_PARROQUIAS)) if col_parroquia else 'No especificado'
 df_clean['comunidad_clean'] = df_raw[col_comunidad].astype(str).str.strip() if col_comunidad else 'No especificado'
-df_clean['sexo_clean'] = df_raw[col_sexo].astype(str).str.title() if col_sexo else 'No especificado'
-df_clean['edu_clean'] = df_raw[col_edu].astype(str).str.title() if col_edu else 'No especificado'
+df_clean['sexo_clean'] = df_raw[col_sexo].apply(lambda x: limpiar_codigo(x, { 'masculino': 'Hombre', 'femenino': 'Mujer' })) if col_sexo else 'No especificado'
+df_clean['edu_clean'] = df_raw[col_edu].apply(lambda x: limpiar_codigo(x, MAPA_EDUCACION)) if col_edu else 'No especificado'
 
 cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
 for col_num in cols_num_familia:
@@ -258,17 +270,28 @@ with tab1:
     col_pyr1, col_pyr2 = st.columns(2)
     with col_pyr1:
         st.markdown("#### Pirámide Poblacional del Grupo Familiar")
+        
+        # Preparar datos para la pirámide con porcentajes y valores absolutos
+        total_pob_fam = hombres_0_17 + hombres_18_49 + hombres_50_plus + mujeres_0_17 + mujeres_18_49 + mujeres_50_plus
+        if total_pob_fam == 0: total_pob_fam = 1
+        
         pyramid_data = pd.DataFrame({
             'Rango Etario': ['0 a 17 años', '18 a 49 años', '50+ años', '0 a 17 años', '18 a 49 años', '50+ años'],
             'Género': ['Hombre', 'Hombre', 'Hombre', 'Mujer', 'Mujer', 'Mujer'],
+            'ValorAbs': [hombres_0_17, hombres_18_49, hombres_50_plus, mujeres_0_17, mujeres_18_49, mujeres_50_plus],
             'Cantidad': [-hombres_0_17, -hombres_18_49, -hombres_50_plus, mujeres_0_17, mujeres_18_49, mujeres_50_plus]
         })
+        pyramid_data['Porcentaje'] = (pyramid_data['ValorAbs'] / total_pob_fam) * 100
+        pyramid_data['TextoEtiqueta'] = pyramid_data.apply(lambda row: f"{int(row['ValorAbs']):,} ({row['Porcentaje']:.1f}%)", axis=1)
+
         fig_pyramid = px.bar(
             pyramid_data, x='Cantidad', y='Rango Etario', color='Género', orientation='h',
+            text='TextoEtiqueta',
             title="Distribución por Edad y Género",
             color_discrete_sequence=[COLOR_AZUL_OSCURO, COLOR_TURQUESA]
         )
-        fig_pyramid.update_layout(bargap=0.1)
+        fig_pyramid.update_traces(textposition='outside')
+        fig_pyramid.update_layout(bargap=0.1, uniformtext_minsize=8, uniformtext_mode='hide')
         st.plotly_chart(fig_pyramid, use_container_width=True)
 
     with col_pyr2:
@@ -276,7 +299,18 @@ with tab1:
         if 'edu_clean' in df_filtered.columns:
             edu_counts = df_filtered['edu_clean'].value_counts().reset_index()
             edu_counts.columns = ['Nivel Educativo', 'Cantidad']
-            fig_edu = px.bar(edu_counts, x='Nivel Educativo', y='Cantidad', color_discrete_sequence=[COLOR_TURQUESA])
+            total_edu = edu_counts['Cantidad'].sum()
+            if total_edu == 0: total_edu = 1
+            edu_counts['Porcentaje'] = (edu_counts['Cantidad'] / total_edu) * 100
+            edu_counts['TextoEtiqueta'] = edu_counts.apply(lambda row: f"{int(row['Cantidad']):,} ({row['Porcentaje']:.1f}%)", axis=1)
+
+            fig_edu = px.bar(
+                edu_counts, x='Nivel Educativo', y='Cantidad',
+                text='TextoEtiqueta',
+                color_discrete_sequence=[COLOR_TURQUESA]
+            )
+            fig_edu.update_traces(textposition='outside')
+            fig_edu.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', xaxis_tickangle=-30)
             st.plotly_chart(fig_edu, use_container_width=True)
 
     st.markdown("---")
