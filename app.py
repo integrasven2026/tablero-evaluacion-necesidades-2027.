@@ -179,8 +179,8 @@ col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
-# Búsqueda flexible de Pregunta 22 (Tenencia de vivienda) y variables de cuartos
-col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita'])
+# Detección flexible de Pregunta 22 (Tenencia de vivienda) y variables de cuartos
+col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivienda'])
 col_cuartos = find_col(df_raw, ['cuartos', 'habitaciones', 'dormir'])
 col_personas_viv = find_col(df_raw, ['personas_vivienda', 'total_personas'])
 
@@ -231,14 +231,23 @@ df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 
 df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['No Especificado', 'No especificado', 'No Posee', 'No posee'] else 'No')
 df_clean['gestantes_filtro'] = df_clean['gestantes_val'].apply(lambda x: 'Sí (Con Gestantes)' if x > 0 else 'No')
 
-# Limpieza y mapeo flexible y robusto para Tenencia de Vivienda (Pregunta 22 por subcadenas)
+# Limpieza y mapeo robusto para Tenencia de Vivienda (Soporta códigos numéricos y texto)
 def limpiar_tenencia(val):
     if pd.isna(val):
         return 'No especificado'
     v_str = str(val).strip().lower()
+    if v_str in ['1', 'propia', 'prop']:
+        return 'Propia'
+    elif v_str in ['2', 'alquilada', 'alquiler', 'alquil']:
+        return 'Alquilada'
+    elif v_str in ['3', 'cedida', 'prestada', 'cedida / prestada', 'ced', 'prest']:
+        return 'Cedida / Prestada'
+    elif v_str in ['4', 'refugio', 'ocupacion', 'informal', 'refugio / ocupacion informal']:
+        return 'Refugio / Ocupación informal'
+    
     if 'prop' in v_str:
         return 'Propia'
-    elif 'alquil' in v_str:
+    elif 'alquil' in v_str or 'alquiler' in v_str:
         return 'Alquilada'
     elif 'ced' in v_str or 'prest' in v_str:
         return 'Cedida / Prestada'
@@ -517,7 +526,7 @@ with tab1:
 
 with tab2:
     # =========================================================================
-    # MÓDULO 2: VIVIENDA Y WASH (Con limpieza robusta por subcadenas)
+    # MÓDULO 2: VIVIENDA Y WASH (Corrección de tenencia y métrica de hacinamiento)
     # =========================================================================
     st.subheader("Condiciones de Vivienda y WASH")
     st.markdown("Análisis detallado de tenencia de la vivienda, hacinamiento crítico según metodología INE y acceso a agua, saneamiento e higiene (WASH).")
@@ -553,10 +562,10 @@ with tab2:
 
     prom_cuartos_hogar = df_filtered['cuartos_dormir_val'].mean()
     
-    # Cálculo preciso del porcentaje de hacinamiento crítico para la métrica inferior
-    match_critico = hac_counts[hac_counts['Clasificación Hacinamiento'].str.contains('Crítico', na=False)]
-    count_hac_critico = match_critico['Cantidad'].values[0] if not match_critico.empty else 0
-    pct_hacinamiento_critico = (count_hac_critico / (tot_hac if tot_hac > 0 else 1)) * 100
+    # Cálculo preciso y directo del porcentaje de hogares en hacinamiento crítico para la métrica
+    count_hac_critico = (df_filtered['hacinamiento_critico'] == 'Hacinamiento Crítico (>3 hab/cuarto)').sum()
+    total_hacia_eval = len(df_filtered) if len(df_filtered) > 0 else 1
+    pct_hacinamiento_critico = (count_hac_critico / total_hacia_eval) * 100
 
     mv1, mv2, mv3 = st.columns(3)
     mv1.metric("Promedio Personas por Hogar", f"{avg_hogar:.2f}")
