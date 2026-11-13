@@ -401,7 +401,6 @@ with tab1:
     total_niños = mujeres_0_17 + hombres_0_17 + otro_0_17
     total_otro = otro_0_17 + otro_18_49 + otro_50_plus
 
-    # Base para porcentajes demográficos (total_participantes o total_pob_fam)
     base_calc = total_participantes if total_participantes > 0 else 1
 
     pct_mujeres = (total_mujeres / base_calc) * 100
@@ -452,107 +451,4 @@ with tab1:
             'Cantidad': [-hombres_0_17, -hombres_18_49, -hombres_50_plus, mujeres_0_17, mujeres_18_49, mujeres_50_plus]
         })
         pyramid_data['Porcentaje'] = (pyramid_data['ValorAbs'] / total_pob_fam) * 100
-        pyramid_data['TextoEtiqueta'] = pyramid_data.apply(lambda row: f"{int(row['ValorAbs']):,} ({row['Porcentaje']:.1f}%)", axis=1)
-
-        fig_pyramid = px.bar(
-            pyramid_data, x='Cantidad', y='Rango Etario', color='Género', orientation='h',
-            text='TextoEtiqueta',
-            title="Distribución por Edad y Género",
-            color_discrete_sequence=[COLOR_AZUL_OSCURO, COLOR_TURQUESA]
-        )
-        fig_pyramid.update_traces(textposition='outside')
-        fig_pyramid.update_layout(bargap=0.1, uniformtext_minsize=8, uniformtext_mode='hide')
-        st.plotly_chart(fig_pyramid, use_container_width=True)
-
-    with col_pyr2:
-        st.markdown("#### Nivel Educativo de los Participantes")
-        if 'edu_clean' in df_filtered.columns:
-            edu_counts = df_filtered['edu_clean'].value_counts().reset_index()
-            edu_counts.columns = ['Nivel Educativo', 'Cantidad']
-            total_edu = edu_counts['Cantidad'].sum()
-            if total_edu == 0: total_edu = 1
-            edu_counts['Porcentaje'] = (edu_counts['Cantidad'] / total_edu) * 100
-            edu_counts['TextoEtiqueta'] = edu_counts.apply(lambda row: f"{int(row['Cantidad']):,} ({row['Porcentaje']:.1f}%)", axis=1)
-
-            fig_edu = px.bar(
-                edu_counts, x='Nivel Educativo', y='Cantidad',
-                text='TextoEtiqueta',
-                color_discrete_sequence=[COLOR_TURQUESA]
-            )
-            fig_edu.update_traces(textposition='outside')
-            fig_edu.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', xaxis_tickangle=-30)
-            st.plotly_chart(fig_edu, use_container_width=True)
-
-    st.markdown("---")
-
-    col_sex_g, col_ind_g = st.columns(2)
-    
-    with col_sex_g:
-        st.markdown("#### Distribución de Jefes/as de Hogar por Sexo")
-        sexo_counts = df_filtered['sexo_clean'].value_counts().reset_index()
-        sexo_counts.columns = ['Sexo', 'Cantidad']
-        if not sexo_counts.empty:
-            fig_pie = px.pie(
-                sexo_counts, names='Sexo', values='Cantidad',
-                title="Proporción de Jefes/as de Hogar por Sexo (Cantidad y Porcentaje)",
-                color_discrete_sequence=[COLOR_TURQUESA, COLOR_AZUL_OSCURO, COLOR_MORADO]
-            )
-            fig_pie.update_traces(textinfo='percent+label+value')
-            st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("No hay datos de sexo disponibles.")
-
-    with col_ind_g:
-        st.markdown("#### Principales Pueblos Indígenas")
-        df_ind = df_filtered[df_filtered['pueblo_indigena_clean'].isin(MAPA_PUEBLOS_INDIGENAS.values())]
-        if not df_ind.empty:
-            ind_counts = df_ind['pueblo_indigena_clean'].value_counts().reset_index()
-            ind_counts.columns = ['Pueblo Indígena', 'Cantidad']
-            tot_ind = ind_counts['Cantidad'].sum()
-            ind_counts['Porcentaje'] = (ind_counts['Cantidad'] / (tot_ind if tot_ind > 0 else 1)) * 100
-            ind_counts['Etiqueta'] = ind_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
-            
-            fig_ind = px.bar(ind_counts, x='Cantidad', y='Pueblo Indígena', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_AZUL_OSCURO], title="Pueblos Indígenas Registrados")
-            fig_ind.update_traces(textposition='outside')
-            st.plotly_chart(fig_ind, use_container_width=True)
-        else:
-            st.info("No hay registros de pueblos indígenas para los filtros seleccionados.")
-
-    st.markdown("---")
-    st.markdown("#### Principales Discapacidades (Top 5)")
-    excluir_disc = ['No Especificado', 'No especificado', 'No Posee', 'No posee', 'Ns/Nc']
-    df_disc = df_filtered[~df_filtered['discapacidad_clean'].isin(excluir_disc)]
-    if not df_disc.empty:
-        disc_counts = df_disc['discapacidad_clean'].value_counts().head(5).reset_index()
-        disc_counts.columns = ['Tipo de Discapacidad', 'Cantidad']
-        tot_disc = disc_counts['Cantidad'].sum()
-        disc_counts['Porcentaje'] = (disc_counts['Cantidad'] / (tot_disc if tot_disc > 0 else 1)) * 100
-        disc_counts['Etiqueta'] = disc_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
-        
-        fig_disc = px.bar(disc_counts, x='Cantidad', y='Tipo de Discapacidad', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_TURQUESA], title="Desglose por Tipo de Discapacidad")
-        fig_disc.update_traces(textposition='outside')
-        st.plotly_chart(fig_disc, use_container_width=True)
-    else:
-        st.info("No hay registros de discapacidad para los filtros seleccionados.")
-
-with tab2:
-    st.subheader("Condiciones de Vivienda y WASH")
-    st.markdown("Análisis detallado de tenencia de la vivienda, hacinamiento crítico según metodología INE y acceso al agua, saneamiento e higiene.")
-    # (Resto de los componentes de vivienda y WASH se mantienen idénticos)
-
-with tab3:
-    st.subheader("Seguridad Alimentaria y Nutrición")
-with tab4:
-    st.subheader("Acceso a Derechos y Servicios")
-with tab5:
-    st.subheader("Protección de Niñas, Niños y Adolescentes (NNA)")
-with tab6:
-    st.subheader("Violencia Basada en Género (VBG) y Enfoque de Género")
-with tab7:
-    st.subheader("Educación en Emergencias (EiE)")
-with tab8:
-    st.subheader("Salud, Salud Sexual y Reproductiva (SSR) y Discapacidad")
-
-# Footer
-st.markdown("---")
-st.markdown("**Sistema MEAL COOPI Venezuela** | Consorcio ÍNTEGRAS - ECHO HIP 2027")
+        pyramid_data['TextoEtiqueta'] = pyramid_data.apply(lambda row: f"{int(row['ValorAbs']):,} ({row['Porcentaje']:.1f
