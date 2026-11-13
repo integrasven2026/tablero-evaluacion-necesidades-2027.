@@ -157,6 +157,17 @@ MAPA_NACIONALIDAD = {
     'venezolana': 'Venezolana', 'extranjera': 'Extranjera'
 }
 
+MAPA_TENENCIA = {
+    'propia': 'Propia',
+    'alquilada': 'Alquilada',
+    'cedida': 'Cedida / Prestada',
+    'cedida_prestada': 'Cedida / Prestada',
+    'prestada': 'Cedida / Prestada',
+    'refugio': 'Refugio / Ocupación informal',
+    'ocupacion_informal': 'Refugio / Ocupación informal',
+    'informal': 'Refugio / Ocupación informal'
+}
+
 # --- PROCEDIMIENTO ROBUSTO DE NORMALIZACIÓN Y LIMPIEZA KOBO ---
 def find_col(df, keywords):
     for col in df.columns:
@@ -179,8 +190,8 @@ col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
-# Variables para Módulo Vivienda y WASH
-col_tenencia = find_col(df_raw, ['tenencia_vivienda', 'propiedad_vivienda', 'condicion_propiedad'])
+# Búsqueda específica Pregunta 22 (Tenencia de vivienda) y WASH
+col_tenencia = find_col(df_raw, ['22', 'tenencia_vivienda', 'propiedad_vivienda', 'condicion_propiedad', 'habita'])
 col_cuartos = find_col(df_raw, ['cuartos_dormir', 'num_cuartos', 'habitaciones_dormir'])
 col_personas_viv = find_col(df_raw, ['personas_vivienda', 'total_personas_vivienda'])
 
@@ -231,8 +242,17 @@ df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 
 df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['No Especificado', 'No especificado', 'No Posee', 'No posee'] else 'No')
 df_clean['gestantes_filtro'] = df_clean['gestantes_val'].apply(lambda x: 'Sí (Con Gestantes)' if x > 0 else 'No')
 
-# Limpieza y preparación de variables de Vivienda e Hacinamiento INE
-df_clean['tenencia_clean'] = df_raw[col_tenencia].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_tenencia else 'No especificado'
+# Limpieza y mapeo robusto para Tenencia de Vivienda (Pregunta 22)
+def limpiar_tenencia(val):
+    if pd.isna(val):
+        return 'No especificado'
+    v_str = str(val).strip().lower()
+    for k, v in MAPA_TENENCIA.items():
+        if k in v_str:
+            return v
+    return v_str.title()
+
+df_clean['tenencia_clean'] = df_raw[col_tenencia].apply(limpiar_tenencia) if col_tenencia else 'No especificado'
 df_clean['cuartos_dormir_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(1) if col_cuartos else 1
 df_clean['cuartos_dormir_val'] = df_clean['cuartos_dormir_val'].apply(lambda x: 1 if x < 1 else x)
 
@@ -334,25 +354,22 @@ total_participantes = (
     df_filtered['i23'].sum() + df_filtered['i24'].sum() + df_filtered['i25'].sum()
 )
 
-# Cálculo de Promedio Personas por Hogar
-viv_col = find_col(df_filtered, ['personas_vivienda'])
-if viv_col:
-    valid_hogares = pd.to_numeric(df_filtered[viv_col], errors='coerce').fillna(0)
-    valid_hogares = valid_hogares[valid_hogares > 0]
-    avg_hogar = valid_hogares.mean() if not valid_hogares.empty else 0.0
+# Cálculo unificado de Promedio Personas por Hogar (basado en población y encuestas)
+if len(df_filtered) > 0:
+    avg_hogar = total_participantes / len(df_filtered)
 else:
-    avg_hogar = df_filtered['total_personas_hogar'].mean() if not df_filtered.empty else 0.0
+    avg_hogar = 0.0
 
 # KPIs Principales (4 columnas arriba)
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Encuestas Aplicadas", f"{len(df_filtered):,}")
 col2.metric("Total Participantes", f"{int(total_participantes):,}")
 col3.metric("Estados Monitoreados", f"{df_filtered['estado_clean'].nunique():,}")
-col4.metric("Promedio Personas por Hogar", f"{avg_hogar:.1f}")
+col4.metric("Promedio Personas por Hogar", f"{avg_hogar:.2f}")
 
 st.markdown("---")
 
-# --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL (Con 'Vivienda y WASH' en lugar de Socioeconómico) ---
+# --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "Sociodemografía & Vivienda",
     "Vivienda y WASH",
@@ -506,7 +523,7 @@ with tab1:
 
 with tab2:
     # =========================================================================
-    # MÓDULO 2: VIVIENDA Y WASH (Ubicado en la pestaña 2)
+    # MÓDULO 2: VIVIENDA Y WASH (Actualizado con Gráfico de Barras P22 y Torta limpia)
     # =========================================================================
     st.subheader("Condiciones de Vivienda y WASH")
     st.markdown("Análisis detallado de tenencia de la vivienda, hacinamiento crítico según metodología INE y acceso a agua, saneamiento e higiene (WASH).")
@@ -514,7 +531,7 @@ with tab2:
     col_v1, col_v2 = st.columns(2)
     
     with col_v1:
-        st.markdown("#### Condición de Propiedad / Tenencia de la Vivienda")
+        st.markdown("#### Condición de Propiedad / Tenencia de la Vivienda (Pregunta 22)")
         tenencia_counts = df_filtered['tenencia_clean'].value_counts().reset_index()
         tenencia_counts.columns = ['Condición de Tenencia', 'Cantidad']
         tot_ten = tenencia_counts['Cantidad'].sum()
@@ -534,16 +551,16 @@ with tab2:
         hac_counts['Porcentaje'] = (hac_counts['Cantidad'] / (tot_hac if tot_hac > 0 else 1)) * 100
         hac_counts['Etiqueta'] = hac_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
         
+        # Torta limpia mostrando estrictamente porcentaje y valor absoluto sin repetir la categoría adentro
         fig_hac = px.pie(hac_counts, names='Clasificación Hacinamiento', values='Cantidad', title="Proporción de Hogares en Hacinamiento Crítico (>3 personas/cuarto)", color_discrete_sequence=[COLOR_TURQUESA, COLOR_NARANJA])
-        fig_hac.update_traces(textinfo='percent+label+value')
+        fig_hac.update_traces(textinfo='percent+value', hoverinfo='label+percent+value')
         st.plotly_chart(fig_hac, use_container_width=True)
 
-    prom_personas_hogar = df_filtered['total_personas_hogar'].mean()
     prom_cuartos_hogar = df_filtered['cuartos_dormir_val'].mean()
     pct_hacinamiento_critico = (df_filtered['hacinamiento_critico'].str.contains('Crítico').sum() / (len(df_filtered) if len(df_filtered) > 0 else 1)) * 100
 
     mv1, mv2, mv3 = st.columns(3)
-    mv1.metric("Promedio Personas por Hogar", f"{prom_personas_hogar:.2f}")
+    mv1.metric("Promedio Personas por Hogar", f"{avg_hogar:.2f}")
     mv2.metric("Promedio Cuartos para Dormir", f"{prom_cuartos_hogar:.2f}")
     mv3.metric("% Hogares en Hacinamiento Crítico", f"{pct_hacinamiento_critico:.1f}%")
 
@@ -610,7 +627,7 @@ with tab2:
         trat_counts['Etiqueta'] = trat_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
 
         fig_trat = px.pie(trat_counts, names='Tipo de Tratamiento', values='Cantidad', title="Métodos de Tratamiento Utilizados", color_discrete_sequence=[COLOR_AZUL_OSCURO, COLOR_TURQUESA, COLOR_NARANJA, COLOR_MORADO])
-        fig_trat.update_traces(textinfo='percent+label+value')
+        fig_trat.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_trat, use_container_width=True)
 
     col_w5, col_w6 = st.columns(2)
@@ -664,7 +681,7 @@ with tab2:
         basura_counts['Etiqueta'] = basura_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
 
         fig_bas = px.pie(basura_counts, names='Método de Desecho', values='Cantidad', title="Cómo se Desecha la Basura en los Hogares", color_discrete_sequence=[COLOR_AZUL_OSCURO, COLOR_TURQUESA, COLOR_MORADO, COLOR_NARANJA])
-        fig_bas.update_traces(textinfo='percent+label+value')
+        fig_bas.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_bas, use_container_width=True)
 
     mw1, mw2 = st.columns(2)
