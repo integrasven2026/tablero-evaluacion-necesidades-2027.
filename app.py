@@ -179,7 +179,7 @@ col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
-# Nuevas variables mapeadas para Vivienda y WASH
+# Variables para Módulo Vivienda y WASH
 col_tenencia = find_col(df_raw, ['tenencia_vivienda', 'propiedad_vivienda', 'condicion_propiedad'])
 col_cuartos = find_col(df_raw, ['cuartos_dormir', 'num_cuartos', 'habitaciones_dormir'])
 col_personas_viv = find_col(df_raw, ['personas_vivienda', 'total_personas_vivienda'])
@@ -231,7 +231,7 @@ df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 
 df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['No Especificado', 'No especificado', 'No Posee', 'No posee'] else 'No')
 df_clean['gestantes_filtro'] = df_clean['gestantes_val'].apply(lambda x: 'Sí (Con Gestantes)' if x > 0 else 'No')
 
-# Limpieza y preparación de variables de Vivienda y Hacinamiento
+# Limpieza y preparación de variables de Vivienda e Hacinamiento INE
 df_clean['tenencia_clean'] = df_raw[col_tenencia].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_tenencia else 'No especificado'
 df_clean['cuartos_dormir_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(1) if col_cuartos else 1
 df_clean['cuartos_dormir_val'] = df_clean['cuartos_dormir_val'].apply(lambda x: 1 if x < 1 else x)
@@ -249,7 +249,6 @@ for col_num in cols_num_familia:
     else:
         df_clean[col_num] = 0
 
-# Total personas por hogar para cálculo de hacinamiento INE
 df_clean['total_personas_hogar'] = (
     df_clean['i1'] + df_clean['i2'] + df_clean['i3'] +
     df_clean['i12'] + df_clean['i13'] + df_clean['i14'] +
@@ -257,7 +256,6 @@ df_clean['total_personas_hogar'] = (
 )
 df_clean['total_personas_hogar'] = df_clean['total_personas_hogar'].apply(lambda x: 1 if x == 0 else x)
 
-# Índice de Hacinamiento INE = Total personas / Cuartos para dormir
 df_clean['indice_hacinamiento'] = df_clean['total_personas_hogar'] / df_clean['cuartos_dormir_val']
 df_clean['hacinamiento_critico'] = df_clean['indice_hacinamiento'].apply(lambda x: 'Hacinamiento Crítico (>3 hab/cuarto)' if x > 3.0 else 'Sin Hacinamiento Crítico (<=3)')
 
@@ -354,10 +352,10 @@ col4.metric("Promedio Personas por Hogar", f"{avg_hogar:.1f}")
 
 st.markdown("---")
 
-# --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL ---
+# --- PESTAÑAS DE ANÁLISIS MULTISECTORIAL (Con 'Vivienda y WASH' en lugar de Socioeconómico) ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "Sociodemografía & Vivienda",
-    "Socioeconómico & Ingresos",
+    "Vivienda y WASH",
     "Seguridad Alimentaria & Nutrición",
     "Acceso a Derechos",
     "Protección NNA",
@@ -456,7 +454,6 @@ with tab1:
 
     st.markdown("---")
 
-    # Gráfico de Torta de Jefes/as de Hogar por Sexo y Pueblos Indígenas
     col_sex_g, col_ind_g = st.columns(2)
     
     with col_sex_g:
@@ -492,7 +489,7 @@ with tab1:
 
     st.markdown("---")
     st.markdown("#### Principales Discapacidades (Top 5)")
-    excluir_disc = ['No Especificado', 'No especificado', 'No Posee', 'No posee', 'Ns/Nc', 'Ns/Nc']
+    excluir_disc = ['No Especificado', 'No especificado', 'No Posee', 'No posee', 'Ns/Nc']
     df_disc = df_filtered[~df_filtered['discapacidad_clean'].isin(excluir_disc)]
     if not df_disc.empty:
         disc_counts = df_disc['discapacidad_clean'].value_counts().head(5).reset_index()
@@ -507,14 +504,13 @@ with tab1:
     else:
         st.info("No hay registros de discapacidad para los filtros seleccionados.")
 
+with tab2:
     # =========================================================================
-    # NUEVO MÓDULO 2: CONDICIONES DE VIVIENDA Y WASH
+    # MÓDULO 2: VIVIENDA Y WASH (Ubicado en la pestaña 2)
     # =========================================================================
-    st.markdown("---")
-    st.markdown("## Módulo 2: Condiciones de Vivienda y WASH")
+    st.subheader("Condiciones de Vivienda y WASH")
     st.markdown("Análisis detallado de tenencia de la vivienda, hacinamiento crítico según metodología INE y acceso a agua, saneamiento e higiene (WASH).")
 
-    # Fila 1: Tenencia de Vivienda e Indicadores de Hacinamiento
     col_v1, col_v2 = st.columns(2)
     
     with col_v1:
@@ -542,7 +538,6 @@ with tab1:
         fig_hac.update_traces(textinfo='percent+label+value')
         st.plotly_chart(fig_hac, use_container_width=True)
 
-    # Métricas clave de Vivienda
     prom_personas_hogar = df_filtered['total_personas_hogar'].mean()
     prom_cuartos_hogar = df_filtered['cuartos_dormir_val'].mean()
     pct_hacinamiento_critico = (df_filtered['hacinamiento_critico'].str.contains('Crítico').sum() / (len(df_filtered) if len(df_filtered) > 0 else 1)) * 100
@@ -555,7 +550,6 @@ with tab1:
     st.markdown("---")
     st.markdown("### Componente WASH (Agua, Saneamiento e Higiene)")
 
-    # Fila 2 WASH: Fuentes de agua y Frecuencia del servicio
     col_w1, col_w2 = st.columns(2)
 
     with col_w1:
@@ -583,7 +577,6 @@ with tab1:
         fig_frec.update_layout(xaxis_tickangle=-25)
         st.plotly_chart(fig_frec, use_container_width=True)
 
-    # Fila 3 WASH: Suficiencia, Tratamiento y Almacenamiento
     col_w3, col_w4 = st.columns(2)
 
     with col_w3:
@@ -603,7 +596,7 @@ with tab1:
             'Porcentaje (%)': [pct_suficiente, pct_tratamiento, pct_almacena, pct_filtro]
         })
 
-        fig_kpi_w = px.bar(df_kpi_wash, x='Porcentaje (%)', y='Indicador WASH', orientation='h', text=df_kpi_wash['Porcentaje.' if 'Porcentaje.' in df_kpi_wash.columns else 'Porcentaje (%)'].apply(lambda x: f"{x:.1f}%"), color_discrete_sequence=[COLOR_MORADO], title="Indicadores Clave WASH (%)")
+        fig_kpi_w = px.bar(df_kpi_wash, x='Porcentaje (%)', y='Indicador WASH', orientation='h', text=df_kpi_wash['Porcentaje (%)'].apply(lambda x: f"{x:.1f}%"), color_discrete_sequence=[COLOR_MORADO], title="Indicadores Clave WASH (%)")
         fig_kpi_w.update_traces(textposition='outside')
         fig_kpi_w.update_layout(xaxis_range=[0, 100])
         st.plotly_chart(fig_kpi_w, use_container_width=True)
@@ -620,7 +613,6 @@ with tab1:
         fig_trat.update_traces(textinfo='percent+label+value')
         st.plotly_chart(fig_trat, use_container_width=True)
 
-    # Fila 4 WASH: Almacenamiento, Filtros específicos, Enfermedades y Basura
     col_w5, col_w6 = st.columns(2)
 
     with col_w5:
@@ -648,7 +640,6 @@ with tab1:
         fig_fil.update_traces(textposition='outside')
         st.plotly_chart(fig_fil, use_container_width=True)
 
-    # Fila 5 WASH: Enfermedades Hídricas y Disposición de Basura
     col_w7, col_w8 = st.columns(2)
 
     with col_w7:
@@ -676,17 +667,11 @@ with tab1:
         fig_bas.update_traces(textinfo='percent+label+value')
         st.plotly_chart(fig_bas, use_container_width=True)
 
-    # Indicadores rápidos de Jabón e Higiene Menstrual
+    mw1, mw2 = st.columns(2)
     pct_jabon = (df_filtered['jabon_clean'] == 'Sí').mean() * 100
     pct_higiene_men = (df_filtered['higiene_men_clean'] == 'Sí').mean() * 100
-
-    mw1, mw2 = st.columns(2)
     mw1.metric("% Hogares con Acceso a Jabón para Lavado de Manos", f"{pct_jabon:.1f}%")
     mw2.metric("% Mujeres con Acceso a Productos de Higiene Menstrual", f"{pct_higiene_men:.1f}%")
-
-with tab2:
-    st.subheader("Características Socioeconómicas y Medios de Vida")
-    st.markdown("Evaluación de fuentes de ingresos, impacto de la crisis económica y estrategias de afrontamiento.")
 
 with tab3:
     st.subheader("Seguridad Alimentaria y Nutrición")
