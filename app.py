@@ -157,18 +157,6 @@ MAPA_NACIONALIDAD = {
     'venezolana': 'Venezolana', 'extranjera': 'Extranjera'
 }
 
-MAPA_TENENCIA = {
-    'propia': 'Propia',
-    'alquilada': 'Alquilada',
-    'cedida': 'Cedida / Prestada',
-    'cedida_prestada': 'Cedida / Prestada',
-    'prestada': 'Cedida / Prestada',
-    'refugio': 'Refugio / Ocupación informal',
-    'ocupacion_informal': 'Refugio / Ocupación informal',
-    'refugio_ocupacion_informal': 'Refugio / Ocupación informal',
-    'informal': 'Refugio / Ocupación informal'
-}
-
 # --- PROCEDIMIENTO ROBUSTO DE NORMALIZACIÓN Y LIMPIEZA KOBO ---
 def find_col(df, keywords):
     for col in df.columns:
@@ -191,7 +179,7 @@ col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
-# Detección flexible de Pregunta 22 (Tenencia de vivienda) y variables de cuartos
+# Búsqueda flexible de Pregunta 22 (Tenencia de vivienda) y variables de cuartos
 col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita'])
 col_cuartos = find_col(df_raw, ['cuartos', 'habitaciones', 'dormir'])
 col_personas_viv = find_col(df_raw, ['personas_vivienda', 'total_personas'])
@@ -243,14 +231,19 @@ df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 
 df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['No Especificado', 'No especificado', 'No Posee', 'No posee'] else 'No')
 df_clean['gestantes_filtro'] = df_clean['gestantes_val'].apply(lambda x: 'Sí (Con Gestantes)' if x > 0 else 'No')
 
-# Limpieza y mapeo robusto para Tenencia de Vivienda (Pregunta 22)
+# Limpieza y mapeo flexible y robusto para Tenencia de Vivienda (Pregunta 22 por subcadenas)
 def limpiar_tenencia(val):
     if pd.isna(val):
         return 'No especificado'
     v_str = str(val).strip().lower()
-    for k, v in MAPA_TENENCIA.items():
-        if k in v_str:
-            return v
+    if 'prop' in v_str:
+        return 'Propia'
+    elif 'alquil' in v_str:
+        return 'Alquilada'
+    elif 'ced' in v_str or 'prest' in v_str:
+        return 'Cedida / Prestada'
+    elif 'refug' in v_str or 'ocup' in v_str or 'informal' in v_str:
+        return 'Refugio / Ocupación informal'
     return 'No especificado'
 
 df_clean['tenencia_clean'] = df_raw[col_tenencia].apply(limpiar_tenencia) if col_tenencia else 'No especificado'
@@ -524,7 +517,7 @@ with tab1:
 
 with tab2:
     # =========================================================================
-    # MÓDULO 2: VIVIENDA Y WASH (Corrección de datos y cálculo de hacinamiento)
+    # MÓDULO 2: VIVIENDA Y WASH (Con limpieza robusta por subcadenas)
     # =========================================================================
     st.subheader("Condiciones de Vivienda y WASH")
     st.markdown("Análisis detallado de tenencia de la vivienda, hacinamiento crítico según metodología INE y acceso a agua, saneamiento e higiene (WASH).")
@@ -535,15 +528,7 @@ with tab2:
         st.markdown("#### Condición de Propiedad / Tenencia de la Vivienda (Pregunta 22)")
         categorias_oficiales_tenencia = ['Propia', 'Alquilada', 'Cedida / Prestada', 'Refugio / Ocupación informal']
         
-        if col_tenencia:
-            tenencia_counts = df_filtered['tenencia_clean'].value_counts().reindex(categorias_oficiales_tenencia, fill_value=0).reset_index()
-        else:
-            # Fallback seguro si la columna no se mapea automáticamente para mostrar datos de prueba reales
-            tenencia_counts = pd.DataFrame({
-                'Condición de Tenencia': categorias_oficiales_tenencia,
-                'Cantidad': [1262, 72, 271, 16] if len(df_filtered) > 1000 else [int(len(df_filtered)*0.7), int(len(df_filtered)*0.1), int(len(df_filtered)*0.18), int(len(df_filtered)*0.02)]
-            })
-
+        tenencia_counts = df_filtered['tenencia_clean'].value_counts().reindex(categorias_oficiales_tenencia, fill_value=0).reset_index()
         tenencia_counts.columns = ['Condición de Tenencia', 'Cantidad']
         tot_ten = tenencia_counts['Cantidad'].sum()
         tenencia_counts['Porcentaje'] = (tenencia_counts['Cantidad'] / (tot_ten if tot_ten > 0 else 1)) * 100
@@ -567,9 +552,11 @@ with tab2:
         st.plotly_chart(fig_hac, use_container_width=True)
 
     prom_cuartos_hogar = df_filtered['cuartos_dormir_val'].mean()
-    # Cálculo correcto del porcentaje de hogares en hacinamiento crítico para la métrica
-    count_hac_critico = df_filtered['hacinamiento_critico'].str.contains('Crítico').sum()
-    pct_hacinamiento_critico = (count_hac_critico / (len(df_filtered) if len(df_filtered) > 0 else 1)) * 100
+    
+    # Cálculo preciso del porcentaje de hacinamiento crítico para la métrica inferior
+    match_critico = hac_counts[hac_counts['Clasificación Hacinamiento'].str.contains('Crítico', na=False)]
+    count_hac_critico = match_critico['Cantidad'].values[0] if not match_critico.empty else 0
+    pct_hacinamiento_critico = (count_hac_critico / (tot_hac if tot_hac > 0 else 1)) * 100
 
     mv1, mv2, mv3 = st.columns(3)
     mv1.metric("Promedio Personas por Hogar", f"{avg_hogar:.2f}")
