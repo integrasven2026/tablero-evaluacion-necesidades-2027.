@@ -183,8 +183,10 @@ col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivie
 col_cuartos = find_col(df_raw, ['cuartos', 'habitaciones', 'dormir'])
 col_personas_viv = find_col(df_raw, ['personas_vivienda', 'total_personas'])
 
-col_agua_fuente = find_col(df_raw, ['fuente_agua', 'agua_beber'])
-col_agua_frec = find_col(df_raw, ['frecuencia_agua', 'frecuencia_servicio_agua'])
+# Detección de Pregunta 26 (Fuentes de Agua) y Pregunta 27 (Frecuencia de Agua)
+col_agua_fuente = find_col(df_raw, ['26', 'fuentes_de_agua', 'principales_fuentes_de_agua', 'fuente_agua'])
+col_agua_frec = find_col(df_raw, ['27', 'frecuencia', 'frecuencia_reciben_agua', 'frecuencia_servicio_agua'])
+
 col_agua_suf = find_col(df_raw, ['suficiente_agua', 'agua_suficiente'])
 col_agua_trat = find_col(df_raw, ['tratamiento_agua', 'trata_agua'])
 col_tipo_trat = find_col(df_raw, ['tipo_tratamiento', 'metodo_tratamiento'])
@@ -280,9 +282,42 @@ df_clean['total_personas_hogar'] = df_clean['total_personas_hogar'].apply(lambda
 df_clean['indice_hacinamiento'] = df_clean['total_personas_hogar'] / df_clean['cuartos_dormir_val']
 df_clean['hacinamiento_critico'] = df_clean['indice_hacinamiento'].apply(lambda x: 'Hacinamiento Crítico (>3 hab/cuarto)' if x > 3.0 else 'Sin Hacinamiento Crítico (<=3)')
 
-# Limpieza variables WASH
-df_clean['fuente_agua_clean'] = df_raw[col_agua_fuente].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_agua_fuente else 'No especificado'
-df_clean['frecuencia_agua_clean'] = df_raw[col_agua_frec].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_agua_frec else 'No especificado'
+# Limpieza robusta para Fuentes de Agua (Pregunta 26 - selección múltiple/única)
+def limpiar_fuente_agua(val):
+    if pd.isna(val):
+        return 'No especificado'
+    v_str = str(val).strip().lower()
+    if 'red' in v_str or 'tubería' in v_str or 'acueducto' in v_str:
+        return 'Red de tubería (acueducto)'
+    elif 'pozo' in v_str or 'manantial' in v_str:
+        return 'Pozo subterráneo / Manantial'
+    elif 'cisterna' in v_str or 'camión' in v_str:
+        return 'Camión cisterna'
+    elif 'embotellada' in v_str or 'botellón' in v_str or 'botellon' in v_str:
+        return 'Agua embotellada / Botellón'
+    elif 'otra' in v_str:
+        return 'Otra fuente'
+    return str(val).strip().title()
+
+df_clean['fuente_agua_clean'] = df_raw[col_agua_fuente].apply(limpiar_fuente_agua) if col_agua_fuente else 'No especificado'
+
+# Limpieza robusta para Frecuencia del Servicio de Agua (Pregunta 27)
+def limpiar_frecuencia_agua(val):
+    if pd.isna(val):
+        return 'No especificado'
+    v_str = str(val).strip().lower()
+    if 'diario' in v_str or 'continuo' in v_str:
+        return 'Diario (continuo)'
+    elif 'varios' in v_str:
+        return 'Varios días a la semana'
+    elif 'una' in v_str and 'semana' in v_str:
+        return 'Una vez a la semana'
+    elif '15' in v_str or 'más' in v_str or 'mas' in v_str:
+        return 'Cada 15 días o más'
+    return str(val).strip().title()
+
+df_clean['frecuencia_agua_clean'] = df_raw[col_agua_frec].apply(limpiar_frecuencia_agua) if col_agua_frec else 'No especificado'
+
 df_clean['suficiente_agua_clean'] = df_raw[col_agua_suf].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if col_agua_suf else 'No especificado'
 df_clean['tratamiento_agua_clean'] = df_raw[col_agua_trat].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if col_agua_trat else 'No especificado'
 df_clean['tipo_tratamiento_clean'] = df_raw[col_tipo_trat].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_tipo_trat else 'No especificado'
@@ -451,7 +486,6 @@ with tab1:
             'Cantidad': [-hombres_0_17, -hombres_18_49, -hombres_50_plus, mujeres_0_17, mujeres_18_49, mujeres_50_plus]
         })
         pyramid_data['Porcentaje'] = (pyramid_data['ValorAbs'] / total_pob_fam) * 100
-        # CORREGIDO: f-string continuo en una sola línea sin saltos de línea
         pyramid_data['TextoEtiqueta'] = pyramid_data.apply(lambda row: f"{int(row['ValorAbs']):,} ({row['Porcentaje']:.1f}%)", axis=1)
 
         fig_pyramid = px.bar(
@@ -584,7 +618,7 @@ with tab2:
     col_w1, col_w2 = st.columns(2)
 
     with col_w1:
-        st.markdown("#### 3 Principales Fuentes de Agua para Beber")
+        st.markdown("#### 5 Principales Fuentes de Agua para Beber (Pregunta 26)")
         agua_fuente_counts = df_filtered['fuente_agua_clean'].value_counts().head(5).reset_index()
         agua_fuente_counts.columns = ['Fuente de Agua', 'Cantidad']
         tot_agua = agua_fuente_counts['Cantidad'].sum()
@@ -596,8 +630,9 @@ with tab2:
         st.plotly_chart(fig_fuente, use_container_width=True)
 
     with col_w2:
-        st.markdown("#### Frecuencia de Recepción de Agua (Acueducto / Cisterna)")
-        agua_frec_counts = df_filtered['frecuencia_agua_clean'].value_counts().reset_index()
+        st.markdown("#### Frecuencia de Recepción de Agua (Pregunta 27)")
+        categorias_oficiales_frec = ['Diario (continuo)', 'Varios días a la semana', 'Una vez a la semana', 'Cada 15 días o más']
+        agua_frec_counts = df_filtered['frecuencia_agua_clean'].value_counts().reindex(categorias_oficiales_frec, fill_value=0).reset_index()
         agua_frec_counts.columns = ['Frecuencia del Servicio', 'Cantidad']
         tot_frec = agua_frec_counts['Cantidad'].sum()
         agua_frec_counts['Porcentaje'] = (agua_frec_counts['Cantidad'] / (tot_frec if tot_frec > 0 else 1)) * 100
@@ -605,7 +640,7 @@ with tab2:
 
         fig_frec = px.bar(agua_frec_counts, x='Frecuencia del Servicio', y='Cantidad', text='Etiqueta', color_discrete_sequence=[COLOR_AZUL_OSCURO], title="Frecuencia del Suministro de Agua")
         fig_frec.update_traces(textposition='outside')
-        fig_frec.update_layout(xaxis_tickangle=-25)
+        fig_frec.update_layout(xaxis_tickangle=-15)
         st.plotly_chart(fig_frec, use_container_width=True)
 
     col_w3, col_w4 = st.columns(2)
