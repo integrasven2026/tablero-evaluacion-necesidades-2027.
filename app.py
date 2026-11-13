@@ -183,7 +183,6 @@ col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivie
 col_cuartos = find_col(df_raw, ['cuartos', 'habitaciones', 'dormir'])
 col_personas_viv = find_col(df_raw, ['personas_vivienda', 'total_personas'])
 
-# Búsqueda precisa de Pregunta 26 (Fuentes de Agua) y Pregunta 27 (Frecuencia de Agua)
 col_agua_fuente = find_col(df_raw, ['26', 'fuentes_de_agua', 'principales_fuentes_de_agua', 'fuente_agua'])
 col_agua_frec = find_col(df_raw, ['27', 'frecuencia', 'frecuencia_reciben_agua', 'frecuencia_servicio_agua'])
 
@@ -229,67 +228,4 @@ df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce'
 
 df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
 df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 'Sí (Pueblo Indígena)' if x not in ['No Especificado', 'No especificado'] else 'No')
-df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['No Especificado', 'No especificado', 'No Posee', 'No posee'] else 'No')
-df_clean['gestantes_filtro'] = df_clean['gestantes_val'].apply(lambda x: 'Sí (Con Gestantes)' if x > 0 else 'No')
-
-def limpiar_tenencia(val):
-    if pd.isna(val):
-        return 'No especificado'
-    v_str = str(val).strip().lower()
-    if v_str in ['1', 'propia', 'prop']:
-        return 'Propia'
-    elif v_str in ['2', 'alquilada', 'alquiler', 'alquil']:
-        return 'Alquilada'
-    elif v_str in ['3', 'cedida', 'prestada', 'cedida / prestada', 'ced', 'prest']:
-        return 'Cedida / Prestada'
-    elif v_str in ['4', 'refugio', 'ocupacion', 'informal', 'refugio / ocupacion informal']:
-        return 'Refugio / Ocupación informal'
-    
-    if 'prop' in v_str:
-        return 'Propia'
-    elif 'alquil' in v_str or 'alquiler' in v_str:
-        return 'Alquilada'
-    elif 'ced' in v_str or 'prest' in v_str:
-        return 'Cedida / Prestada'
-    elif 'refug' in v_str or 'ocup' in v_str or 'informal' in v_str:
-        return 'Refugio / Ocupación informal'
-    return 'No especificado'
-
-df_clean['tenencia_clean'] = df_raw[col_tenencia].apply(limpiar_tenencia) if col_tenencia else 'No especificado'
-df_clean['cuartos_dormir_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(1) if col_cuartos else 1
-df_clean['cuartos_dormir_val'] = df_clean['cuartos_dormir_val'].apply(lambda x: 1 if x < 1 else x)
-
-cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
-for col_num in cols_num_familia:
-    target_col = col_num
-    if col_num not in df_clean.columns:
-        match = find_col(df_clean, [col_num])
-        if match:
-            target_col = match
-    
-    if target_col in df_clean.columns:
-        df_clean[col_num] = pd.to_numeric(df_clean[target_col], errors='coerce').fillna(0)
-    else:
-        df_clean[col_num] = 0
-
-df_clean['total_personas_hogar'] = (
-    df_clean['i1'] + df_clean['i2'] + df_clean['i3'] +
-    df_clean['i12'] + df_clean['i13'] + df_clean['i14'] +
-    df_clean['i23'] + df_clean['i24'] + df_clean['i25']
-)
-df_clean['total_personas_hogar'] = df_clean['total_personas_hogar'].apply(lambda x: 1 if x == 0 else x)
-
-df_clean['indice_hacinamiento'] = df_clean['total_personas_hogar'] / df_clean['cuartos_dormir_val']
-df_clean['hacinamiento_critico'] = df_clean['indice_hacinamiento'].apply(lambda x: 'Hacinamiento Crítico (>3 hab/cuarto)' if x > 3.0 else 'Sin Hacinamiento Crítico (<=3)')
-
-# --- LIMPIEZA ROBUSTA PREGUNTA 26: FUENTES DE AGUA ---
-def limpiar_fuente_agua(val):
-    if pd.isna(val):
-        return 'No especificado'
-    v_str = str(val).strip().lower()
-    if v_str in ['1', 'red', 'tubería', 'acueducto', 'red de tubería (acueducto)']:
-        return 'Red de tubería (acueducto)'
-    elif v_str in ['2', 'pozo', 'manantial', 'pozo subterráneo / manantial']:
-        return 'Pozo subterráneo / Manantial'
-    elif v_str in ['3', 'cisterna', 'camión', 'camión cisterna']:
-        return 'Camión
+df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['
