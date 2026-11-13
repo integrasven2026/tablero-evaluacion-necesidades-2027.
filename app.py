@@ -179,6 +179,25 @@ col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
+# Nuevas variables mapeadas para Vivienda y WASH
+col_tenencia = find_col(df_raw, ['tenencia_vivienda', 'propiedad_vivienda', 'condicion_propiedad'])
+col_cuartos = find_col(df_raw, ['cuartos_dormir', 'num_cuartos', 'habitaciones_dormir'])
+col_personas_viv = find_col(df_raw, ['personas_vivienda', 'total_personas_vivienda'])
+
+col_agua_fuente = find_col(df_raw, ['fuente_agua', 'agua_beber'])
+col_agua_frec = find_col(df_raw, ['frecuencia_agua', 'frecuencia_servicio_agua'])
+col_agua_suf = find_col(df_raw, ['suficiente_agua', 'agua_suficiente'])
+col_agua_trat = find_col(df_raw, ['tratamiento_agua', 'trata_agua'])
+col_tipo_trat = find_col(df_raw, ['tipo_tratamiento', 'metodo_tratamiento'])
+col_almacena_agua = find_col(df_raw, ['almacena_agua', 'almacenamiento_agua'])
+col_tipo_alm = find_col(df_raw, ['tipo_almacenamiento', 'recipiente_agua'])
+col_filtro_agua = find_col(df_raw, ['filtro_agua', 'posee_filtro'])
+col_tipo_filtro = find_col(df_raw, ['tipo_filtro'])
+col_enfermedades = find_col(df_raw, ['enfermedades_hidricas', 'enfermedades'])
+col_jabon = find_col(df_raw, ['acceso_jabon', 'jabon_manos'])
+col_higiene_men = find_col(df_raw, ['higiene_menstrual', 'productos_menstruales'])
+col_basura = find_col(df_raw, ['disposicion_basura', 'desecho_basura'])
+
 df_clean = df_raw.copy()
 
 def limpiar_codigo(val, diccionario):
@@ -212,6 +231,11 @@ df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 
 df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['No Especificado', 'No especificado', 'No Posee', 'No posee'] else 'No')
 df_clean['gestantes_filtro'] = df_clean['gestantes_val'].apply(lambda x: 'Sí (Con Gestantes)' if x > 0 else 'No')
 
+# Limpieza y preparación de variables de Vivienda y Hacinamiento
+df_clean['tenencia_clean'] = df_raw[col_tenencia].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_tenencia else 'No especificado'
+df_clean['cuartos_dormir_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(1) if col_cuartos else 1
+df_clean['cuartos_dormir_val'] = df_clean['cuartos_dormir_val'].apply(lambda x: 1 if x < 1 else x)
+
 cols_num_familia = ['i1', 'i2', 'i3', 'i12', 'i13', 'i14', 'i23', 'i24', 'i25', 'personas_vivienda']
 for col_num in cols_num_familia:
     target_col = col_num
@@ -224,6 +248,33 @@ for col_num in cols_num_familia:
         df_clean[col_num] = pd.to_numeric(df_clean[target_col], errors='coerce').fillna(0)
     else:
         df_clean[col_num] = 0
+
+# Total personas por hogar para cálculo de hacinamiento INE
+df_clean['total_personas_hogar'] = (
+    df_clean['i1'] + df_clean['i2'] + df_clean['i3'] +
+    df_clean['i12'] + df_clean['i13'] + df_clean['i14'] +
+    df_clean['i23'] + df_clean['i24'] + df_clean['i25']
+)
+df_clean['total_personas_hogar'] = df_clean['total_personas_hogar'].apply(lambda x: 1 if x == 0 else x)
+
+# Índice de Hacinamiento INE = Total personas / Cuartos para dormir
+df_clean['indice_hacinamiento'] = df_clean['total_personas_hogar'] / df_clean['cuartos_dormir_val']
+df_clean['hacinamiento_critico'] = df_clean['indice_hacinamiento'].apply(lambda x: 'Hacinamiento Crítico (>3 hab/cuarto)' if x > 3.0 else 'Sin Hacinamiento Crítico (<=3)')
+
+# Limpieza variables WASH
+df_clean['fuente_agua_clean'] = df_raw[col_agua_fuente].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_agua_fuente else 'No especificado'
+df_clean['frecuencia_agua_clean'] = df_raw[col_agua_frec].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_agua_frec else 'No especificado'
+df_clean['suficiente_agua_clean'] = df_raw[col_agua_suf].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if col_agua_suf else 'No especificado'
+df_clean['tratamiento_agua_clean'] = df_raw[col_agua_trat].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if col_agua_trat else 'No especificado'
+df_clean['tipo_tratamiento_clean'] = df_raw[col_tipo_trat].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_tipo_trat else 'No especificado'
+df_clean['almacena_agua_clean'] = df_raw[col_almacena_agua].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if col_almacena_agua else 'No especificado'
+df_clean['tipo_almacenamiento_clean'] = df_raw[col_tipo_alm].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_tipo_alm else 'No especificado'
+df_clean['filtro_agua_clean'] = df_raw[col_filtro_agua].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if col_filtro_agua else 'No especificado'
+df_clean['tipo_filtro_clean'] = df_raw[col_tipo_filtro].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_tipo_filtro else 'No especificado'
+df_clean['enfermedades_clean'] = df_raw[col_enfermedades].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'Ninguna') if col_enfermedades else 'Ninguna'
+df_clean['jabon_clean'] = df_raw[col_jabon].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if col_jabon else 'No'
+df_clean['higiene_men_clean'] = df_raw[col_higiene_men].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if col_higiene_men else 'No'
+df_clean['basura_clean'] = df_raw[col_basura].apply(lambda x: str(x).strip().title() if not pd.isna(x) else 'No especificado') if col_basura else 'No especificado'
 
 # --- SECCIÓN 1: FILTROS LATERALES EN CASCADA Y LOGO DEL CONSORCIO ---
 if os.path.exists("integras.jpg"):
@@ -292,7 +343,7 @@ if viv_col:
     valid_hogares = valid_hogares[valid_hogares > 0]
     avg_hogar = valid_hogares.mean() if not valid_hogares.empty else 0.0
 else:
-    avg_hogar = 0.0
+    avg_hogar = df_filtered['total_personas_hogar'].mean() if not df_filtered.empty else 0.0
 
 # KPIs Principales (4 columnas arriba)
 col1, col2, col3, col4 = st.columns(4)
@@ -455,6 +506,183 @@ with tab1:
         st.plotly_chart(fig_disc, use_container_width=True)
     else:
         st.info("No hay registros de discapacidad para los filtros seleccionados.")
+
+    # =========================================================================
+    # NUEVO MÓDULO 2: CONDICIONES DE VIVIENDA Y WASH
+    # =========================================================================
+    st.markdown("---")
+    st.markdown("## Módulo 2: Condiciones de Vivienda y WASH")
+    st.markdown("Análisis detallado de tenencia de la vivienda, hacinamiento crítico según metodología INE y acceso a agua, saneamiento e higiene (WASH).")
+
+    # Fila 1: Tenencia de Vivienda e Indicadores de Hacinamiento
+    col_v1, col_v2 = st.columns(2)
+    
+    with col_v1:
+        st.markdown("#### Condición de Propiedad / Tenencia de la Vivienda")
+        tenencia_counts = df_filtered['tenencia_clean'].value_counts().reset_index()
+        tenencia_counts.columns = ['Condición de Tenencia', 'Cantidad']
+        tot_ten = tenencia_counts['Cantidad'].sum()
+        tenencia_counts['Porcentaje'] = (tenencia_counts['Cantidad'] / (tot_ten if tot_ten > 0 else 1)) * 100
+        tenencia_counts['Etiqueta'] = tenencia_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+        
+        fig_ten = px.bar(tenencia_counts, x='Condición de Tenencia', y='Cantidad', text='Etiqueta', color_discrete_sequence=[COLOR_AZUL_OSCURO], title="Tenencia de la Vivienda (Absoluto y Porcentaje)")
+        fig_ten.update_traces(textposition='outside')
+        fig_ten.update_layout(xaxis_tickangle=-25)
+        st.plotly_chart(fig_ten, use_container_width=True)
+
+    with col_v2:
+        st.markdown("#### Índice de Hacinamiento INE (Necesidades Básicas Insatisfechas)")
+        hac_counts = df_filtered['hacinamiento_critico'].value_counts().reset_index()
+        hac_counts.columns = ['Clasificación Hacinamiento', 'Cantidad']
+        tot_hac = hac_counts['Cantidad'].sum()
+        hac_counts['Porcentaje'] = (hac_counts['Cantidad'] / (tot_hac if tot_hac > 0 else 1)) * 100
+        hac_counts['Etiqueta'] = hac_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+        
+        fig_hac = px.pie(hac_counts, names='Clasificación Hacinamiento', values='Cantidad', title="Proporción de Hogares en Hacinamiento Crítico (>3 personas/cuarto)", color_discrete_sequence=[COLOR_TURQUESA, COLOR_NARANJA])
+        fig_hac.update_traces(textinfo='percent+label+value')
+        st.plotly_chart(fig_hac, use_container_width=True)
+
+    # Métricas clave de Vivienda
+    prom_personas_hogar = df_filtered['total_personas_hogar'].mean()
+    prom_cuartos_hogar = df_filtered['cuartos_dormir_val'].mean()
+    pct_hacinamiento_critico = (df_filtered['hacinamiento_critico'].str.contains('Crítico').sum() / (len(df_filtered) if len(df_filtered) > 0 else 1)) * 100
+
+    mv1, mv2, mv3 = st.columns(3)
+    mv1.metric("Promedio Personas por Hogar", f"{prom_personas_hogar:.2f}")
+    mv2.metric("Promedio Cuartos para Dormir", f"{prom_cuartos_hogar:.2f}")
+    mv3.metric("% Hogares en Hacinamiento Crítico", f"{pct_hacinamiento_critico:.1f}%")
+
+    st.markdown("---")
+    st.markdown("### Componente WASH (Agua, Saneamiento e Higiene)")
+
+    # Fila 2 WASH: Fuentes de agua y Frecuencia del servicio
+    col_w1, col_w2 = st.columns(2)
+
+    with col_w1:
+        st.markdown("#### 3 Principales Fuentes de Agua para Beber")
+        agua_fuente_counts = df_filtered['fuente_agua_clean'].value_counts().head(5).reset_index()
+        agua_fuente_counts.columns = ['Fuente de Agua', 'Cantidad']
+        tot_agua = agua_fuente_counts['Cantidad'].sum()
+        agua_fuente_counts['Porcentaje'] = (agua_fuente_counts['Cantidad'] / (tot_agua if tot_agua > 0 else 1)) * 100
+        agua_fuente_counts['Etiqueta'] = agua_fuente_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+
+        fig_fuente = px.bar(agua_fuente_counts, x='Cantidad', y='Fuente de Agua', orientation='h', text='Etiqueta', color_discrete_sequence=[COLOR_TURQUESA], title="Fuentes Principales de Agua")
+        fig_fuente.update_traces(textposition='outside')
+        st.plotly_chart(fig_fuente, use_container_width=True)
+
+    with col_w2:
+        st.markdown("#### Frecuencia de Recepción de Agua (Acueducto / Cisterna)")
+        agua_frec_counts = df_filtered['frecuencia_agua_clean'].value_counts().reset_index()
+        agua_frec_counts.columns = ['Frecuencia del Servicio', 'Cantidad']
+        tot_frec = agua_frec_counts['Cantidad'].sum()
+        agua_frec_counts['Porcentaje'] = (agua_frec_counts['Cantidad'] / (tot_frec if tot_frec > 0 else 1)) * 100
+        agua_frec_counts['Etiqueta'] = agua_frec_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+
+        fig_frec = px.bar(agua_frec_counts, x='Frecuencia del Servicio', y='Cantidad', text='Etiqueta', color_discrete_sequence=[COLOR_AZUL_OSCURO], title="Frecuencia del Suministro de Agua")
+        fig_frec.update_traces(textposition='outside')
+        fig_frec.update_layout(xaxis_tickangle=-25)
+        st.plotly_chart(fig_frec, use_container_width=True)
+
+    # Fila 3 WASH: Suficiencia, Tratamiento y Almacenamiento
+    col_w3, col_w4 = st.columns(2)
+
+    with col_w3:
+        st.markdown("#### Tratamiento y Suficiencia del Agua")
+        pct_suficiente = (df_filtered['suficiente_agua_clean'] == 'Sí').mean() * 100
+        pct_tratamiento = (df_filtered['tratamiento_agua_clean'] == 'Sí').mean() * 100
+        pct_almacena = (df_filtered['almacena_agua_clean'] == 'Sí').mean() * 100
+        pct_filtro = (df_filtered['filtro_agua_clean'] == 'Sí').mean() * 100
+
+        df_kpi_wash = pd.DataFrame({
+            'Indicador WASH': [
+                'Reciben suficiente agua', 
+                'Realizan tratamiento al agua', 
+                'Almacenan agua', 
+                'Poseen filtro de agua'
+            ],
+            'Porcentaje (%)': [pct_suficiente, pct_tratamiento, pct_almacena, pct_filtro]
+        })
+
+        fig_kpi_w = px.bar(df_kpi_wash, x='Porcentaje (%)', y='Indicador WASH', orientation='h', text=df_kpi_wash['Porcentaje.' if 'Porcentaje.' in df_kpi_wash.columns else 'Porcentaje (%)'].apply(lambda x: f"{x:.1f}%"), color_discrete_sequence=[COLOR_MORADO], title="Indicadores Clave WASH (%)")
+        fig_kpi_w.update_traces(textposition='outside')
+        fig_kpi_w.update_layout(xaxis_range=[0, 100])
+        st.plotly_chart(fig_kpi_w, use_container_width=True)
+
+    with col_w4:
+        st.markdown("#### Tipos de Tratamiento del Agua")
+        trat_counts = df_filtered['tipo_tratamiento_clean'].value_counts().reset_index()
+        trat_counts.columns = ['Tipo de Tratamiento', 'Cantidad']
+        tot_tr = trat_counts['Cantidad'].sum()
+        trat_counts['Porcentaje'] = (trat_counts['Cantidad'] / (tot_tr if tot_tr > 0 else 1)) * 100
+        trat_counts['Etiqueta'] = trat_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+
+        fig_trat = px.pie(trat_counts, names='Tipo de Tratamiento', values='Cantidad', title="Métodos de Tratamiento Utilizados", color_discrete_sequence=[COLOR_AZUL_OSCURO, COLOR_TURQUESA, COLOR_NARANJA, COLOR_MORADO])
+        fig_trat.update_traces(textinfo='percent+label+value')
+        st.plotly_chart(fig_trat, use_container_width=True)
+
+    # Fila 4 WASH: Almacenamiento, Filtros específicos, Enfermedades y Basura
+    col_w5, col_w6 = st.columns(2)
+
+    with col_w5:
+        st.markdown("#### Tipos de Almacenamiento de Agua")
+        alm_counts = df_filtered['tipo_almacenamiento_clean'].value_counts().reset_index()
+        alm_counts.columns = ['Tipo Almacenamiento', 'Cantidad']
+        tot_al = alm_counts['Cantidad'].sum()
+        alm_counts['Porcentaje'] = (alm_counts['Cantidad'] / (tot_al if tot_al > 0 else 1)) * 100
+        alm_counts['Etiqueta'] = alm_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+
+        fig_alm = px.bar(alm_counts, x='Tipo Almacenamiento', y='Cantidad', text='Etiqueta', color_discrete_sequence=[COLOR_TURQUESA], title="Recipientes y Tipos de Almacenamiento")
+        fig_alm.update_traces(textposition='outside')
+        fig_alm.update_layout(xaxis_tickangle=-25)
+        st.plotly_chart(fig_alm, use_container_width=True)
+
+    with col_w6:
+        st.markdown("#### Tipos de Filtros de Agua")
+        filtro_counts = df_filtered['tipo_filtro_clean'].value_counts().reset_index()
+        filtro_counts.columns = ['Tipo de Filtro', 'Cantidad']
+        tot_fi = filtro_counts['Cantidad'].sum()
+        filtro_counts['Porcentaje'] = (filtro_counts['Cantidad'] / (tot_fi if tot_fi > 0 else 1)) * 100
+        filtro_counts['Etiqueta'] = filtro_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+
+        fig_fil = px.bar(filtro_counts, x='Tipo de Filtro', y='Cantidad', text='Etiqueta', color_discrete_sequence=[COLOR_AZUL_OSCURO], title="Desglose por Tipos de Filtros")
+        fig_fil.update_traces(textposition='outside')
+        st.plotly_chart(fig_fil, use_container_width=True)
+
+    # Fila 5 WASH: Enfermedades Hídricas y Disposición de Basura
+    col_w7, col_w8 = st.columns(2)
+
+    with col_w7:
+        st.markdown("#### Reporte de Enfermedades Hídricas")
+        enf_counts = df_filtered['enfermedades_clean'].value_counts().reset_index()
+        enf_counts.columns = ['Enfermedad', 'Cantidad']
+        tot_en = enf_counts['Cantidad'].sum()
+        enf_counts['Porcentaje'] = (enf_counts['Cantidad'] / (tot_en if tot_en > 0 else 1)) * 100
+        enf_counts['Etiqueta'] = enf_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+
+        fig_enf = px.bar(enf_counts, x='Enfermedad', y='Cantidad', text='Etiqueta', color_discrete_sequence=[COLOR_NARANJA], title="Prevalencia de Enfermedades Hídricas")
+        fig_enf.update_traces(textposition='outside')
+        fig_enf.update_layout(xaxis_tickangle=-25)
+        st.plotly_chart(fig_enf, use_container_width=True)
+
+    with col_w8:
+        st.markdown("#### Disposición y Desecho de Basura")
+        basura_counts = df_filtered['basura_clean'].value_counts().reset_index()
+        basura_counts.columns = ['Método de Desecho', 'Cantidad']
+        tot_ba = basura_counts['Cantidad'].sum()
+        basura_counts['Porcentaje'] = (basura_counts['Cantidad'] / (tot_ba if tot_ba > 0 else 1)) * 100
+        basura_counts['Etiqueta'] = basura_counts.apply(lambda r: f"{int(r['Cantidad']):,} ({r['Porcentaje']:.1f}%)", axis=1)
+
+        fig_bas = px.pie(basura_counts, names='Método de Desecho', values='Cantidad', title="Cómo se Desecha la Basura en los Hogares", color_discrete_sequence=[COLOR_AZUL_OSCURO, COLOR_TURQUESA, COLOR_MORADO, COLOR_NARANJA])
+        fig_bas.update_traces(textinfo='percent+label+value')
+        st.plotly_chart(fig_bas, use_container_width=True)
+
+    # Indicadores rápidos de Jabón e Higiene Menstrual
+    pct_jabon = (df_filtered['jabon_clean'] == 'Sí').mean() * 100
+    pct_higiene_men = (df_filtered['higiene_men_clean'] == 'Sí').mean() * 100
+
+    mw1, mw2 = st.columns(2)
+    mw1.metric("% Hogares con Acceso a Jabón para Lavado de Manos", f"{pct_jabon:.1f}%")
+    mw2.metric("% Mujeres con Acceso a Productos de Higiene Menstrual", f"{pct_higiene_men:.1f}%")
 
 with tab2:
     st.subheader("Características Socioeconómicas y Medios de Vida")
