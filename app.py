@@ -161,6 +161,23 @@ MAPA_NACIONALIDAD = {
     'venezolana': 'Venezolana', 'extranjera': 'Extranjera'
 }
 
+# --- MAPAS ESPECÍFICOS WASH (Preguntas 26 y 27) ---
+MAPA_FUENTES_AGUA = {
+    'red_tuberias': 'Red de tubería (acueducto)',
+    'camion_cisterna': 'Camión cisterna',
+    'pozo_subterraneo': 'Pozo subterráneo / Manantial',
+    'agua_embotellada': 'Agua embotellada / Botellón',
+    'otra_fuente': 'Otra fuente',
+    'ns_nc': 'No sabe / No responde'
+}
+
+MAPA_FRECUENCIA_AGUA = {
+    'diario': 'Diario (continuo)',
+    'varios_dias': 'Varios días a la semana',
+    'una_vez': 'Una vez a la semana',
+    'cada_15_dias': 'Cada 15 días o más'
+}
+
 # --- FUNCIONES DE BÚSQUEDA ROBUSTA ---
 def find_col(df, keywords):
     for col in df.columns:
@@ -204,13 +221,9 @@ col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivie
 col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda', '_24'])
 col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir', '_25'])
 
-col_agua_fuente = find_col(df_raw, ['26', 'fuentes_de_agua', 'principales_fuentes_de_agua', 'fuente_agua'])
-col_agua_frec = find_col(df_raw, ['27', 'frecuencia', 'frecuencia_reciben_agua', 'frecuencia_servicio_agua'])
-col_agua_beber = find_col_flexible(df_raw, ['agua_beber', 'utilizan_el_agua_para_beber', 'beber'])
-col_agua_suf = find_col_flexible(df_raw, ['suficiente_agua', 'agua_suficiente', 'suficiente'])
-col_agua_trat = find_col_flexible(df_raw, ['tratamiento_agua', 'trata_agua', 'realizan_tratamiento'])
-col_tipo_trat = find_col_flexible(df_raw, ['principal_tratamiento', 'tipo_tratamiento', 'como_trata'])
-col_problema_agua = find_col_flexible(df_raw, ['problema_agua', 'color_olor_sabor', 'calidad_agua'])
+# Campos WASH exactos (Preguntas 26 y 27)
+col_agua_fuente = find_col_flexible(df_raw, ['26', 'fuentes_de_agua', 'principales_fuentes_de_agua', 'fuente_agua'])
+col_agua_frec = find_col_flexible(df_raw, ['27', 'frecuencia', 'frecuencia_reciben_agua', 'frecuencia_servicio_agua'])
 
 df_clean = df_raw.copy()
 
@@ -293,13 +306,24 @@ df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(
 )
 
 df_clean['tenencia_clean'] = limpiar_texto_simple(col_tenencia)
-df_clean['agua_fuente_clean'] = limpiar_texto_simple(col_agua_fuente)
-df_clean['agua_frec_clean'] = limpiar_texto_simple(col_agua_frec)
-df_clean['agua_beber_clean'] = limpiar_texto_simple(col_agua_beber)
-df_clean['agua_suf_clean'] = limpiar_texto_simple(col_agua_suf)
-df_clean['agua_trat_clean'] = limpiar_texto_simple(col_agua_trat)
-df_clean['tipo_trat_clean'] = limpiar_texto_simple(col_tipo_trat)
-df_clean['problema_agua_clean'] = limpiar_texto_simple(col_problema_agua)
+
+# Limpieza estricta de las preguntas 26 y 27 (WASH)
+def limpiar_fuentes_agua(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip().lower()
+    # Si es selección múltiple en Kobo viene separada por espacios
+    partes = s.split()
+    etiquetas = []
+    for p in partes:
+        if p in MAPA_FUENTES_AGUA:
+            etiquetas.append(MAPA_FUENTES_AGUA[p])
+        else:
+            etiquetas.append(p.replace('_', ' ').capitalize())
+    return ", ".join(etiquetas) if etiquetas else 'No especificado'
+
+df_clean['agua_fuente_clean'] = df_raw[col_agua_fuente].apply(limpiar_fuentes_agua) if col_agua_fuente in df_raw.columns else 'No especificado'
+df_clean['agua_frec_clean'] = df_raw[col_agua_frec].apply(lambda x: limpiar_codigo(x, MAPA_FRECUENCIA_AGUA)) if col_agua_frec in df_raw.columns else 'No especificado'
 
 # --- BARRA LATERAL DE FILTROS ---
 st.sidebar.header("Filtros del Tablero")
@@ -408,7 +432,7 @@ with tab1:
         fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_edu, use_container_width=True)
 
-# TAB 2: VIVIENDA (Incluye Gráfico de Barras con Porcentajes y Cuadro de Sexo del Jefe/a de Hogar)
+# TAB 2: VIVIENDA
 with tab2:
     st.header("Vivienda y Habitabilidad")
     
@@ -426,7 +450,6 @@ with tab2:
 
     st.markdown("---")
 
-    # Sección: Sexo del Jefe/a de Hogar (Informante Principal) con porcentaje incorporado en barras
     st.subheader("Sexo del Jefe / Jefa de Hogar (Informante Principal)")
     jefe_col1, jefe_col2 = st.columns([2, 1])
     
@@ -440,7 +463,6 @@ with tab2:
         else:
             df_jefe_resumen['Porcentaje'] = 0.0
             
-        # Creamos una columna de etiqueta combinada (Valor y Porcentaje)
         df_jefe_resumen['Texto_Etiqueta'] = df_jefe_resumen['Total'].astype(str) + " (" + df_jefe_resumen['Porcentaje'].astype(str) + "%)"
         
         fig_jefe_bar = px.bar(
@@ -491,31 +513,45 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH
+# TAB 3: WASH (Configurado específicamente con Fuentes de Agua y Frecuencia)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     
     w1, w2 = st.columns(2)
     with w1:
-        st.subheader("Principales Fuentes de Agua del Hogar")
+        st.subheader("26. Principales Fuentes de Agua en su Hogar")
+        # Desglosamos las respuestas múltiples para graficar correctamente las frecuencias individuales de cada fuente
+        series_fuentes = df_filtered['agua_fuente_clean'].str.split(', ').explode()
+        df_fuentes_res = series_fuentes.value_counts().reset_index()
+        df_fuentes_res.columns = ['Fuente', 'Total']
+        
         fig_agua = px.bar(
-            df_filtered['agua_fuente_clean'].value_counts().head(10).reset_index(),
-            x='count', y='agua_fuente_clean', orientation='h', text_auto=True,
-            labels={'agua_fuente_clean': 'Fuente de Agua', 'count': 'Hogares'},
+            df_fuentes_res,
+            x='Total',
+            y='Fuente',
+            orientation='h',
+            text_auto=True,
+            labels={'Fuente': 'Fuente de Agua', 'Total': 'Hogares'},
             color_discrete_sequence=['#0077B6']
         )
-        fig_agua.update_layout(yaxis={'categoryorder': 'total ascending'})
+        fig_agua.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="")
         st.plotly_chart(fig_agua, use_container_width=True)
 
     with w2:
-        st.subheader("Frecuencia de Abastecimiento de Agua")
+        st.subheader("27. Frecuencia de Abastecimiento de Agua")
+        df_frec_res = df_filtered['agua_frec_clean'].value_counts().reset_index()
+        df_frec_res.columns = ['Frecuencia', 'Total']
+        
         fig_frec = px.bar(
-            df_filtered['agua_frec_clean'].value_counts().reset_index(),
-            x='count', y='agua_frec_clean', orientation='h', text_auto=True,
-            labels={'agua_frec_clean': 'Frecuencia', 'count': 'Hogares'},
+            df_frec_res,
+            x='Total',
+            y='Frecuencia',
+            orientation='h',
+            text_auto=True,
+            labels={'Frecuencia': 'Frecuencia de Servicio', 'Total': 'Hogares'},
             color_discrete_sequence=['#00B4D8']
         )
-        fig_frec.update_layout(yaxis={'categoryorder': 'total ascending'})
+        fig_frec.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="")
         st.plotly_chart(fig_frec, use_container_width=True)
 
 # TAB 4: BASE DE DATOS Y DESCARGA
@@ -523,7 +559,7 @@ with tab4:
     st.subheader("Vista Previa de Registros Limpios")
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
-        'comunidad_clean', 'sexo_clean', 'edu_clean', 'nacionalidad_clean',
+        'comunidad_clean', 'sexo_clean', 'agua_fuente_clean', 'agua_frec_clean',
         'discapacidad_clean', 'pueblo_indigena_clean', 'gestantes_val', 'hacinamiento_cat'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
