@@ -628,7 +628,7 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Ampliando con Preguntas 26 a la 38.1)
+# TAB 3: WASH (Sección completa de Agua, Saneamiento e Higiene)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     total_hogs = len(df_filtered)
@@ -823,7 +823,6 @@ with tab3:
 
     st.markdown("---")
 
-    # NUEVAS PREGUNTAS 35, 36, 37, 38 Y 38.1
     w11, w12 = st.columns(2)
     with w11:
         st.subheader("35. Acceso a jabón para lavado de manos")
@@ -838,16 +837,19 @@ with tab3:
         st.plotly_chart(fig_jabon, use_container_width=True)
 
     with w12:
+        # 36. ACCESO A HIGIENE MENSTRUAL (Métrica en valores absolutos y porcentajes)
         st.subheader("36. Acceso a productos de higiene menstrual")
         df_menstru_res = df_filtered['higiene_menstru_clean'].value_counts().reset_index()
         df_menstru_res.columns = ['Respuesta', 'Total']
         df_menstru_res['Porcentaje'] = (df_menstru_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_menstru_res['Texto_Etiqueta'] = df_menstru_res['Total'].astype(str) + " (" + df_menstru_res['Porcentaje'].astype(str) + "%)"
         
-        fig_menstru = px.bar(df_menstru_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#E07A5F', '#3D405B', '#81B29A'])
-        fig_menstru.update_traces(textposition='outside')
-        fig_menstru.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-        st.plotly_chart(fig_menstru, use_container_width=True)
+        cols_metrica = st.columns(len(df_menstru_res)) if len(df_menstru_res) > 0 else st.columns(1)
+        for idx, row in df_menstru_res.iterrows():
+            with cols_metrica[idx % len(cols_metrica)]:
+                st.metric(
+                    label=f"Hogares: {row['Respuesta']}",
+                    value=f"{row['Total']:,} ({row['Porcentaje']}%)"
+                )
 
     st.markdown("---")
 
@@ -889,7 +891,6 @@ with tab3:
 
     st.markdown("---")
 
-    # PREGUNTA 38.1 TIPO DE FILTRO
     st.subheader("38.1. ¿Qué tipo de filtro?")
     cols_tfiltro_kobo = [c for c in df_raw.columns if '38_1' in c or '38.1' in c or 'tipo_filtro' in c.lower() or 'gravedad' in c.lower()]
     conteo_tfiltro = {}
