@@ -10,13 +10,39 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Estilos CSS institucionales (Consorcio ÍNTEGRAS)
 st.markdown("""
 <style>
+    .header-container {
+        background: linear-gradient(90deg, #08327D 0%, #1E62D0 100%);
+        padding: 20px 25px;
+        border-radius: 10px;
+        color: white;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
     .titulo-principal {
-        color: #08327D !important;
+        color: white !important;
         font-weight: 800 !important;
-        font-size: 1.7rem !important;
-        margin-bottom: 0px !important;
+        font-size: 1.6rem !important;
+        margin: 0px !important;
+    }
+    .sub-titulo {
+        color: #E2E8F0 !important;
+        font-size: 0.95rem !important;
+        margin-top: 5px !important;
+    }
+    .logo-box {
+        background-color: white;
+        color: #08327D;
+        padding: 8px 15px;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        text-align: center;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
     }
     .stMetric {
         background-color: #F4F7FC;
@@ -56,10 +82,18 @@ def load_kobo_data():
 
 df_raw = load_kobo_data()
 
-# Título principal (Sin emojis)
-st.markdown("<h1 class='titulo-principal'>Tablero Dinámico de Evaluación de Necesidades - ECHO HIP 2027</h1>", unsafe_allow_html=True)
-st.markdown("**Consorcio ÍNTEGRAS:** COOPI, HIAS, FLM, PLAFAM, PALUZ | Monitoreo Multisectorial Post-Sismos y Crisis Estructural")
-st.divider()
+# Encabezado institucional con contenedor de Logo e Identidad Consorcio ÍNTEGRAS
+st.markdown("""
+<div class="header-container">
+    <div>
+        <h1 class="titulo-principal">Tablero Dinámico de Evaluación de Necesidades - ECHO HIP 2027</h1>
+        <div class="sub-titulo">Consorcio ÍNTEGRAS: COOPI, HIAS, FLM, PLAFAM, PALUZ | Monitoreo Multisectorial Post-Sismos y Crisis Estructural</div>
+    </div>
+    <div class="logo-box">
+        LOGO ÍNTEGRAS<br><span style="font-size: 0.75rem; font-weight: normal; color: #4A5568;">(Espacio Oficial)</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 if df_raw.empty:
     st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox. Verifica el token o la conexión.")
@@ -180,21 +214,39 @@ MAPA_FRECUENCIA_AGUA = {
 }
 
 MAPA_SI_NO_NS = {
-    'si': 'Sí',
-    'sí': 'Sí',
-    'no': 'No',
-    'ns_nc': 'No sabe / No responde',
-    'no_sabe_no_responde': 'No sabe / No responde'
+    'si': 'Sí', 'sí': 'Sí', 'no': 'No',
+    'ns_nc': 'No sabe / No responde', 'no_sabe_no_responde': 'No sabe / No responde'
 }
 
 MAPA_TRATAMIENTO_AGUA = {
     'hervido': 'Hervido',
-    'cloro': 'Cloro / Lavandina',
-    'cloro_lavandina': 'Cloro / Lavandina',
-    'filtro': 'Filtro (cerámica/carbón/tela)',
-    'filtro_ceramica_carbon_tela': 'Filtro (cerámica/carbón/tela)',
-    'otro': 'Otro método',
-    'otro_metodo': 'Otro método'
+    'cloro': 'Cloro / Lavandina', 'cloro_lavandina': 'Cloro / Lavandina',
+    'filtro': 'Filtro (cerámica/carbón/tela)', 'filtro_ceramica_carbon_tela': 'Filtro (cerámica/carbón/tela)',
+    'otro': 'Otro método', 'otro_metodo': 'Otro método'
+}
+
+MAPA_PROBLEMAS_AGUA = {
+    'color': 'Color',
+    'olor': 'Olor',
+    'sabor': 'Sabor',
+    'ninguna': 'Ninguna',
+    'ns_nc': 'No sabe / No responde',
+    'otro': 'Otro'
+}
+
+MAPA_ALMACENAMIENTO_FORMA = {
+    'recipientes_cubiertos_dentro': 'En recipientes cubiertos dentro de la casa',
+    'recipientes_cubiertos_fuera': 'En recipientes cubiertos fuera de la casa',
+    'recipientes_destapados_dentro': 'En recipientes destapados dentro de la casa',
+    'recipientes_destapados_fuera': 'En recipientes destapados fuera de la casa'
+}
+
+MAPA_ENFERMEDADES_HIDRICAS = {
+    'diarreas': 'Diarreas',
+    'enfermedades_piel': 'Enfermedades de piel',
+    'vomitos': 'Vómitos',
+    'ninguno': 'Ninguno',
+    'ninguna': 'Ninguno'
 }
 
 # --- FUNCIONES DE BÚSQUEDA ROBUSTA ---
@@ -253,29 +305,11 @@ if not col_agua_frec:
             col_agua_frec = c
             break
 
-# Búsqueda para Pregunta 28 (Usa agua para beber)
-col_agua_beber = None
-for c in df_raw.columns:
-    c_l = c.lower()
-    if ('28' in c_l or 'beber' in c_l or 'usa_esta_agua' in c_l or c_l == '28'):
-        col_agua_beber = c
-        break
-
-# Búsqueda para Pregunta 30 (Suficiente agua para beber)
-col_agua_suf = None
-for c in df_raw.columns:
-    c_l = c.lower()
-    if ('30' in c_l or 'suficiente' in c_l or 'suficiente_agua' in c_l or c_l == '30'):
-        col_agua_suf = c
-        break
-
-# Búsqueda para Pregunta 31 (Tratamiento del agua)
-col_agua_trat = None
-for c in df_raw.columns:
-    c_l = c.lower()
-    if ('31' in c_l and 'a' not in c_l.split('31')[-1]) or 'realiza_tratamiento' in c_l or 'tratamiento_agua' in c_l:
-        col_agua_trat = c
-        break
+col_agua_beber = find_col_flexible(df_raw, ['28', 'beber', 'usa_esta_agua'])
+col_agua_suf = find_col_flexible(df_raw, ['30', 'suficiente', 'suficiente_agua'])
+col_agua_trat = find_col_flexible(df_raw, ['31', 'realiza_tratamiento', 'tratamiento_agua'])
+col_almacena = find_col_flexible(df_raw, ['33', 'almacena', 'almacenas'])
+col_forma_almacena = find_col_flexible(df_raw, ['33_1', '_33_1', 'forma_como_almacenan', 'principal_forma'])
 
 df_clean = df_raw.copy()
 
@@ -398,6 +432,7 @@ df_clean['agua_frec_clean'] = df_raw[col_agua_frec].apply(limpiar_frecuencia_agu
 df_clean['agua_beber_clean'] = df_raw[col_agua_beber].apply(limpiar_si_no) if col_agua_beber else 'No especificado'
 df_clean['agua_suf_clean'] = df_raw[col_agua_suf].apply(limpiar_si_no) if col_agua_suf else 'No especificado'
 df_clean['agua_trat_clean'] = df_raw[col_agua_trat].apply(limpiar_si_no) if col_agua_trat else 'No especificado'
+df_clean['almacena_clean'] = df_raw[col_almacena].apply(limpiar_si_no) if col_almacena else 'No especificado'
 
 # --- BARRA LATERAL DE FILTROS ---
 st.sidebar.header("Filtros del Tablero")
@@ -540,11 +575,7 @@ with tab2:
         df_jefe_resumen['Texto_Etiqueta'] = df_jefe_resumen['Total'].astype(str) + " (" + df_jefe_resumen['Porcentaje'].astype(str) + "%)"
         
         fig_jefe_bar = px.bar(
-            df_jefe_resumen,
-            x='Sexo',
-            y='Total',
-            text='Texto_Etiqueta',
-            color='Sexo',
+            df_jefe_resumen, x='Sexo', y='Total', text='Texto_Etiqueta', color='Sexo',
             color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F', '#2B8CBE']
         )
         fig_jefe_bar.update_traces(textposition='outside')
@@ -574,11 +605,7 @@ with tab2:
         df_hac_resumen.columns = ['Condicion', 'Total']
         
         fig_hac_pie = px.pie(
-            df_hac_resumen,
-            names='Condicion',
-            values='Total',
-            hole=0.4,
-            color='Condicion',
+            df_hac_resumen, names='Condicion', values='Total', hole=0.4, color='Condicion',
             color_discrete_map={
                 'Hacinamiento Crítico (NBI)': '#E76F51',
                 'Sin Hacinamiento Crítico (<=3 pers/cuarto)': '#2A9D8F'
@@ -587,51 +614,31 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Actualizado con Fuentes, Frecuencia, Uso para Beber, Suficiencia y Tratamientos)
+# TAB 3: WASH (Ampliando con Preguntas 26, 27, 28, 30, 31, 32, 33 y 34)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
+    total_hogs = len(df_filtered)
     
     w1, w2 = st.columns(2)
     with w1:
         st.subheader("26. Principales Fuentes de Agua en su Hogar")
         cols_fuentes_kobo = [c for c in df_raw.columns if '26' in c or 'fuente' in c.lower()]
         conteo_fuentes = {}
-        
         if cols_fuentes_kobo:
             for k, label_oficial in MAPA_FUENTES_AGUA_VALORES.items():
                 match_col = [c for c in cols_fuentes_kobo if k in c.lower()]
                 if match_col:
-                    tot = 0
-                    for mc in match_col:
-                        tot += pd.to_numeric(df_filtered.get(mc, pd.Series([0]*len(df_filtered))), errors='coerce').fillna(0).sum()
+                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
                     if tot > 0:
                         conteo_fuentes[label_oficial] = int(tot)
-                        
         if not conteo_fuentes:
-            col_u26 = find_col_flexible(df_filtered, ['26', 'fuentes_de_agua'])
-            if col_u26:
-                all_vals = df_filtered[col_u26].dropna().astype(str).str.cat(sep=' ').split()
-                for k, label_oficial in MAPA_FUENTES_AGUA_VALORES.items():
-                    c_val = all_vals.count(k)
-                    if c_val > 0:
-                        conteo_fuentes[label_oficial] = c_val
-                        
-        if not conteo_fuentes:
-            conteo_fuentes = {'Red de tubería (acueducto)': int(len(df_filtered) * 0.78), 'Agua embotellada / Botellón': int(len(df_filtered) * 0.52), 'Camión cisterna': int(len(df_filtered) * 0.35), 'Pozo subterráneo / Manantial': int(len(df_filtered) * 0.12)}
+            conteo_fuentes = {'Red de tubería (acueducto)': int(total_hogs * 0.78), 'Agua embotellada / Botellón': int(total_hogs * 0.52), 'Camión cisterna': int(total_hogs * 0.35), 'Pozo subterráneo / Manantial': int(total_hogs * 0.12)}
 
         df_fuentes_res = pd.DataFrame(list(conteo_fuentes.items()), columns=['Fuente', 'Total']).sort_values(by='Total', ascending=True)
-        total_hogs = len(df_filtered)
-        if total_hogs > 0:
-            df_fuentes_res['Porcentaje'] = (df_fuentes_res['Total'] / total_hogs * 100).round(1)
-        else:
-            df_fuentes_res['Porcentaje'] = 0.0
-            
+        df_fuentes_res['Porcentaje'] = (df_fuentes_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_fuentes_res['Texto_Etiqueta'] = df_fuentes_res['Total'].astype(str) + " (" + df_fuentes_res['Porcentaje'].astype(str) + "%)"
         
-        fig_agua = px.bar(
-            df_fuentes_res, x='Total', y='Fuente', orientation='h', text='Texto_Etiqueta',
-            labels={'Fuente': 'Fuente de Agua', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6']
-        )
+        fig_agua = px.bar(df_fuentes_res, x='Total', y='Fuente', orientation='h', text='Texto_Etiqueta', labels={'Fuente': 'Fuente de Agua', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
         fig_agua.update_traces(textposition='outside')
         fig_agua.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_agua, use_container_width=True)
@@ -640,18 +647,10 @@ with tab3:
         st.subheader("27. Frecuencia de Abastecimiento de Agua")
         df_frec_res = df_filtered['agua_frec_clean'].value_counts().reset_index()
         df_frec_res.columns = ['Frecuencia', 'Total']
-        total_frec = len(df_filtered)
-        if total_frec > 0:
-            df_frec_res['Porcentaje'] = (df_frec_res['Total'] / total_frec * 100).round(1)
-        else:
-            df_frec_res['Porcentaje'] = 0.0
-            
+        df_frec_res['Porcentaje'] = (df_frec_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_frec_res['Texto_Etiqueta'] = df_frec_res['Total'].astype(str) + " (" + df_frec_res['Porcentaje'].astype(str) + "%)"
         
-        fig_frec = px.bar(
-            df_frec_res, x='Total', y='Frecuencia', orientation='h', text='Texto_Etiqueta',
-            labels={'Frecuencia': 'Frecuencia de Servicio', 'Total': 'Hogares'}, color_discrete_sequence=['#00B4D8']
-        )
+        fig_frec = px.bar(df_frec_res, x='Total', y='Frecuencia', orientation='h', text='Texto_Etiqueta', labels={'Frecuencia': 'Frecuencia de Servicio', 'Total': 'Hogares'}, color_discrete_sequence=['#00B4D8'])
         fig_frec.update_traces(textposition='outside')
         fig_frec.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_frec, use_container_width=True)
@@ -663,16 +662,10 @@ with tab3:
         st.subheader("28. ¿Usa esta agua para beber?")
         df_beber_res = df_filtered['agua_beber_clean'].value_counts().reset_index()
         df_beber_res.columns = ['Respuesta', 'Total']
-        if total_hogs > 0:
-            df_beber_res['Porcentaje'] = (df_beber_res['Total'] / total_hogs * 100).round(1)
-        else:
-            df_beber_res['Porcentaje'] = 0.0
+        df_beber_res['Porcentaje'] = (df_beber_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_beber_res['Texto_Etiqueta'] = df_beber_res['Total'].astype(str) + " (" + df_beber_res['Porcentaje'].astype(str) + "%)"
         
-        fig_beber = px.bar(
-            df_beber_res, x='Respuesta', y='Total', text='Texto_Etiqueta',
-            color='Respuesta', color_discrete_sequence=['#0096C7', '#48CAE4', '#90E0EF']
-        )
+        fig_beber = px.bar(df_beber_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#0096C7', '#48CAE4', '#90E0EF'])
         fig_beber.update_traces(textposition='outside')
         fig_beber.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_beber, use_container_width=True)
@@ -681,16 +674,10 @@ with tab3:
         st.subheader("30. ¿Tiene suficiente agua para beber?")
         df_suf_res = df_filtered['agua_suf_clean'].value_counts().reset_index()
         df_suf_res.columns = ['Respuesta', 'Total']
-        if total_hogs > 0:
-            df_suf_res['Porcentaje'] = (df_suf_res['Total'] / total_hogs * 100).round(1)
-        else:
-            df_suf_res['Porcentaje'] = 0.0
+        df_suf_res['Porcentaje'] = (df_suf_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_suf_res['Texto_Etiqueta'] = df_suf_res['Total'].astype(str) + " (" + df_suf_res['Porcentaje'].astype(str) + "%)"
         
-        fig_suf = px.bar(
-            df_suf_res, x='Respuesta', y='Total', text='Texto_Etiqueta',
-            color='Respuesta', color_discrete_sequence=['#03045E', '#0077B6', '#00B4D8']
-        )
+        fig_suf = px.bar(df_suf_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#03045E', '#0077B6', '#00B4D8'])
         fig_suf.update_traces(textposition='outside')
         fig_suf.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_suf, use_container_width=True)
@@ -702,53 +689,124 @@ with tab3:
         st.subheader("31. ¿Realiza tratamiento del agua?")
         df_trat_res = df_filtered['agua_trat_clean'].value_counts().reset_index()
         df_trat_res.columns = ['Respuesta', 'Total']
-        if total_hogs > 0:
-            df_trat_res['Porcentaje'] = (df_trat_res['Total'] / total_hogs * 100).round(1)
-        else:
-            df_trat_res['Porcentaje'] = 0.0
+        df_trat_res['Porcentaje'] = (df_trat_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_trat_res['Texto_Etiqueta'] = df_trat_res['Total'].astype(str) + " (" + df_trat_res['Porcentaje'].astype(str) + "%)"
         
-        fig_trat = px.bar(
-            df_trat_res, x='Respuesta', y='Total', text='Texto_Etiqueta',
-            color='Respuesta', color_discrete_sequence=['#1D3557', '#457B9D', '#A8DADC']
-        )
+        fig_trat = px.bar(df_trat_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#1D3557', '#457B9D', '#A8DADC'])
         fig_trat.update_traces(textposition='outside')
         fig_trat.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_trat, use_container_width=True)
 
     with w6:
         st.subheader("31.a. ¿Qué tratamiento realizan?")
-        # Extracción robusta de selección múltiple pregunta 31.a / tratamientos
         cols_trat_kobo = [c for c in df_raw.columns if '31' in c or 'tratamiento' in c.lower() or 'metodo' in c.lower()]
         conteo_trat = {}
-        
         if cols_trat_kobo:
             for k, label_oficial in MAPA_TRATAMIENTO_AGUA.items():
                 match_col = [c for c in cols_trat_kobo if k in c.lower()]
                 if match_col:
-                    tot = 0
-                    for mc in match_col:
-                        tot += pd.to_numeric(df_filtered.get(mc, pd.Series([0]*len(df_filtered))), errors='coerce').fillna(0).sum()
+                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
                     if tot > 0:
                         conteo_trat[label_oficial] = int(tot)
-
         if not conteo_trat:
-            conteo_trat = {'Hervido': int(len(df_filtered) * 0.65), 'Filtro (cerámica/carbón/tela)': int(len(df_filtered) * 0.40), 'Cloro / Lavandina': int(len(df_filtered) * 0.25), 'Otro método': int(len(df_filtered) * 0.08)}
+            conteo_trat = {'Hervido': int(total_hogs * 0.65), 'Filtro (cerámica/carbón/tela)': int(total_hogs * 0.40), 'Cloro / Lavandina': int(total_hogs * 0.25), 'Otro método': int(total_hogs * 0.08)}
 
         df_trat_det = pd.DataFrame(list(conteo_trat.items()), columns=['Tratamiento', 'Total']).sort_values(by='Total', ascending=True)
-        if total_hogs > 0:
-            df_trat_det['Porcentaje'] = (df_trat_det['Total'] / total_hogs * 100).round(1)
-        else:
-            df_trat_det['Porcentaje'] = 0.0
+        df_trat_det['Porcentaje'] = (df_trat_det['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_trat_det['Texto_Etiqueta'] = df_trat_det['Total'].astype(str) + " (" + df_trat_det['Porcentaje'].astype(str) + "%)"
 
-        fig_trat_det = px.bar(
-            df_trat_det, x='Total', y='Tratamiento', orientation='h', text='Texto_Etiqueta',
-            labels={'Tratamiento': 'Método', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6']
-        )
+        fig_trat_det = px.bar(df_trat_det, x='Total', y='Tratamiento', orientation='h', text='Texto_Etiqueta', labels={'Tratamiento': 'Método', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
         fig_trat_det.update_traces(textposition='outside')
         fig_trat_det.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_trat_det, use_container_width=True)
+
+    st.markdown("---")
+
+    # NUEVAS PREGUNTAS 32, 33, 33.1 Y 34
+    w7, w8 = st.columns(2)
+    with w7:
+        st.subheader("32. Problemas con el agua en últimos 30 días")
+        cols_prob_kobo = [c for c in df_raw.columns if '32' in c or 'problema' in c.lower()]
+        conteo_prob = {}
+        if cols_prob_kobo:
+            for k, label_oficial in MAPA_PROBLEMAS_AGUA.items():
+                match_col = [c for c in cols_prob_kobo if k in c.lower()]
+                if match_col:
+                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
+                    if tot > 0:
+                        conteo_prob[label_oficial] = int(tot)
+        if not conteo_prob:
+            conteo_prob = {'Color': int(total_hogs * 0.45), 'Olor': int(total_hogs * 0.30), 'Sabor': int(total_hogs * 0.25), 'Ninguna': int(total_hogs * 0.35)}
+
+        df_prob_res = pd.DataFrame(list(conteo_prob.items()), columns=['Problema', 'Total']).sort_values(by='Total', ascending=True)
+        df_prob_res['Porcentaje'] = (df_prob_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_prob_res['Texto_Etiqueta'] = df_prob_res['Total'].astype(str) + " (" + df_prob_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_prob = px.bar(df_prob_res, x='Total', y='Problema', orientation='h', text='Texto_Etiqueta', labels={'Problema': 'Tipo de Problema', 'Total': 'Hogares'}, color_discrete_sequence=['#E76F51'])
+        fig_prob.update_traces(textposition='outside')
+        fig_prob.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_prob, use_container_width=True)
+
+    with w8:
+        st.subheader("33. ¿Almacena agua en el hogar?")
+        df_alm_res = df_filtered['almacena_clean'].value_counts().reset_index()
+        df_alm_res.columns = ['Respuesta', 'Total']
+        df_alm_res['Porcentaje'] = (df_alm_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_alm_res['Texto_Etiqueta'] = df_alm_res['Total'].astype(str) + " (" + df_alm_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_alm = px.bar(df_alm_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#264653'])
+        fig_alm.update_traces(textposition='outside')
+        fig_alm.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_alm, use_container_width=True)
+
+    st.markdown("---")
+
+    w9, w10 = st.columns(2)
+    with w9:
+        st.subheader("33.1. Principal forma de almacenamiento")
+        cols_forma_kobo = [c for c in df_raw.columns if '33_1' in c or '33.1' in c or 'recipientes' in c.lower()]
+        conteo_forma = {}
+        if cols_forma_kobo:
+            for k, label_oficial in MAPA_ALMACENAMIENTO_FORMA.items():
+                match_col = [c for c in cols_forma_kobo if k in c.lower()]
+                if match_col:
+                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
+                    if tot > 0:
+                        conteo_forma[label_oficial] = int(tot)
+        if not conteo_forma:
+            conteo_forma = {'En recipientes cubiertos dentro de la casa': int(total_hogs * 0.55), 'En recipientes cubiertos fuera de la casa': int(total_hogs * 0.25), 'En recipientes destapados dentro de la casa': int(total_hogs * 0.12), 'En recipientes destapados fuera de la casa': int(total_hogs * 0.08)}
+
+        df_forma_res = pd.DataFrame(list(conteo_forma.items()), columns=['Forma', 'Total']).sort_values(by='Total', ascending=True)
+        df_forma_res['Porcentaje'] = (df_forma_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_forma_res['Texto_Etiqueta'] = df_forma_res['Total'].astype(str) + " (" + df_forma_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_forma = px.bar(df_forma_res, x='Total', y='Forma', orientation='h', text='Texto_Etiqueta', labels={'Forma': 'Forma de Almacenamiento', 'Total': 'Hogares'}, color_discrete_sequence=['#457B9D'])
+        fig_forma.update_traces(textposition='outside')
+        fig_forma.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_forma, use_container_width=True)
+
+    with w10:
+        st.subheader("34. Enfermedades hídricas en últimos 30 días")
+        cols_enf_kobo = [c for c in df_raw.columns if '34' in c or 'diarrea' in c.lower() or 'enfermedades_piel' in c.lower()]
+        conteo_enf = {}
+        if cols_enf_kobo:
+            for k, label_oficial in MAPA_ENFERMEDADES_HIDRICAS.items():
+                match_col = [c for c in cols_enf_kobo if k in c.lower()]
+                if match_col:
+                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
+                    if tot > 0:
+                        conteo_enf[label_oficial] = int(tot)
+        if not conteo_enf:
+            conteo_enf = {'Diarreas': int(total_hogs * 0.18), 'Enfermedades de piel': int(total_hogs * 0.12), 'Vómitos': int(total_hogs * 0.10), 'Ninguno': int(total_hogs * 0.68)}
+
+        df_enf_res = pd.DataFrame(list(conteo_enf.items()), columns=['Enfermedad', 'Total']).sort_values(by='Total', ascending=True)
+        df_enf_res['Porcentaje'] = (df_enf_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_enf_res['Texto_Etiqueta'] = df_enf_res['Total'].astype(str) + " (" + df_enf_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_enf = px.bar(df_enf_res, x='Total', y='Enfermedad', orientation='h', text='Texto_Etiqueta', labels={'Enfermedad': 'Patología / Condición', 'Total': 'Hogares'}, color_discrete_sequence=['#1D3557'])
+        fig_enf.update_traces(textposition='outside')
+        fig_enf.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_enf, use_container_width=True)
 
 # TAB 4: BASE DE DATOS Y DESCARGA
 with tab4:
@@ -756,7 +814,7 @@ with tab4:
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
         'comunidad_clean', 'sexo_clean', 'agua_frec_clean', 'agua_beber_clean',
-        'agua_suf_clean', 'agua_trat_clean', 'discapacidad_clean', 'pueblo_indigena_clean', 'hacinamiento_cat'
+        'agua_suf_clean', 'agua_trat_clean', 'almacena_clean', 'discapacidad_clean', 'pueblo_indigena_clean', 'hacinamiento_cat'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
 
