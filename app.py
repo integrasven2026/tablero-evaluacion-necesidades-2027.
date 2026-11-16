@@ -190,10 +190,10 @@ col_ind = find_col(df_raw, ['etnia_indigena'])
 col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 
-# Demográficos desglosados (Búsqueda amplia para evitar N/D)
+# Demográficos desglosados (Búsqueda amplia para Hombres, Mujeres y Menores < 18 años)
 col_hombres = find_col_flexible(df_raw, ['hombres', 'masculinos', 'num_hombres', '_hombres'])
 col_mujeres = find_col_flexible(df_raw, ['mujeres', 'femeninos', 'num_mujeres', '_mujeres'])
-col_ninos = find_col_flexible(df_raw, ['ninos', 'niños', 'menores', 'infantes', 'ninos_nias', 'ninos_y_nias'])
+col_ninos = find_col_flexible(df_raw, ['ninos', 'niños', 'menores', 'infantes', 'menores_18', 'ninos_nias', '0_17'])
 
 # Embarazos
 col_total_embarazadas = find_col_flexible(df_raw, ['21_1', '_21_1', 'embarazadas_hay', 'num_embarazadas', 'gestantes'])
@@ -251,7 +251,7 @@ df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codi
 df_clean['discapacidad_clean'] = df_raw[col_disc].apply(lambda x: limpiar_codigo(x, MAPA_DISCAPACIDADES)) if col_disc else 'No especificado'
 df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes else 0
 
-# Demográficos desglosados convertidos de forma segura
+# Demográficos desglosados seguros para evitar ceros
 df_clean['hombres_val'] = pd.to_numeric(df_raw[col_hombres], errors='coerce').fillna(0) if col_hombres in df_raw.columns else 0
 df_clean['mujeres_val'] = pd.to_numeric(df_raw[col_mujeres], errors='coerce').fillna(0) if col_mujeres in df_raw.columns else 0
 df_clean['ninos_val'] = pd.to_numeric(df_raw[col_ninos], errors='coerce').fillna(0) if col_ninos in df_raw.columns else 0
@@ -264,16 +264,16 @@ if col_emb_control in df_raw.columns:
 else:
     df_clean['emb_control_val'] = 0
 
-# Vivienda: Extracción numérica robusta (evita ceros y divisiones erróneas)
-df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(1) if col_personas_viv in df_raw.columns else 1
-df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(1) if col_cuartos in df_raw.columns else 1
+# --- VIVIENDA Y CÁLCULO DE HACINAMIENTO INE (Personas / Cuartos) ---
+df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(0) if col_personas_viv in df_raw.columns else 0
+df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(0) if col_cuartos in df_raw.columns else 0
 
-# --- LÓGICA OFICIAL DEL INE (NBI) PARA HACINAMIENTO CRÍTICO ---
 def calcular_hacinamiento_ine(row):
     p = row['personas_viv_val']
     c = row['cuartos_val']
     if c > 0:
         ratio = p / c
+        # Criterio INE: Hacinamiento crítico si el resultado es estrictamente mayor a 3
         if ratio > 3:
             return 'Hacinamiento Crítico (NBI)'
         else:
@@ -328,7 +328,7 @@ if df_filtered.empty:
     st.warning("⚠️ No hay registros que coincidan con los filtros seleccionados.")
     st.stop()
 
-# --- TARJETAS KPI PRINCIPALES (Con Hombres, Mujeres, Niños, etc.) ---
+# --- TARJETAS KPI PRINCIPALES (CONSOLIDADOS) ---
 col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 with col1:
     st.metric("Encuestas", f"{len(df_filtered):,}")
