@@ -1,26 +1,8 @@
-import os
-import requests
-import pandas as pd
-import numpy as np
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
+import pandas as pd
+import requests
 
-# -----------------------------------------------------------------------------
-# CONFIGURACIÓN DE PÁGINA Y ESTILOS
-# -----------------------------------------------------------------------------
-st.set_page_config(
-    page_title="Tablero Evaluación de Necesidades - Consorcio ÍNTEGRAS (ECHO HIP 2027)",
-    page_icon="📊",
-    layout="wide"
-)
-
-# Paleta oficial Consorcio ÍNTEGRAS
-COLOR_AZUL_OSCURO = '#08327D'
-COLOR_TURQUESA = '#00C2C7'
-COLOR_MORADO = '#D89FE3'
-COLOR_NARANJA = '#FFB84D'
-PALETA_INTEGRAS = [COLOR_AZUL_OSCURO, COLOR_TURQUESA, COLOR_MORADO, COLOR_NARANJA, '#28A745', '#E5B130']
+st.set_page_config(page_title="Tablero ECHO HIP 2027", layout="wide")
 
 st.markdown("""
 <style>
@@ -228,4 +210,8 @@ df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce'
 
 df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
 df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 'Sí (Pueblo Indígena)' if x not in ['No Especificado', 'No especificado'] else 'No')
-df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(lambda x: 'Sí (Con Discapacidad)' if x not in ['
+
+# LÍNEA 231 CORREGIDA:
+df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(
+    lambda x: 'Sí (Con Discapacidad)' if x not in ['No posee', 'Ns/Nc', 'No especificado', 'No Especificado'] else 'No'
+)
