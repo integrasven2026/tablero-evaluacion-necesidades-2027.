@@ -190,7 +190,12 @@ col_ind = find_col(df_raw, ['etnia_indigena'])
 col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 
-# Campos de embarazo (21.1, 21.2, 21.3)
+# Campos demográficos detallados para el consolidado
+col_hombres = find_col_flexible(df_raw, ['hombres', 'masculinos', 'num_hombres'])
+col_mujeres = find_col_flexible(df_raw, ['mujeres', 'femeninos', 'num_mujeres'])
+col_ninos = find_col_flexible(df_raw, ['ninos', 'niños', 'menores', 'infantes'])
+
+# Campos de embarazo
 col_total_embarazadas = find_col_flexible(df_raw, ['21_1', '_21_1', 'embarazadas_hay', 'num_embarazadas', 'gestantes'])
 col_emb_menores = find_col_flexible(df_raw, ['21_2', '_21_2', 'menores_de_edad', 'embarazadas_son_menores'])
 col_emb_control = find_col_flexible(df_raw, ['21_3', '_21_3', 'control_prenatal', 'acuden'])
@@ -199,8 +204,8 @@ lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
 # Campos de Vivienda (Preguntas 22, 24, 25 para hacinamiento y habitaciones)
 col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivienda'])
-col_personas_viv = find_col(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda'])
-col_cuartos = find_col(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir'])
+col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda'])
+col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir'])
 
 # Campos WASH solicitados
 col_agua_fuente = find_col(df_raw, ['26', 'fuentes_de_agua', 'principales_fuentes_de_agua', 'fuente_agua'])
@@ -246,6 +251,11 @@ df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codi
 df_clean['discapacidad_clean'] = df_raw[col_disc].apply(lambda x: limpiar_codigo(x, MAPA_DISCAPACIDADES)) if col_disc else 'No especificado'
 df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes else 0
 
+# Demográficos desglosados (Hombres, Mujeres, Niños)
+df_clean['hombres_val'] = pd.to_numeric(df_raw[col_hombres], errors='coerce').fillna(0) if col_hombres in df_raw.columns else 0
+df_clean['mujeres_val'] = pd.to_numeric(df_raw[col_mujeres], errors='coerce').fillna(0) if col_mujeres in df_raw.columns else 0
+df_clean['ninos_val'] = pd.to_numeric(df_raw[col_ninos], errors='coerce').fillna(0) if col_ninos in df_raw.columns else 0
+
 # Embarazos
 df_clean['total_embarazadas_val'] = pd.to_numeric(df_raw[col_total_embarazadas], errors='coerce').fillna(0) if col_total_embarazadas in df_raw.columns else 0
 df_clean['emb_menores_val'] = pd.to_numeric(df_raw[col_emb_menores], errors='coerce').fillna(0) if col_emb_menores in df_raw.columns else 0
@@ -254,11 +264,10 @@ if col_emb_control in df_raw.columns:
 else:
     df_clean['emb_control_val'] = 0
 
-# Vivienda y cálculos de hacinamiento
-df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(0) if col_personas_viv in df_raw.columns else 0
-df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(0) if col_cuartos in df_raw.columns else 0
+# Vivienda y cálculos robustos de hacinamiento
+df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(0) if col_personas_viv in df_raw.columns else 1
+df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(0) if col_cuartos in df_raw.columns else 1
 
-# Lógica de Hacinamiento (más de 3 personas por habitación para dormir se considera hacinamiento crítico, o ratio personas/cuartos > 3)
 def calcular_hacinamiento(row):
     p = row['personas_viv_val']
     c = row['cuartos_val']
@@ -320,26 +329,32 @@ if df_filtered.empty:
     st.warning("⚠️ No hay registros que coincidan con los filtros seleccionados.")
     st.stop()
 
-# --- TARJETAS KPI PRINCIPALES ---
-col1, col2, col3, col4, col5 = st.columns(5)
+# --- TARJETAS KPI PRINCIPALES (Actualizadas con Hombres, Mujeres y Niños) ---
+col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 with col1:
-    st.metric("Encuestas Realizadas", f"{len(df_filtered):,}")
+    st.metric("Encuestas", f"{len(df_filtered):,}")
 with col2:
-    total_pers = int(df_filtered['personas_viv_val'].sum())
-    st.metric("Personas en Hogares", f"{total_pers:,}" if total_pers > 0 else "N/D")
+    tot_h = int(df_filtered['hombres_val'].sum())
+    st.metric("Hombres", f"{tot_h:,}" if tot_h > 0 else "N/D")
 with col3:
-    total_gest = int(df_filtered['gestantes_val'].sum())
-    st.metric("Mujeres Gestantes", f"{total_gest:,}")
+    tot_m = int(df_filtered['mujeres_val'].sum())
+    st.metric("Mujeres", f"{tot_m:,}" if tot_m > 0 else "N/D")
 with col4:
-    total_disc = (df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum()
-    st.metric("Hogares c/ Discapacidad", f"{total_disc:,}")
+    tot_n = int(df_filtered['ninos_val'].sum())
+    st.metric("Niños/as", f"{tot_n:,}" if tot_n > 0 else "N/D")
 with col5:
+    total_gest = int(df_filtered['gestantes_val'].sum())
+    st.metric("Gestantes", f"{total_gest:,}")
+with col6:
+    total_disc = (df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum()
+    st.metric("c/ Discapacidad", f"{total_disc:,}")
+with col7:
     total_ind = (df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)').sum()
-    st.metric("Población Indígena", f"{total_ind:,}")
+    st.metric("Indígenas", f"{total_ind:,}")
 
 st.markdown("---")
 
-# --- PESTAÑAS DEL TABLERO (Sin emojis, nombres actualizados) ---
+# --- PESTAÑAS DEL TABLERO ---
 tab1, tab2, tab3, tab4 = st.tabs([
     "Población",
     "Vivienda",
@@ -449,11 +464,10 @@ with tab1:
         else:
             st.info("Sin reportes de población indígena en la selección actual.")
 
-# TAB 2: VIVIENDA (Actualizado con Hacinamiento y Promedio de Personas)
+# TAB 2: VIVIENDA (Sin gráfico duplicado de municipios)
 with tab2:
     st.header("Vivienda y Habitabilidad")
     
-    # Métricas clave de vivienda
     promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 0
     col_v_kpi1, col_v_kpi2 = st.columns(2)
     with col_v_kpi1:
@@ -482,17 +496,7 @@ with tab2:
         fig_hac.update_layout(yaxis={'categoryorder': 'total ascending'}, xaxis_title="Hogares", yaxis_title="")
         st.plotly_chart(fig_hac, use_container_width=True)
 
-    st.subheader("Top 10 Municipios Evaluados")
-    fig_mun = px.bar(
-        df_filtered['municipio_clean'].value_counts().head(10).reset_index(),
-        x='count', y='municipio_clean', orientation='h', text_auto=True,
-        labels={'municipio_clean': 'Municipio / Parroquia', 'count': 'Encuestas'},
-        color_discrete_sequence=['#08327D']
-    )
-    fig_mun.update_layout(yaxis={'categoryorder': 'total ascending'})
-    st.plotly_chart(fig_mun, use_container_width=True)
-
-# TAB 3: WASH (Actualizado con todas las solicitudes de agua)
+# TAB 3: WASH
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     
