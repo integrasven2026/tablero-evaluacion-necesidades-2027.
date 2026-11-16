@@ -213,7 +213,18 @@ col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivie
 col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda', '_24'])
 col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir', '_25'])
 
-col_agua_frec = find_col_flexible(df_raw, ['27', 'frecuencia_reciben_agua', 'frecuencia_servicio_agua', '_27'])
+# Búsqueda infalible para la Pregunta 27 (Frecuencia de agua)
+col_agua_frec = None
+for c in df_raw.columns:
+    c_l = c.lower()
+    if ('27' in c_l or 'frecuencia' in c_l) and ('agua' in c_l or 'recib' in c_l or 'abastecer' in c_l or c_l.endswith('_27') or c_l == '27'):
+        col_agua_frec = c
+        break
+if not col_agua_frec:
+    for c in df_raw.columns:
+        if '27' in c:
+            col_agua_frec = c
+            break
 
 df_clean = df_raw.copy()
 
@@ -503,7 +514,7 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Con porcentajes en Pregunta 26 y categorías corregidas en Pregunta 27)
+# TAB 3: WASH (Con porcentajes en Fuentes y Frecuencia corregida)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     
