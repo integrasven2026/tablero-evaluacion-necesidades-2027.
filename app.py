@@ -408,7 +408,7 @@ with tab1:
         fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_edu, use_container_width=True)
 
-# TAB 2: VIVIENDA
+# TAB 2: VIVIENDA (Con Gráfico de Torta de Hacinamiento Crítico)
 with tab2:
     st.header("Vivienda y Habitabilidad")
     
@@ -434,31 +434,24 @@ with tab2:
         st.plotly_chart(fig_ten, use_container_width=True)
 
     with v2:
-        st.subheader("Distribución del Hacinamiento Crítico (Metodología INE)")
+        st.subheader("Distribución Porcentual y Absoluta del Hacinamiento Crítico")
         
-        # Agrupación explícita para evitar que Plotly herede leyendas o colores incorrectos
         df_hac_resumen = df_filtered['hacinamiento_cat'].value_counts().reset_index()
         df_hac_resumen.columns = ['Condicion', 'Total']
         
-        fig_hac = px.bar(
+        fig_hac_pie = px.pie(
             df_hac_resumen,
-            x='Total', 
-            y='Condicion', 
-            orientation='h', 
-            text='Total',
+            names='Condicion',
+            values='Total',
+            hole=0.4,
             color='Condicion',
             color_discrete_map={
                 'Hacinamiento Crítico (NBI)': '#E76F51',
                 'Sin Hacinamiento Crítico (<=3 pers/cuarto)': '#2A9D8F'
             }
         )
-        fig_hac.update_layout(
-            yaxis={'categoryorder': 'total ascending'}, 
-            xaxis_title="Hogares", 
-            yaxis_title="", 
-            showlegend=False
-        )
-        st.plotly_chart(fig_hac, use_container_width=True)
+        fig_hac_pie.update_traces(textinfo='percent+value')
+        st.plotly_chart(fig_hac_pie, use_container_width=True)
 
 # TAB 3: WASH
 with tab3:
