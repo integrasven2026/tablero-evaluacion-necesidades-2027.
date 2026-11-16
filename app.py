@@ -249,11 +249,13 @@ def limpiar_frecuencia_agua(val):
     s = str(val).strip().lower()
     if s in ['', 'nan', 'none', 'nat']:
         return 'No especificado'
+    
+    # Mapeo exacto de los XML values comunes de KoboToolbox
     if 'diario' in s or 'continuo' in s:
         return 'Diario (continuo)'
     elif 'varios' in s:
         return 'Varios días a la semana'
-    elif 'una_vez' in s or 'una vez' in s:
+    elif 'una_vez' in s or 'una vez' in s or s == 'una_vez_a_la_semana':
         return 'Una vez a la semana'
     elif '15' in s or 'mas' in s or 'más' in s or 'cada_15' in s:
         return 'Cada 15 días o más'
@@ -514,7 +516,7 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Con porcentajes en Fuentes y Frecuencia corregida)
+# TAB 3: WASH (Con porcentajes y categorías limpias de Kobo)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     
