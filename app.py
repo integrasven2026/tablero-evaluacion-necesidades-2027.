@@ -322,7 +322,7 @@ col_acceso_jabon = find_col_flexible(df_raw, ['35', 'jabon', 'lavado_de_manos'])
 col_higiene_menstru = None
 for c in df_raw.columns:
     c_l = c.lower()
-    if ('36' in c_l or 'menstrual' in c_l or 'higiene' in c_l) and not 'jabon' in c_l:
+    if any(k in c_l for k in ['36', 'menstrual', 'higiene_menstru', 'toallas']) and not 'jabon' in c_l:
         vals = df_raw[c].dropna().astype(str).str.lower().unique()
         if any('si' in v or 'sí' in v or 'no' in v for v in vals):
             col_higiene_menstru = c
@@ -849,9 +849,24 @@ with tab3:
         st.plotly_chart(fig_jabon, use_container_width=True)
 
     with w12:
-        # 36. ACCESO A HIGIENE MENSTRUAL (Gráfico de barras restaurado al lado de la pregunta 35)
-        st.subheader("36. Acceso a productos de higiene menstrual")
-        df_menstru_res = df_filtered['higiene_menstru_clean'].value_counts().reset_index()
+        # 36. ACCESO A HIGIENE MENSTRUAL (Búsqueda robusta y gráfico exacto con Sí/No/NsNc)
+        st.subheader("36. ¿Las mujeres de su hogar tienen acceso a productos de higiene menstrual?")
+        
+        col_higiene_menstru_real = None
+        for c in df_raw.columns:
+            c_l = c.lower()
+            if any(k in c_l for k in ['36', 'menstrual', 'higiene_menstru', 'toallas']) and not 'jabon' in c_l:
+                vals = df_raw[c].dropna().astype(str).str.lower().unique()
+                if any('si' in v or 'sí' in v or 'no' in v for v in vals):
+                    col_higiene_menstru_real = c
+                    break
+        
+        if not col_higiene_menstru_real:
+            col_higiene_menstru_real = col_higiene_menstru
+
+        df_filtered['higiene_clean_real'] = df_filtered[col_higiene_menstru_real].apply(limpiar_si_no) if col_higiene_menstru_real in df_filtered.columns else 'No especificado'
+
+        df_menstru_res = df_filtered['higiene_clean_real'].value_counts().reset_index()
         df_menstru_res.columns = ['Respuesta', 'Total']
         df_menstru_res['Porcentaje'] = (df_menstru_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_menstru_res['Texto_Etiqueta'] = df_menstru_res['Total'].astype(str) + " (" + df_menstru_res['Porcentaje'].astype(str) + "%)"
@@ -863,6 +878,17 @@ with tab3:
         fig_menstru.update_traces(textposition='outside')
         fig_menstru.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_menstru, use_container_width=True)
+
+        # Métrica opcional de mujeres con acceso positivo
+        total_mujeres_general = df_filtered['mujeres_val'].sum()
+        mujeres_con_acceso = df_filtered[df_filtered['higiene_clean_real'] == 'Sí']['mujeres_val'].sum()
+        pct_mujeres_acceso = (mujeres_con_acceso / total_mujeres_general * 100).round(1) if total_mujeres_general > 0 else 0.0
+
+        st.metric(
+            label="Porcentaje de mujeres de los hogares con acceso ('Sí')",
+            value=f"{pct_mujeres_acceso}%",
+            delta=f"({int(mujeres_con_acceso):,} de {int(total_mujeres_general):,} mujeres)"
+        )
 
     st.markdown("---")
 
