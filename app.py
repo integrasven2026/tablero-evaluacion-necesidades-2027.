@@ -590,4 +590,14 @@ with tab4:
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
         'comunidad_clean', 'sexo_clean', 'edu_clean', 'nacionalidad_clean',
-        'discapacidad_clean', 'pueblo_indigena_clean', 'gestantes_val', 'hacin
+        'discapacidad_clean', 'pueblo_indigena_clean', 'gestantes_val', 'hacinamiento_cat'
+    ]
+    st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
+
+    csv_data = df_filtered[cols_mostrar].to_csv(index=False).encode('utf-8-sig')
+    st.download_button(
+        label="📥 Descargar Datos Filtrados (CSV)",
+        data=csv_data,
+        file_name="evaluacion_necesidades_echo_hip_2027.csv",
+        mime="text/csv"
+    )
