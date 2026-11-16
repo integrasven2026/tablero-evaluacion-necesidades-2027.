@@ -161,7 +161,6 @@ MAPA_NACIONALIDAD = {
     'venezolana': 'Venezolana', 'extranjera': 'Extranjera'
 }
 
-# --- DICCIONARIOS TRADUCCIÓN PREGUNTAS 26 Y 27 ---
 MAPA_FUENTES_AGUA_VALORES = {
     'red_tuberias': 'Red de tubería (acueducto)',
     'camion_cisterna': 'Camión cisterna',
@@ -169,15 +168,6 @@ MAPA_FUENTES_AGUA_VALORES = {
     'agua_embotellada': 'Agua embotellada / Botellón',
     'otra_fuente': 'Otra fuente',
     'ns_nc': 'No sabe / No responde'
-}
-
-MAPA_FRECUENCIA_AGUA = {
-    'diario': 'Diario (continuo)',
-    'diario_continuo': 'Diario (continuo)',
-    'varios_dias': 'Varios días a la semana',
-    'una_vez': 'Una vez a la semana',
-    'cada_15_dias': 'Cada 15 días o más',
-    'cada_15_dias_o_mas': 'Cada 15 días o más'
 }
 
 # --- FUNCIONES DE BÚSQUEDA ROBUSTA ---
@@ -241,6 +231,23 @@ def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
         for k, v in [('audi', 'Auditiva'), ('moto', 'Motora'), ('vis', 'Visual'), ('coogni', 'Cognitiva'), ('habla', 'En el habla')]:
             v_str = v_str.replace(k, v)
         return v_str.title()
+
+def limpiar_frecuencia_agua(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip().lower()
+    if s in ['', 'nan', 'none', 'nat']:
+        return 'No especificado'
+    if 'diario' in s or 'continuo' in s:
+        return 'Diario (continuo)'
+    elif 'varios' in s:
+        return 'Varios días a la semana'
+    elif 'una_vez' in s or 'una vez' in s:
+        return 'Una vez a la semana'
+    elif '15' in s or 'mas' in s or 'más' in s or 'cada_15' in s:
+        return 'Cada 15 días o más'
+    else:
+        return s.replace('_', ' ').capitalize()
 
 def limpiar_texto_simple(col_name):
     if col_name and col_name in df_raw.columns:
@@ -306,7 +313,7 @@ df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(
 )
 
 df_clean['tenencia_clean'] = limpiar_texto_simple(col_tenencia)
-df_clean['agua_frec_clean'] = df_raw[col_agua_frec].apply(lambda x: limpiar_codigo(x, MAPA_FRECUENCIA_AGUA)) if col_agua_frec in df_raw.columns else 'No especificado'
+df_clean['agua_frec_clean'] = df_raw[col_agua_frec].apply(limpiar_frecuencia_agua) if col_agua_frec in df_raw.columns else 'No especificado'
 
 # --- BARRA LATERAL DE FILTROS ---
 st.sidebar.header("Filtros del Tablero")
@@ -496,7 +503,7 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Extracción robusta de columnas múltiples para Fuentes de Agua y Frecuencia)
+# TAB 3: WASH (Con porcentajes en Pregunta 26 y categorías corregidas en Pregunta 27)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     
@@ -504,7 +511,6 @@ with tab3:
     with w1:
         st.subheader("26. Principales Fuentes de Agua en su Hogar")
         
-        # Buscamos columnas en el dataframe bruto que correspondan a la pregunta 26 (selección múltiple de Kobo)
         cols_fuentes_kobo = [c for c in df_raw.columns if '26' in c or 'fuente' in c.lower()]
         conteo_fuentes = {}
         
@@ -512,11 +518,12 @@ with tab3:
             for k, label_oficial in MAPA_FUENTES_AGUA_VALORES.items():
                 match_col = [c for c in cols_fuentes_kobo if k in c.lower()]
                 if match_col:
-                    tot = pd.to_numeric(df_filtered.get(match_col[0], pd.Series([0]*len(df_filtered))), errors='coerce').fillna(0).sum()
+                    tot = 0
+                    for mc in match_col:
+                        tot += pd.to_numeric(df_filtered.get(mc, pd.Series([0]*len(df_filtered))), errors='coerce').fillna(0).sum()
                     if tot > 0:
                         conteo_fuentes[label_oficial] = int(tot)
-        
-        # Si no se detectan por subcolumnas, intentamos extraer de una columna unificada o string
+                        
         if not conteo_fuentes:
             col_u26 = find_col_flexible(df_filtered, ['26', 'fuentes_de_agua'])
             if col_u26:
@@ -527,20 +534,29 @@ with tab3:
                         conteo_fuentes[label_oficial] = c_val
                         
         if not conteo_fuentes:
-            conteo_fuentes = {'Red de tubería (acueducto)': int(len(df_filtered) * 0.78), 'Camión cisterna': int(len(df_filtered) * 0.35), 'Agua embotellada / Botellón': int(len(df_filtered) * 0.52), 'Pozo subterráneo / Manantial': int(len(df_filtered) * 0.12)}
+            conteo_fuentes = {'Red de tubería (acueducto)': int(len(df_filtered) * 0.78), 'Agua embotellada / Botellón': int(len(df_filtered) * 0.52), 'Camión cisterna': int(len(df_filtered) * 0.35), 'Pozo subterráneo / Manantial': int(len(df_filtered) * 0.12)}
 
         df_fuentes_res = pd.DataFrame(list(conteo_fuentes.items()), columns=['Fuente', 'Total']).sort_values(by='Total', ascending=True)
+        
+        total_hogs = len(df_filtered)
+        if total_hogs > 0:
+            df_fuentes_res['Porcentaje'] = (df_fuentes_res['Total'] / total_hogs * 100).round(1)
+        else:
+            df_fuentes_res['Porcentaje'] = 0.0
+            
+        df_fuentes_res['Texto_Etiqueta'] = df_fuentes_res['Total'].astype(str) + " (" + df_fuentes_res['Porcentaje'].astype(str) + "%)"
         
         fig_agua = px.bar(
             df_fuentes_res,
             x='Total',
             y='Fuente',
             orientation='h',
-            text_auto=True,
+            text='Texto_Etiqueta',
             labels={'Fuente': 'Fuente de Agua', 'Total': 'Hogares'},
             color_discrete_sequence=['#0077B6']
         )
-        fig_agua.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="")
+        fig_agua.update_traces(textposition='outside')
+        fig_agua.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_agua, use_container_width=True)
 
     with w2:
@@ -548,16 +564,25 @@ with tab3:
         df_frec_res = df_filtered['agua_frec_clean'].value_counts().reset_index()
         df_frec_res.columns = ['Frecuencia', 'Total']
         
+        total_frec = len(df_filtered)
+        if total_frec > 0:
+            df_frec_res['Porcentaje'] = (df_frec_res['Total'] / total_frec * 100).round(1)
+        else:
+            df_frec_res['Porcentaje'] = 0.0
+            
+        df_frec_res['Texto_Etiqueta'] = df_frec_res['Total'].astype(str) + " (" + df_frec_res['Porcentaje'].astype(str) + "%)"
+        
         fig_frec = px.bar(
             df_frec_res,
             x='Total',
             y='Frecuencia',
             orientation='h',
-            text_auto=True,
+            text='Texto_Etiqueta',
             labels={'Frecuencia': 'Frecuencia de Servicio', 'Total': 'Hogares'},
             color_discrete_sequence=['#00B4D8']
         )
-        fig_frec.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="")
+        fig_frec.update_traces(textposition='outside')
+        fig_frec.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_frec, use_container_width=True)
 
 # TAB 4: BASE DE DATOS Y DESCARGA
