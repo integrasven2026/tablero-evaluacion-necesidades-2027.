@@ -169,6 +169,14 @@ def find_col(df, keywords):
                 return col
     return None
 
+def find_col_flexible(df, keywords):
+    for col in df.columns:
+        col_lower = col.lower()
+        for kw in keywords:
+            if kw.lower() in col_lower:
+                return col
+    return None
+
 col_socio = find_col(df_raw, ['socio'])
 col_estado = find_col(df_raw, ['estado'])
 col_municipio = find_col(df_raw, ['municipio'])
@@ -182,10 +190,10 @@ col_ind = find_col(df_raw, ['etnia_indigena'])
 col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 
-# Nuevas variables de embarazo correspondientes al formulario (Preguntas 21.1, 21.2, 21.3)
-col_total_embarazadas = find_col(df_raw, ['21_1', 'cuantas_personas_embarazadas_hay_en_el_hogar', 'num_embarazadas'])
-col_emb_menores = find_col(df_raw, ['21_2', 'cuantas_de_las_personas_embarazadas_son_menores_de_edad', 'embarazadas_menores'])
-col_emb_control = find_col(df_raw, ['21_3', 'acuden_a_control_prenatal', 'control_prenatal'])
+# Búsqueda flexible mejorada para campos de embarazo (21.1, 21.2, 21.3)
+col_total_embarazadas = find_col_flexible(df_raw, ['21_1', '_21_1', 'embarazadas_hay', 'num_embarazadas', 'gestantes'])
+col_emb_menores = find_col_flexible(df_raw, ['21_2', '_21_2', 'menores_de_edad', 'embarazadas_son_menores'])
+col_emb_control = find_col_flexible(df_raw, ['21_3', '_21_3', 'control_prenatal', 'acuden'])
 
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
@@ -233,10 +241,13 @@ df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codi
 df_clean['discapacidad_clean'] = df_raw[col_disc].apply(lambda x: limpiar_codigo(x, MAPA_DISCAPACIDADES)) if col_disc else 'No especificado'
 df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes else 0
 
-# Cálculos numéricos para las nuevas métricas de embarazo
-df_clean['total_embarazadas_val'] = pd.to_numeric(df_raw[col_total_embarazadas], errors='coerce').fillna(0) if col_total_embarazadas else 0
-df_clean['emb_menores_val'] = pd.to_numeric(df_raw[col_emb_menores], errors='coerce').fillna(0) if col_emb_menores else 0
-df_clean['emb_control_val'] = df_raw[col_emb_control].apply(lambda x: 1 if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 0) if col_emb_control else 0
+# Conversión y asignación segura de datos de embarazo
+df_clean['total_embarazadas_val'] = pd.to_numeric(df_raw[col_total_embarazadas], errors='coerce').fillna(0) if col_total_embarazadas in df_raw.columns else 0
+df_clean['emb_menores_val'] = pd.to_numeric(df_raw[col_emb_menores], errors='coerce').fillna(0) if col_emb_menores in df_raw.columns else 0
+if col_emb_control in df_raw.columns:
+    df_clean['emb_control_val'] = df_raw[col_emb_control].apply(lambda x: 1 if str(x).strip().lower() in ['si', 'sí', '1', 'true', 'yes'] else 0)
+else:
+    df_clean['emb_control_val'] = 0
 
 df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(0) if col_personas_viv else 0
 df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(0) if col_cuartos else 0
@@ -355,7 +366,7 @@ with tab1:
         fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_edu, use_container_width=True)
 
-    # NUEVO GRÁFICO DE BARRAS: Seguimiento de Personas Embarazadas (Total, Menores de edad, Control prenatal)
+    # GRÁFICO DE BARRAS: Seguimiento de Personas Embarazadas (Total, Menores de edad, Control prenatal)
     st.subheader("Seguimiento de Personas Embarazadas")
     df_emb_resumen = pd.DataFrame({
         'Indicador': [
@@ -386,7 +397,6 @@ with tab1:
         st.subheader("Tipos de Discapacidad Reportados (Top 5)")
         df_disc_only = df_filtered[df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)']
         if not df_disc_only.empty:
-            # Filtrar exclusivamente los 5 primeros (Top 5)
             df_disc_top5 = df_disc_only['discapacidad_clean'].value_counts().head(5).reset_index()
             fig_disc = px.bar(
                 df_disc_top5,
@@ -403,7 +413,6 @@ with tab1:
         st.subheader("Pueblos Indígenas Identificados (Top 5)")
         df_ind_only = df_filtered[df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)']
         if not df_ind_only.empty:
-            # Filtrar exclusivamente los 5 primeros (Top 5)
             df_ind_top5 = df_ind_only['pueblo_indigena_clean'].value_counts().head(5).reset_index()
             fig_ind = px.bar(
                 df_ind_top5,
