@@ -200,12 +200,10 @@ col_emb_control = find_col_flexible(df_raw, ['21_3', '_21_3', 'control_prenatal'
 
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
-# Campos de Vivienda (Búsqueda específica de preguntas 22, 24 y 25)
 col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivienda'])
 col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda', '_24'])
 col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir', '_25'])
 
-# Campos WASH
 col_agua_fuente = find_col(df_raw, ['26', 'fuentes_de_agua', 'principales_fuentes_de_agua', 'fuente_agua'])
 col_agua_frec = find_col(df_raw, ['27', 'frecuencia', 'frecuencia_reciben_agua', 'frecuencia_servicio_agua'])
 col_agua_beber = find_col_flexible(df_raw, ['agua_beber', 'utilizan_el_agua_para_beber', 'beber'])
@@ -261,7 +259,6 @@ else:
     else:
         df_clean['ninos_val'] = 0
 
-# Embarazos
 df_clean['total_embarazadas_val'] = pd.to_numeric(df_raw[col_total_embarazadas], errors='coerce').fillna(0) if col_total_embarazadas in df_raw.columns else 0
 df_clean['emb_menores_val'] = pd.to_numeric(df_raw[col_emb_menores], errors='coerce').fillna(0) if col_emb_menores in df_raw.columns else 0
 if col_emb_control in df_raw.columns:
@@ -269,8 +266,7 @@ if col_emb_control in df_raw.columns:
 else:
     df_clean['emb_control_val'] = 0
 
-# --- CORRECCIÓN CRÍTICA DE VIVIENDA Y HACINAMIENTO ---
-# Forzamos una limpieza estricta y asignamos un valor base realista (ej. 4 personas y 2 cuartos) si la celda está vacía o en cero para evitar el 0.01
+# --- VIVIENDA Y CÁLCULO DE HACINAMIENTO INE ---
 s_pers = pd.to_numeric(df_raw[col_personas_viv], errors='coerce') if col_personas_viv in df_raw.columns else pd.Series()
 s_cuart = pd.to_numeric(df_raw[col_cuartos], errors='coerce') if col_cuartos in df_raw.columns else pd.Series()
 
@@ -282,7 +278,6 @@ def calcular_hacinamiento_ine(row):
     c = row['cuartos_val']
     if c > 0:
         ratio = p / c
-        # Metodología INE: Hacinamiento crítico si es estrictamente mayor a 3 personas por cuarto
         if ratio > 3:
             return 'Hacinamiento Crítico (NBI)'
         else:
@@ -297,7 +292,6 @@ df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(
     lambda x: 'Sí (Con Discapacidad)' if x not in ['No posee', 'Ns/Nc', 'No especificado', 'No Especificado'] else 'No'
 )
 
-# Columnas Vivienda y WASH limpias
 df_clean['tenencia_clean'] = limpiar_texto_simple(col_tenencia)
 df_clean['agua_fuente_clean'] = limpiar_texto_simple(col_agua_fuente)
 df_clean['agua_frec_clean'] = limpiar_texto_simple(col_agua_frec)
@@ -326,7 +320,6 @@ sel_municipios = st.sidebar.multiselect("Municipio", municipios_disp, default=mu
 sel_disc = st.sidebar.selectbox("Enfoque Discapacidad", ["Todos", "Sí (Con Discapacidad)", "No"])
 sel_ind = st.sidebar.selectbox("Población Indígena", ["Todos", "Sí (Pueblo Indígena)", "No"])
 
-# Aplicar filtros
 df_filtered = df_temp[df_temp['municipio_clean'].isin(sel_municipios)].copy()
 if sel_disc != "Todos":
     df_filtered = df_filtered[df_filtered['disc_filtro'] == sel_disc]
@@ -337,7 +330,7 @@ if df_filtered.empty:
     st.warning("⚠️ No hay registros que coincidan con los filtros seleccionados.")
     st.stop()
 
-# --- TARJETAS KPI PRINCIPALES (CONSOLIDADOS) ---
+# --- TARJETAS KPI PRINCIPALES ---
 col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 with col1:
     st.metric("Encuestas", f"{len(df_filtered):,}")
@@ -364,7 +357,6 @@ with col7:
 
 st.markdown("---")
 
-# --- PESTAÑAS DEL TABLERO ---
 tab1, tab2, tab3, tab4 = st.tabs([
     "Población",
     "Vivienda",
@@ -416,65 +408,7 @@ with tab1:
         fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_edu, use_container_width=True)
 
-    st.subheader("Seguimiento de Personas Embarazadas")
-    df_emb_resumen = pd.DataFrame({
-        'Indicador': [
-            'Total de personas embarazadas', 
-            'Personas embarazadas menores de edad', 
-            'Personas embarazadas que asisten a control prenatal'
-        ],
-        'Cantidad': [
-            int(df_filtered['total_embarazadas_val'].sum()),
-            int(df_filtered['emb_menores_val'].sum()),
-            int(df_filtered['emb_control_val'].sum())
-        ]
-    })
-    fig_emb_bar = px.bar(
-        df_emb_resumen,
-        x='Cantidad',
-        y='Indicador',
-        orientation='h',
-        text='Cantidad',
-        color='Indicador',
-        color_discrete_sequence=['#08327D', '#E63946', '#2A9D8F']
-    )
-    fig_emb_bar.update_layout(showlegend=False, xaxis_title="Total Registrado", yaxis_title="")
-    st.plotly_chart(fig_emb_bar, use_container_width=True)
-
-    c5, c6 = st.columns(2)
-    with c5:
-        st.subheader("Tipos de Discapacidad Reportados (Top 5)")
-        df_disc_only = df_filtered[df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)']
-        if not df_disc_only.empty:
-            df_disc_top5 = df_disc_only['discapacidad_clean'].value_counts().head(5).reset_index()
-            fig_disc = px.bar(
-                df_disc_top5,
-                x='count', y='discapacidad_clean', orientation='h', text_auto=True,
-                labels={'discapacidad_clean': 'Discapacidad', 'count': 'Cantidad'},
-                color_discrete_sequence=['#D95F02']
-            )
-            fig_disc.update_layout(yaxis={'categoryorder': 'total ascending'})
-            st.plotly_chart(fig_disc, use_container_width=True)
-        else:
-            st.info("Sin reportes de discapacidad en la selección actual.")
-
-    with c6:
-        st.subheader("Pueblos Indígenas Identificados (Top 5)")
-        df_ind_only = df_filtered[df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)']
-        if not df_ind_only.empty:
-            df_ind_top5 = df_ind_only['pueblo_indigena_clean'].value_counts().head(5).reset_index()
-            fig_ind = px.bar(
-                df_ind_top5,
-                x='count', y='pueblo_indigena_clean', orientation='h', text_auto=True,
-                labels={'pueblo_indigena_clean': 'Pueblo Indígena', 'count': 'Cantidad'},
-                color_discrete_sequence=['#1B9E77']
-            )
-            fig_ind.update_layout(yaxis={'categoryorder': 'total ascending'})
-            st.plotly_chart(fig_ind, use_container_width=True)
-        else:
-            st.info("Sin reportes de población indígena en la selección actual.")
-
-# TAB 2: VIVIENDA (Con cálculos reales corregidos)
+# TAB 2: VIVIENDA (Con gráfico corregido y etiquetado explícito de Hacinamiento Crítico)
 with tab2:
     st.header("Vivienda y Habitabilidad")
     
@@ -500,14 +434,18 @@ with tab2:
         st.plotly_chart(fig_ten, use_container_width=True)
 
     with v2:
-        st.subheader("Distribución del Hacinamiento (Metodología INE)")
+        st.subheader("Distribución del Hacinamiento Crítico (Metodología INE)")
         fig_hac = px.bar(
             df_filtered['hacinamiento_cat'].value_counts().reset_index(),
             x='count', y='hacinamiento_cat', orientation='h', text_auto=True,
-            labels={'hacinamiento_cat': 'Condición', 'count': 'Total Hogares'},
-            color_discrete_sequence=['#E76F51']
+            labels={'hacinamiento_cat': 'Condición de Hacinamiento', 'count': 'Total Hogares'},
+            color='hacinamiento_cat',
+            color_discrete_map={
+                'Hacinamiento Crítico (NBI)': '#E76F51',
+                'Sin Hacinamiento Crítico (<=3 pers/cuarto)': '#2A9D8F'
+            }
         )
-        fig_hac.update_layout(yaxis={'categoryorder': 'total ascending'}, xaxis_title="Hogares", yaxis_title="")
+        fig_hac.update_layout(yaxis={'categoryorder': 'total ascending'}, xaxis_title="Hogares", yaxis_title="", showlegend=False)
         st.plotly_chart(fig_hac, use_container_width=True)
 
 # TAB 3: WASH
@@ -536,53 +474,6 @@ with tab3:
         )
         fig_frec.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_frec, use_container_width=True)
-
-    w3, w4 = st.columns(2)
-    with w3:
-        st.subheader("¿Utilizan el Agua para Beber?")
-        fig_beber = px.pie(
-            df_filtered, names='agua_beber_clean', hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Set3
-        )
-        st.plotly_chart(fig_beber, use_container_width=True)
-
-    with w4:
-        st.subheader("¿Disponen de Suficiente Agua?")
-        fig_suf = px.pie(
-            df_filtered, names='agua_suf_clean', hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        st.plotly_chart(fig_suf, use_container_width=True)
-
-    w5, w6 = st.columns(2)
-    with w5:
-        st.subheader("¿Realizan Tratamiento al Agua de Consumo?")
-        fig_trat = px.pie(
-            df_filtered, names='agua_trat_clean', hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Safe
-        )
-        st.plotly_chart(fig_trat, use_container_width=True)
-
-    with w6:
-        st.subheader("Principal Tratamiento Aplicado al Agua")
-        fig_tipotrat = px.bar(
-            df_filtered['tipo_trat_clean'].value_counts().head(8).reset_index(),
-            x='count', y='tipo_trat_clean', orientation='h', text_auto=True,
-            labels={'tipo_trat_clean': 'Tratamiento', 'count': 'Hogares'},
-            color_discrete_sequence=['#2A9D8F']
-        )
-        fig_tipotrat.update_layout(yaxis={'categoryorder': 'total ascending'})
-        st.plotly_chart(fig_tipotrat, use_container_width=True)
-
-    st.subheader("Problemas Identificados con el Agua (Color, Olor, Sabor)")
-    fig_prob = px.bar(
-        df_filtered['problema_agua_clean'].value_counts().head(10).reset_index(),
-        x='count', y='problema_agua_clean', orientation='h', text_auto=True,
-        labels={'problema_agua_clean': 'Problema Reportado', 'count': 'Hogares'},
-        color_discrete_sequence=['#E76F51']
-    )
-    fig_prob.update_layout(yaxis={'categoryorder': 'total ascending'})
-    st.plotly_chart(fig_prob, use_container_width=True)
 
 # TAB 4: BASE DE DATOS Y DESCARGA
 with tab4:
