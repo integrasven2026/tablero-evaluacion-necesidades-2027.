@@ -190,19 +190,19 @@ col_ind = find_col(df_raw, ['etnia_indigena'])
 col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 
-# Campos demográficos detallados para el consolidado
+# Demográficos desglosados
 col_hombres = find_col_flexible(df_raw, ['hombres', 'masculinos', 'num_hombres'])
 col_mujeres = find_col_flexible(df_raw, ['mujeres', 'femeninos', 'num_mujeres'])
 col_ninos = find_col_flexible(df_raw, ['ninos', 'niños', 'menores', 'infantes'])
 
-# Campos de embarazo
+# Embarazos
 col_total_embarazadas = find_col_flexible(df_raw, ['21_1', '_21_1', 'embarazadas_hay', 'num_embarazadas', 'gestantes'])
 col_emb_menores = find_col_flexible(df_raw, ['21_2', '_21_2', 'menores_de_edad', 'embarazadas_son_menores'])
 col_emb_control = find_col_flexible(df_raw, ['21_3', '_21_3', 'control_prenatal', 'acuden'])
 
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
-# Campos de Vivienda (Preguntas 22, 24, 25 para hacinamiento y habitaciones)
+# Campos de Vivienda (Pregunta 22, 24 y 25)
 col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivienda'])
 col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda'])
 col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir'])
@@ -251,7 +251,7 @@ df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codi
 df_clean['discapacidad_clean'] = df_raw[col_disc].apply(lambda x: limpiar_codigo(x, MAPA_DISCAPACIDADES)) if col_disc else 'No especificado'
 df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes else 0
 
-# Demográficos desglosados (Hombres, Mujeres, Niños)
+# Demográficos desglosados
 df_clean['hombres_val'] = pd.to_numeric(df_raw[col_hombres], errors='coerce').fillna(0) if col_hombres in df_raw.columns else 0
 df_clean['mujeres_val'] = pd.to_numeric(df_raw[col_mujeres], errors='coerce').fillna(0) if col_mujeres in df_raw.columns else 0
 df_clean['ninos_val'] = pd.to_numeric(df_raw[col_ninos], errors='coerce').fillna(0) if col_ninos in df_raw.columns else 0
@@ -264,24 +264,24 @@ if col_emb_control in df_raw.columns:
 else:
     df_clean['emb_control_val'] = 0
 
-# Vivienda y cálculos robustos de hacinamiento
-df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(0) if col_personas_viv in df_raw.columns else 1
-df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(0) if col_cuartos in df_raw.columns else 1
+# Vivienda: Extracción numérica robusta
+df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(0) if col_personas_viv in df_raw.columns else 0
+df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(0) if col_cuartos in df_raw.columns else 0
 
-def calcular_hacinamiento(row):
+# --- LÓGICA OFICIAL DEL INE (NBI) PARA HACINAMIENTO CRÍTICO ---
+def calcular_hacinamiento_ine(row):
     p = row['personas_viv_val']
     c = row['cuartos_val']
     if c > 0:
         ratio = p / c
+        # Criterio INE: Hacinamiento crítico si el resultado es estrictamente mayor a 3
         if ratio > 3:
-            return 'Hacinamiento Crítico (>3 pers/cuarto)'
-        elif ratio > 2:
-            return 'Hacinamiento Moderado (2-3 pers/cuarto)'
+            return 'Hacinamiento Crítico (NBI)'
         else:
-            return 'Sin Hacinamiento (<=2 pers/cuarto)'
+            return 'Sin Hacinamiento Crítico (<=3 pers/cuarto)'
     return 'No especificado'
 
-df_clean['hacinamiento_cat'] = df_clean.apply(calcular_hacinamiento, axis=1)
+df_clean['hacinamiento_cat'] = df_clean.apply(calcular_hacinamiento_ine, axis=1)
 
 df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
 df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 'Sí (Pueblo Indígena)' if x not in ['No Especificado', 'No especificado'] else 'No')
@@ -329,7 +329,7 @@ if df_filtered.empty:
     st.warning("⚠️ No hay registros que coincidan con los filtros seleccionados.")
     st.stop()
 
-# --- TARJETAS KPI PRINCIPALES (Actualizadas con Hombres, Mujeres y Niños) ---
+# --- TARJETAS KPI PRINCIPALES (Consolidado) ---
 col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 with col1:
     st.metric("Encuestas", f"{len(df_filtered):,}")
@@ -464,7 +464,7 @@ with tab1:
         else:
             st.info("Sin reportes de población indígena en la selección actual.")
 
-# TAB 2: VIVIENDA (Sin gráfico duplicado de municipios)
+# TAB 2: VIVIENDA (Con promedio y Hacinamiento Crítico INE)
 with tab2:
     st.header("Vivienda y Habitabilidad")
     
@@ -473,8 +473,8 @@ with tab2:
     with col_v_kpi1:
         st.metric("Promedio de Personas por Hogar", f"{promedio_personas:.2f}")
     with col_v_kpi2:
-        total_hacinados = (df_filtered['hacinamiento_cat'].str.contains('Hacinamiento', case=False, na=False)).sum()
-        st.metric("Hogares con Hacinamiento", f"{total_hacinados:,}")
+        total_hacinados_criticos = (df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum()
+        st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}")
 
     v1, v2 = st.columns(2)
     with v1:
@@ -486,7 +486,7 @@ with tab2:
         st.plotly_chart(fig_ten, use_container_width=True)
 
     with v2:
-        st.subheader("Distribución del Hacinamiento en Hogares")
+        st.subheader("Distribución del Hacinamiento (Metodología INE)")
         fig_hac = px.bar(
             df_filtered['hacinamiento_cat'].value_counts().reset_index(),
             x='count', y='hacinamiento_cat', orientation='h', text_auto=True,
