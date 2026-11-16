@@ -80,24 +80,39 @@ MAPA_SOCIOS = {
 }
 
 MAPA_MUNICIPIOS = {
-    've0101': 'Libertador', 've0701': 'Caroní', 've0702': 'Cedeño', 've0703': 'El Callao',
+    've0101': 'Libertador',
+    've0701': 'Caroní', 've0702': 'Cedeño', 've0703': 'El Callao',
     've0704': 'Gran Sabana', 've0705': 'Heres', 've0706': 'Piar', 've0707': 'Boliv. Angostura',
-    've0708': 'Roscio', 've0709': 'Sifontes', 've1001': 'Antonio Díaz', 've1002': 'Casacoima',
-    've1003': 'Pedernales', 've1004': 'Tucupita', 've1501': 'Acevedo', 've1502': 'Andrés Bello',
-    've1503': 'Baruta', 've1504': 'Brión', 've1505': 'Buroz', 've1506': 'Carrizal',
-    've1507': 'Chacao', 've1508': 'Cristóbal Rojas', 've1509': 'El Hatillo', 've1510': 'Guaicaipuro',
-    've1511': 'Independencia', 've1512': 'Lander', 've1513': 'Los Salias', 've1514': 'Páez',
-    've1515': 'Paz Castillo', 've1516': 'Pedro Gual', 've1517': 'Plaza', 've1518': 'Simón Bolívar',
-    've1519': 'Sucre', 've1520': 'Urdaneta', 've1521': 'Zamora', 've1901': 'Andrés Eloy Blanco',
-    've1902': 'Andrés Mata', 've1903': 'Arismendi', 've1904': 'Benítez', 've1905': 'Bermúdez',
-    've1906': 'Bolívar', 've1907': 'Cajigal', 've1908': 'Cruz Salmerón Acosta', 've1909': 'Libertador',
-    've1910': 'Mariño', 've1911': 'Mejía', 've1912': 'Montes', 've1913': 'Ribero', 've1914': 'Sucre',
-    've1915': 'Valdéz', 've2401': 'Vargas', 've2501': 'Almirante Padilla', 've2502': 'Baralt',
-    've2503': 'Cabimas', 've2504': 'Catatumbo', 've2505': 'Colón', 've2506': 'Pulgar',
-    've2507': 'Jesús Enrique Lossada', 've2508': 'Jesús María Semprún', 've2509': 'La Cañada de Urdaneta',
-    've2510': 'Lagunillas', 've2511': 'Machiques de Perijá', 've2512': 'Mara', 've2513': 'Maracaibo',
-    've2514': 'Miranda', 've2515': 'Insular Padilla', 've2516': 'Rosario de Perijá', 've2517': 'San Francisco',
-    've2518': 'Santa Rita', 've2519': 'Simón Bolívar', 've2520': 'Sucre', 've2521': 'Valmore Rodríguez',
+    've0708': 'Roscio', 've0709': 'Sifontes',
+    've1001': 'Antonio Díaz', 've1002': 'Casacoima', 've1003': 'Pedernales', 've1004': 'Tucupita',
+    've1501': 'Acevedo', 've1502': 'Andrés Bello', 've1503': 'Baruta', 've1504': 'Brión',
+    've1505': 'Buroz', 've1506': 'Carrizal', 've1507': 'Chacao', 've1508': 'Cristóbal Rojas',
+    've1509': 'El Hatillo', 've1510': 'Guaicaipuro', 've1511': 'Independencia', 've1512': 'Lander',
+    've1513': 'Los Salias', 've1514': 'Páez', 've1515': 'Paz Castillo', 've1516': 'Pedro Gual',
+    've1517': 'Plaza', 've1518': 'Simón Bolívar', 've1519': 'Sucre', 've1520': 'Urdaneta', 've1521': 'Zamora',
+    've1901': 'Andrés Eloy Blanco', 've1902': 'Andrés Mata', 've1903': 'Arismendi', 've1904': 'Benítez',
+    've1905': 'Bermúdez', 've1906': 'Bolívar', 've1907': 'Cajigal', 've1908': 'Cruz Salmerón Acosta',
+    've1909': 'Libertador', 've1910': 'Mariño', 've1911': 'Mejía', 've1912': 'Montes',
+    've1913': 'Ribero', 've1914': 'Sucre', 've1915': 'Valdéz',
+    # La Guaira (Vargas y subdivisiones parroquiales codificadas a 6 dígitos en Kobo)
+    've2401': 'Vargas (Caraballeda)',
+    've2402': 'Carayaca',
+    've2403': 'Catia La Mar',
+    've2404': 'El Junko',
+    've2405': 'La Guaira',
+    've2406': 'Macuto',
+    've2407': 'Maiquetía',
+    've2408': 'Naiguatá',
+    've2409': 'Caruao',
+    've2410': 'Urimare',
+    've2411': 'Carlos Soublette',
+    # Zulia
+    've2501': 'Almirante Padilla', 've2502': 'Baralt', 've2503': 'Cabimas', 've2504': 'Catatumbo',
+    've2505': 'Colón', 've2506': 'Pulgar', 've2507': 'Jesús Enrique Lossada', 've2508': 'Jesús María Semprún',
+    've2509': 'La Cañada de Urdaneta', 've2510': 'Lagunillas', 've2511': 'Machiques de Perijá', 've2512': 'Mara',
+    've2513': 'Maracaibo', 've2514': 'Miranda', 've2515': 'Insular Padilla', 've2516': 'Rosario de Perijá',
+    've2517': 'San Francisco', 've2518': 'Santa Rita', 've2519': 'Simón Bolívar', 've2520': 'Sucre', 've2521': 'Valmore Rodríguez',
+    # Táchira
     've2601': 'Andrés Bello', 've2602': 'Antonio Rómulo Costa', 've2603': 'Ayacucho', 've2604': 'Bolívar',
     've2605': 'Cárdenas', 've2606': 'Córdoba', 've2607': 'Fernández Feo', 've2608': 'Francisco de Miranda',
     've2609': 'García de Hevia', 've2610': 'Guásimos', 've2611': 'Independencia', 've2612': 'Jáuregui',
@@ -116,10 +131,11 @@ MAPA_PARROQUIAS = {
     've010113': 'La Vega', 've010114': 'Macarao', 've010115': 'San Agustín',
     've010116': 'San Bernardino', 've010117': 'San José', 've010118': 'San Juan',
     've010119': 'San Pedro', 've010120': 'Santa Rosalía', 've010121': 'Santa Teresa',
-    've010122': 'Sucre', 've240101': 'Caraballeda', 've240102': 'Carayaca',
-    've240103': 'Catia La Mar', 've240104': 'El Junco', 've240105': 'La Guaira',
-    've240106': 'Macuto', 've240107': 'Maiquetía', 've240108': 'Naiguatá',
-    've240109': 'Caruao', 've240110': 'Urimare'
+    've010122': 'Sucre',
+    've240101': 'Caraballeda', 've240102': 'Carayaca', 've240103': 'Catia La Mar',
+    've240104': 'El Junko', 've240105': 'La Guaira', 've240106': 'Macuto',
+    've240107': 'Maiquetía', 've240108': 'Naiguatá', 've240109': 'Caruao',
+    've240110': 'Urimare', 've240111': 'Carlos Soublette'
 }
 
 MAPA_EDUCACION = {
@@ -191,12 +207,14 @@ col_basura = find_col(df_raw, ['disposicion_basura', 'desecho_basura'])
 
 df_clean = df_raw.copy()
 
-def limpiar_codigo(val, diccionario):
+def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
     if pd.isna(val):
         return 'No especificado'
     v_str = str(val).strip().lower()
     if v_str in diccionario:
         return diccionario[v_str]
+    elif diccionario_respaldo and v_str in diccionario_respaldo:
+        return diccionario_respaldo[v_str]
     elif v_str in ['', 'nan', 'none', 'nat']:
         return 'No especificado'
     else:
@@ -211,8 +229,8 @@ def limpiar_texto_simple(col_name):
 
 df_clean['socio_clean'] = df_raw[col_socio].apply(lambda x: limpiar_codigo(x, MAPA_SOCIOS)).str.upper() if col_socio else 'NO ESPECIFICADO'
 df_clean['estado_clean'] = df_raw[col_estado].apply(lambda x: limpiar_codigo(x, MAPA_ESTADOS)) if col_estado else 'No especificado'
-df_clean['municipio_clean'] = df_raw[col_municipio].apply(lambda x: limpiar_codigo(x, MAPA_MUNICIPIOS)) if col_municipio else 'No especificado'
-df_clean['parroquia_clean'] = df_raw[col_parroquia].apply(lambda x: limpiar_codigo(x, MAPA_PARROQUIAS)) if col_parroquia else 'No especificado'
+df_clean['municipio_clean'] = df_raw[col_municipio].apply(lambda x: limpiar_codigo(x, MAPA_MUNICIPIOS, MAPA_PARROQUIAS)) if col_municipio else 'No especificado'
+df_clean['parroquia_clean'] = df_raw[col_parroquia].apply(lambda x: limpiar_codigo(x, MAPA_PARROQUIAS, MAPA_MUNICIPIOS)) if col_parroquia else 'No especificado'
 df_clean['comunidad_clean'] = df_raw[col_comunidad].fillna('No especificado').astype(str).str.strip() if col_comunidad else 'No especificado'
 df_clean['sexo_clean'] = df_raw[col_sexo].apply(lambda x: limpiar_codigo(x, {'masculino': 'Hombre', 'femenino': 'Mujer', 'hombre': 'Hombre', 'mujer': 'Mujer'})) if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].apply(lambda x: limpiar_codigo(x, MAPA_EDUCACION)) if col_edu else 'No especificado'
@@ -387,7 +405,7 @@ with tab2:
         fig_mun = px.bar(
             df_filtered['municipio_clean'].value_counts().head(10).reset_index(),
             x='count', y='municipio_clean', orientation='h', text_auto=True,
-            labels={'municipio_clean': 'Municipio', 'count': 'Encuestas'},
+            labels={'municipio_clean': 'Municipio / Parroquia', 'count': 'Encuestas'},
             color_discrete_sequence=['#08327D']
         )
         fig_mun.update_layout(yaxis={'categoryorder': 'total ascending'})
