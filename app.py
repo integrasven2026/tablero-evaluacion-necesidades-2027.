@@ -257,13 +257,7 @@ MAPA_TIPO_FILTRO = {
     'sifon': 'Filtros de sifón (Ej. Sifón tipo Tulip u otros sistemas de succión/manguera)'
 }
 
-# --- FUNCIONES DE BÚSQUEDA ROBUSTA POR CONTENIDO ---
-def find_col_by_content(df, keywords):
-    for c in df.columns:
-        if df[c].dropna().astype(str).str.lower().str.contains('|'.join(keywords), regex=True).any():
-            return c
-    return None
-
+# --- FUNCIONES DE BÚSQUEDA ROBUSTA ---
 def find_col(df, keywords):
     for col in df.columns:
         for kw in keywords:
@@ -306,15 +300,27 @@ col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivie
 col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda', '_24'])
 col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir', '_25'])
 
-# Búsqueda robusta por contenido y nombres para preguntas WASH
-col_agua_frec = find_col_by_content(df_raw, ['diario', 'varios_dias', 'una_vez', 'cada_15']) or find_col_flexible(df_raw, ['27', 'frecuencia', 'abastec'])
-col_agua_beber = find_col_by_content(df_raw, ['usa_esta_agua', 'beber']) or find_col_flexible(df_raw, ['28'])
-col_agua_suf = find_col_by_content(df_raw, ['suficiente_agua', 'suficiente']) or find_col_flexible(df_raw, ['30'])
-col_agua_trat = find_col_by_content(df_raw, ['realiza_tratamiento', 'tratamiento_agua']) or find_col_flexible(df_raw, ['31'])
-col_almacena = find_col_by_content(df_raw, ['almacena', 'almacenas']) or find_col_flexible(df_raw, ['33'])
-col_acceso_jabon = find_col_by_content(df_raw, ['jabon', 'lavado_de_manos']) or find_col_flexible(df_raw, ['35'])
-col_higiene_menstru = find_col_by_content(df_raw, ['menstrual', 'higiene_menstrual']) or find_col_flexible(df_raw, ['36', 'higiene'])
-col_filtro_agua = find_col_by_content(df_raw, ['filtro_de_agua', 'filtro']) or find_col_flexible(df_raw, ['38'])
+col_agua_frec = None
+for c in df_raw.columns:
+    if df_raw[c].dropna().astype(str).str.lower().str.contains('diario|varios_dias|una_vez|cada_15', regex=True).any():
+        col_agua_frec = c
+        break
+if not col_agua_frec:
+    for c in df_raw.columns:
+        c_l = c.lower()
+        if ('27' in c_l or 'frecuencia' in c_l or 'abastec' in c_l) and ('agua' in c_l or c_l.endswith('_27') or c_l == '27'):
+            col_agua_frec = c
+            break
+
+col_agua_beber = find_col_flexible(df_raw, ['28', 'beber', 'usa_esta_agua'])
+col_agua_suf = find_col_flexible(df_raw, ['30', 'suficiente', 'suficiente_agua'])
+col_agua_trat = find_col_flexible(df_raw, ['31', 'realiza_tratamiento', 'tratamiento_agua'])
+col_almacena = find_col_flexible(df_raw, ['33', 'almacena', 'almacenas'])
+col_acceso_jabon = find_col_flexible(df_raw, ['35', 'jabon', 'lavado_de_manos'])
+col_higiene_menstru = find_col_flexible(df_raw, ['36', 'menstrual', 'higiene_menstrual'])
+col_desecho_basura = find_col_flexible(df_raw, ['37', 'basura', 'desecha'])
+col_filtro_agua = find_col_flexible(df_raw, ['38', 'filtro', 'filtro_de_agua'])
+col_tipo_filtro = find_col_flexible(df_raw, ['38_1', '38.1', 'tipo_de_filtro'])
 
 df_clean = df_raw.copy()
 
@@ -622,7 +628,7 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Sección completa de Agua, Saneamiento e Higiene)
+# TAB 3: WASH (Ampliando con Preguntas 26 a la 38.1)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     total_hogs = len(df_filtered)
@@ -817,6 +823,7 @@ with tab3:
 
     st.markdown("---")
 
+    # NUEVAS PREGUNTAS 35, 36, 37, 38 Y 38.1
     w11, w12 = st.columns(2)
     with w11:
         st.subheader("35. Acceso a jabón para lavado de manos")
@@ -882,6 +889,7 @@ with tab3:
 
     st.markdown("---")
 
+    # PREGUNTA 38.1 TIPO DE FILTRO
     st.subheader("38.1. ¿Qué tipo de filtro?")
     cols_tfiltro_kobo = [c for c in df_raw.columns if '38_1' in c or '38.1' in c or 'tipo_filtro' in c.lower() or 'gravedad' in c.lower()]
     conteo_tfiltro = {}
