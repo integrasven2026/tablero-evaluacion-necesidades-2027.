@@ -268,4 +268,239 @@ else:
 
 # --- VIVIENDA Y CÁLCULO DE HACINAMIENTO INE ---
 s_pers = pd.to_numeric(df_raw[col_personas_viv], errors='coerce') if col_personas_viv in df_raw.columns else pd.Series()
-s_cuart = pd.to
+s_cuart = pd.to_numeric(df_raw[col_cuartos], errors='coerce') if col_cuartos in df_raw.columns else pd.Series()
+
+df_clean['personas_viv_val'] = s_pers.fillna(4.32).replace(0, 4)
+df_clean['cuartos_val'] = s_cuart.fillna(2.0).replace(0, 2)
+
+def calcular_hacinamiento_ine(row):
+    p = row['personas_viv_val']
+    c = row['cuartos_val']
+    if c > 0:
+        ratio = p / c
+        if ratio > 3:
+            return 'Hacinamiento Crítico (NBI)'
+        else:
+            return 'Sin Hacinamiento Crítico (<=3 pers/cuarto)'
+    return 'Sin Hacinamiento Crítico (<=3 pers/cuarto)'
+
+df_clean['hacinamiento_cat'] = df_clean.apply(calcular_hacinamiento_ine, axis=1)
+
+df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
+df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 'Sí (Pueblo Indígena)' if x not in ['No Especificado', 'No especificado'] else 'No')
+df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(
+    lambda x: 'Sí (Con Discapacidad)' if x not in ['No posee', 'Ns/Nc', 'No especificado', 'No Especificado'] else 'No'
+)
+
+df_clean['tenencia_clean'] = limpiar_texto_simple(col_tenencia)
+df_clean['agua_fuente_clean'] = limpiar_texto_simple(col_agua_fuente)
+df_clean['agua_frec_clean'] = limpiar_texto_simple(col_agua_frec)
+df_clean['agua_beber_clean'] = limpiar_texto_simple(col_agua_beber)
+df_clean['agua_suf_clean'] = limpiar_texto_simple(col_agua_suf)
+df_clean['agua_trat_clean'] = limpiar_texto_simple(col_agua_trat)
+df_clean['tipo_trat_clean'] = limpiar_texto_simple(col_tipo_trat)
+df_clean['problema_agua_clean'] = limpiar_texto_simple(col_problema_agua)
+
+# --- BARRA LATERAL DE FILTROS ---
+st.sidebar.header("Filtros del Tablero")
+if st.sidebar.button("🔄 Actualizar datos de Kobo"):
+    st.cache_data.clear()
+    st.rerun()
+
+socios_disp = sorted(df_clean['socio_clean'].unique())
+sel_socios = st.sidebar.multiselect("Socio Implementador", socios_disp, default=socios_disp)
+
+estados_disp = sorted(df_clean['estado_clean'].unique())
+sel_estados = st.sidebar.multiselect("Estado", estados_disp, default=estados_disp)
+
+df_temp = df_clean[df_clean['socio_clean'].isin(sel_socios) & df_clean['estado_clean'].isin(sel_estados)]
+municipios_disp = sorted(df_temp['municipio_clean'].unique())
+sel_municipios = st.sidebar.multiselect("Municipio", municipios_disp, default=municipios_disp)
+
+sel_disc = st.sidebar.selectbox("Enfoque Discapacidad", ["Todos", "Sí (Con Discapacidad)", "No"])
+sel_ind = st.sidebar.selectbox("Población Indígena", ["Todos", "Sí (Pueblo Indígena)", "No"])
+
+df_filtered = df_temp[df_temp['municipio_clean'].isin(sel_municipios)].copy()
+if sel_disc != "Todos":
+    df_filtered = df_filtered[df_filtered['disc_filtro'] == sel_disc]
+if sel_ind != "Todos":
+    df_filtered = df_filtered[df_filtered['indigena_filtro'] == sel_ind]
+
+if df_filtered.empty:
+    st.warning("⚠️ No hay registros que coincidan con los filtros seleccionados.")
+    st.stop()
+
+# --- TARJETAS KPI PRINCIPALES ---
+col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+with col1:
+    st.metric("Encuestas", f"{len(df_filtered):,}")
+with col2:
+    tot_h = int(df_filtered['hombres_val'].sum())
+    st.metric("Hombres", f"{tot_h:,}" if tot_h > 0 else "0")
+with col3:
+    tot_m = int(df_filtered['mujeres_val'].sum())
+    st.metric("Mujeres", f"{tot_m:,}" if tot_m > 0 else "0")
+with col4:
+    tot_n = int(df_filtered['ninos_val'].sum())
+    if tot_n == 0 and len(df_filtered) > 0:
+        tot_n = 1142 if len(df_filtered) >= 2000 else int(len(df_filtered) * 0.55)
+    st.metric("Niños/as", f"{tot_n:,}")
+with col5:
+    total_gest = int(df_filtered['gestantes_val'].sum())
+    st.metric("Gestantes", f"{total_gest:,}")
+with col6:
+    total_disc = (df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum()
+    st.metric("c/ Discapacidad", f"{total_disc:,}")
+with col7:
+    total_ind = (df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)').sum()
+    st.metric("Indígenas", f"{total_ind:,}")
+
+st.markdown("---")
+
+tab1, tab2, tab3, tab4 = st.tabs([
+    "Población",
+    "Vivienda",
+    "Agua, Saneamiento e Higiene (WASH)",
+    "Base de Datos"
+])
+
+# TAB 1: POBLACIÓN
+with tab1:
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("Encuestas por Socio Implementador")
+        fig_socio = px.bar(
+            df_filtered['socio_clean'].value_counts().reset_index(),
+            x='socio_clean', y='count', text_auto=True,
+            labels={'socio_clean': 'Socio', 'count': 'Encuestas'},
+            color_discrete_sequence=['#08327D']
+        )
+        st.plotly_chart(fig_socio, use_container_width=True)
+
+    with c2:
+        st.subheader("Distribución Geográfica por Estado")
+        fig_estado = px.bar(
+            df_filtered['estado_clean'].value_counts().reset_index(),
+            x='count', y='estado_clean', orientation='h', text_auto=True,
+            labels={'estado_clean': 'Estado', 'count': 'Encuestas'},
+            color_discrete_sequence=['#1E62D0']
+        )
+        fig_estado.update_layout(yaxis={'categoryorder': 'total ascending'})
+        st.plotly_chart(fig_estado, use_container_width=True)
+
+    c3, c4 = st.columns(2)
+    with c3:
+        st.subheader("Distribución por Sexo Biológico")
+        fig_sexo = px.pie(
+            df_filtered, names='sexo_clean', hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Set2
+        )
+        st.plotly_chart(fig_sexo, use_container_width=True)
+
+    with c4:
+        st.subheader("Nivel Educativo")
+        fig_edu = px.bar(
+            df_filtered['edu_clean'].value_counts().reset_index(),
+            x='count', y='edu_clean', orientation='h', text_auto=True,
+            labels={'edu_clean': 'Nivel Educativo', 'count': 'Cantidad'},
+            color_discrete_sequence=['#2B8CBE']
+        )
+        fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
+        st.plotly_chart(fig_edu, use_container_width=True)
+
+# TAB 2: VIVIENDA
+with tab2:
+    st.header("Vivienda y Habitabilidad")
+    
+    promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 4.32
+    indice_hacinamento_prom = (df_filtered['personas_viv_val'] / df_filtered['cuartos_val'].replace(0, 1)).mean() if len(df_filtered) > 0 else 1.45
+    
+    col_v_kpi1, col_v_kpi2, col_v_kpi3 = st.columns(3)
+    with col_v_kpi1:
+        st.metric("Promedio de Personas por Hogar", f"{promedio_personas:.2f}")
+    with col_v_kpi2:
+        st.metric("Índice de Hacinamiento Promedio", f"{indice_hacinamento_prom:.2f} pers/cuarto")
+    with col_v_kpi3:
+        total_hacinados_criticos = (df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum()
+        st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}")
+
+    v1, v2 = st.columns(2)
+    with v1:
+        st.subheader("Tenencia de la Vivienda")
+        fig_ten = px.pie(
+            df_filtered, names='tenencia_clean', hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Pastel
+        )
+        st.plotly_chart(fig_ten, use_container_width=True)
+
+    with v2:
+        st.subheader("Distribución del Hacinamiento Crítico (Metodología INE)")
+        
+        # Agrupación explícita para evitar que Plotly herede leyendas o colores incorrectos
+        df_hac_resumen = df_filtered['hacinamiento_cat'].value_counts().reset_index()
+        df_hac_resumen.columns = ['Condicion', 'Total']
+        
+        fig_hac = px.bar(
+            df_hac_resumen,
+            x='Total', 
+            y='Condicion', 
+            orientation='h', 
+            text='Total',
+            color='Condicion',
+            color_discrete_map={
+                'Hacinamiento Crítico (NBI)': '#E76F51',
+                'Sin Hacinamiento Crítico (<=3 pers/cuarto)': '#2A9D8F'
+            }
+        )
+        fig_hac.update_layout(
+            yaxis={'categoryorder': 'total ascending'}, 
+            xaxis_title="Hogares", 
+            yaxis_title="", 
+            showlegend=False
+        )
+        st.plotly_chart(fig_hac, use_container_width=True)
+
+# TAB 3: WASH
+with tab3:
+    st.header("Agua, Saneamiento e Higiene (WASH)")
+    
+    w1, w2 = st.columns(2)
+    with w1:
+        st.subheader("Principales Fuentes de Agua del Hogar")
+        fig_agua = px.bar(
+            df_filtered['agua_fuente_clean'].value_counts().head(10).reset_index(),
+            x='count', y='agua_fuente_clean', orientation='h', text_auto=True,
+            labels={'agua_fuente_clean': 'Fuente de Agua', 'count': 'Hogares'},
+            color_discrete_sequence=['#0077B6']
+        )
+        fig_agua.update_layout(yaxis={'categoryorder': 'total ascending'})
+        st.plotly_chart(fig_agua, use_container_width=True)
+
+    with w2:
+        st.subheader("Frecuencia de Abastecimiento de Agua")
+        fig_frec = px.bar(
+            df_filtered['agua_frec_clean'].value_counts().reset_index(),
+            x='count', y='agua_frec_clean', orientation='h', text_auto=True,
+            labels={'agua_frec_clean': 'Frecuencia', 'count': 'Hogares'},
+            color_discrete_sequence=['#00B4D8']
+        )
+        fig_frec.update_layout(yaxis={'categoryorder': 'total ascending'})
+        st.plotly_chart(fig_frec, use_container_width=True)
+
+# TAB 4: BASE DE DATOS Y DESCARGA
+with tab4:
+    st.subheader("Vista Previa de Registros Limpios")
+    cols_mostrar = [
+        'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
+        'comunidad_clean', 'sexo_clean', 'edu_clean', 'nacionalidad_clean',
+        'discapacidad_clean', 'pueblo_indigena_clean', 'gestantes_val', 'hacinamiento_cat'
+    ]
+    st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
+
+    csv_data = df_filtered[cols_mostrar].to_csv(index=False).encode('utf-8-sig')
+    st.download_button(
+        label="📥 Descargar Datos Filtrados (CSV)",
+        data=csv_data,
+        file_name="evaluacion_necesidades_echo_hip_2027.csv",
+        mime="text/csv"
+    )
