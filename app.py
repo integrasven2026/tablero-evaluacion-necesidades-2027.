@@ -267,6 +267,16 @@ MAPA_RAZON_MENSTRUAL = {
     'no_habitual': 'No es una práctica habitual en la rutina diaria de la familia.'
 }
 
+MAPA_INGRESOS_RANGOS = {
+    '1_50': 'De 1$ a 50$',
+    '51_100': 'De 51$ a 100$',
+    '101_200': 'De 101$ a 200$',
+    '201_350': 'De 201$ a 350$',
+    '351_500': 'De 351$ a 500$',
+    'mas_500': 'Más de 500$',
+    'ns_nc': 'No sabe / No responde'
+}
+
 # --- FUNCIONES DE BÚSQUEDA ROBUSTA ---
 def find_col(df, keywords):
     for col in df.columns:
@@ -328,7 +338,6 @@ col_agua_trat = find_col_flexible(df_raw, ['31', 'realiza_tratamiento', 'tratami
 col_almacena = find_col_flexible(df_raw, ['33', 'almacena', 'almacenas'])
 col_acceso_jabon = find_col_flexible(df_raw, ['35', 'jabon', 'lavado_de_manos'])
 
-# Búsqueda infalible para la pregunta 36 (Higiene Menstrual)
 col_higiene_menstru = None
 for c in df_raw.columns:
     c_l = c.lower()
@@ -340,7 +349,6 @@ for c in df_raw.columns:
 if not col_higiene_menstru:
     col_higiene_menstru = find_col_flexible(df_raw, ['36', 'menstrual', 'higiene'])
 
-# Búsqueda infalible para la pregunta 36.1 (Razón por qué no tienen acceso)
 col_razon_menstru = None
 for c in df_raw.columns:
     c_l = c.lower()
@@ -351,6 +359,13 @@ for c in df_raw.columns:
 col_desecho_basura = find_col_flexible(df_raw, ['37', 'basura', 'desecha'])
 col_filtro_agua = find_col_flexible(df_raw, ['38', 'filtro', 'filtro_de_agua'])
 col_tipo_filtro = find_col_flexible(df_raw, ['38_1', '38.1', 'tipo_de_filtro'])
+
+# --- BÚSQUEDA DE COLUMNAS DE INGRESOS (Capítulo nuevo) ---
+col_trabajo_act = find_col_flexible(df_raw, ['39', 'actividad_laboral', 'generacion_de_ingresos', 'tiene_trabajo'])
+col_personas_empleadas = find_col_flexible(df_raw, ['42', 'personas_empleadas', 'grupo_familiar_estan_empleadas'])
+col_remesas = find_col_flexible(df_raw, ['43', 'remesas', 'dinero_remesas', 'familiar_o_amigo_desde_el_exterior'])
+col_oportunidad_empleo = find_col_flexible(df_raw, ['44', 'oportunidades_de_empleo', 'actividades_seguras'])
+col_ingresos_total = find_col_flexible(df_raw, ['45', 'total_de_ingreso', 'mes_pasado', 'ingreso_de_su_hogar'])
 
 df_clean = df_raw.copy()
 
@@ -428,6 +443,31 @@ def limpiar_razon_menstrual(val):
         return 'No es una práctica habitual en la rutina diaria de la familia.'
     return s.replace('_', ' ').capitalize()
 
+def limpiar_ingresos(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip().lower()
+    if s in ['', 'nan', 'none', 'nat']:
+        return 'No especificado'
+    if s in MAPA_INGRESOS_RANGOS:
+        return MAPA_INGRESOS_RANGOS[s]
+    for k, v in MAPA_INGRESOS_RANGOS.items():
+        if k in s:
+            return v
+    if '50' in s:
+        return 'De 1$ a 50$'
+    elif '100' in s:
+        return 'De 51$ a 100$'
+    elif '200' in s:
+        return 'De 101$ a 200$'
+    elif '350' in s:
+        return 'De 201$ a 350$'
+    elif '500' in s and 'mas' not in s:
+        return 'De 351$ a 500$'
+    elif 'mas' in s or 'más' in s or '500' in s:
+        return 'Más de 500$'
+    return s.replace('_', ' ').capitalize()
+
 def limpiar_texto_simple(col_name):
     if col_name and col_name in df_raw.columns:
         return df_raw[col_name].fillna('No especificado').astype(str).str.strip().str.replace('_', ' ').str.capitalize()
@@ -499,7 +539,6 @@ df_clean['agua_trat_clean'] = df_raw[col_agua_trat].apply(limpiar_si_no) if col_
 df_clean['almacena_clean'] = df_raw[col_almacena].apply(limpiar_si_no) if col_almacena else 'No especificado'
 df_clean['acceso_jabon_clean'] = df_raw[col_acceso_jabon].apply(limpiar_si_no) if col_acceso_jabon else 'No especificado'
 
-# Asignación segura y directa para la higiene menstrual y su razón
 col_higiene_real = None
 for c in df_raw.columns:
     c_l = c.lower()
@@ -518,6 +557,13 @@ else:
     df_clean['razon_menstru_clean'] = 'No especificado'
 
 df_clean['filtro_agua_clean'] = df_raw[col_filtro_agua].apply(limpiar_si_no) if col_filtro_agua else 'No especificado'
+
+# --- LIMPIEZA DE CAMPOS DE INGRESOS ---
+df_clean['trabajo_act_clean'] = df_raw[col_trabajo_act].apply(limpiar_si_no) if col_trabajo_act else 'No especificado'
+df_clean['personas_empleadas_val'] = pd.to_numeric(df_raw[col_personas_empleadas], errors='coerce').fillna(0) if col_personas_empleadas else 0
+df_clean['remesas_clean'] = df_raw[col_remesas].apply(limpiar_si_no) if col_remesas else 'No especificado'
+df_clean['oportunidad_empleo_clean'] = df_raw[col_oportunidad_empleo].apply(limpiar_si_no) if col_oportunidad_empleo else 'No especificado'
+df_clean['ingresos_total_clean'] = df_raw[col_ingresos_total].apply(limpiar_ingresos) if col_ingresos_total else 'No especificado'
 
 # --- BARRA LATERAL DE FILTROS ---
 st.sidebar.header("Filtros del Tablero")
@@ -575,10 +621,12 @@ with col7:
 
 st.markdown("---")
 
-tab1, tab2, tab3, tab4 = st.tabs([
+# SECCIÓN DE PESTAÑAS (INCLUYE INGRESOS)
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Población",
     "Vivienda",
     "Agua, Saneamiento e Higiene (WASH)",
+    "Ingresos y Medios de Vida",
     "Base de Datos"
 ])
 
@@ -908,7 +956,6 @@ with tab3:
         st.plotly_chart(fig_jabon, use_container_width=True)
 
     with w12:
-        # 36. ACCESO A HIGIENE MENSTRUAL
         st.subheader("36. ¿Las mujeres de su hogar tienen acceso a productos de higiene menstrual?")
         
         df_menstru_res = df_filtered['higiene_menstru_clean'].value_counts().reset_index()
@@ -936,13 +983,10 @@ with tab3:
 
     st.markdown("---")
 
-    # SECCIÓN 36.1: RESTRINGIDA Y FILTRADA ESTRICTAMENTE A LAS 5 PRIMERAS RAZONES
     st.subheader("36.1. ¿Podría indicarnos por qué razón? (Top 5)")
     
     df_razon_res = df_filtered['razon_menstru_clean'].value_counts().reset_index()
     df_razon_res.columns = ['Razon', 'Total']
-    
-    # Excluir 'No especificado' del conteo principal si se desea limpio, o mantenerlo. Aquí ordenamos y filtramos top 5
     df_razon_res = df_razon_res[df_razon_res['Razon'] != 'No especificado']
     df_razon_res = df_razon_res.nlargest(5, 'Total')
     
@@ -1023,14 +1067,105 @@ with tab3:
     fig_tfiltro.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
     st.plotly_chart(fig_tfiltro, use_container_width=True)
 
-# TAB 4: BASE DE DATOS Y DESCARGA
+# TAB 4: INGRESOS Y MEDIOS DE VIDA (NUEVO CAPÍTULO)
 with tab4:
+    st.header("Ingresos y Medios de Vida")
+    total_hogs_ing = len(df_filtered)
+
+    i1, i2 = st.columns(2)
+    with i1:
+        st.subheader("39. ¿Realiza actividad laboral o generación de ingresos actualmente?")
+        df_trabajo_res = df_filtered['trabajo_act_clean'].value_counts().reset_index()
+        df_trabajo_res.columns = ['Respuesta', 'Total']
+        df_trabajo_res['Porcentaje'] = (df_trabajo_res['Total'] / total_hogs_ing * 100).round(1) if total_hogs_ing > 0 else 0.0
+        df_trabajo_res['Texto_Etiqueta'] = df_trabajo_res['Total'].astype(str) + " (" + df_trabajo_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_trabajo = px.bar(df_trabajo_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#264653'])
+        fig_trabajo.update_traces(textposition='outside')
+        fig_trabajo.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_trabajo, use_container_width=True)
+
+    with i2:
+        st.subheader("42. ¿Cuántas personas de tu grupo familiar están empleadas?")
+        promedio_empleadas = df_filtered['personas_empleadas_val'].mean() if total_hogs_ing > 0 else 0.0
+        total_empleadas_fam = int(df_filtered['personas_empleadas_val'].sum())
+        
+        st.metric(
+            label="Promedio de personas empleadas por hogar",
+            value=f"{promedio_empleadas:.2f}",
+            delta=f"({total_empleadas_fam:,} personas en total analizado)"
+        )
+
+        df_emp_res = df_filtered['personas_empleadas_val'].value_counts().reset_index()
+        df_emp_res.columns = ['PersonasEmpleadas', 'TotalHogares']
+        df_emp_res = df_emp_res.sort_values(by='PersonasEmpleadas')
+        df_emp_res['PersonasEmpleadasStr'] = df_emp_res['PersonasEmpleadas'].astype(int).astype(str) + " persona(s)"
+        df_emp_res['Porcentaje'] = (df_emp_res['TotalHogares'] / total_hogs_ing * 100).round(1) if total_hogs_ing > 0 else 0.0
+        df_emp_res['Texto_Etiqueta'] = df_emp_res['TotalHogares'].astype(str) + " (" + df_emp_res['Porcentaje'].astype(str) + "%)"
+
+        fig_emp = px.bar(df_emp_res, x='PersonasEmpleadasStr', y='TotalHogares', text='Texto_Etiqueta', color_discrete_sequence=['#0077B6'])
+        fig_emp.update_traces(textposition='outside')
+        fig_emp.update_layout(xaxis_title="Cantidad de miembros empleados", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_emp, use_container_width=True)
+
+    st.markdown("---")
+
+    i3, i4 = st.columns(2)
+    with i3:
+        st.subheader("43. ¿Recibe dinero/remesas enviado desde el exterior?")
+        df_remesas_res = df_filtered['remesas_clean'].value_counts().reset_index()
+        df_remesas_res.columns = ['Respuesta', 'Total']
+        df_remesas_res['Porcentaje'] = (df_remesas_res['Total'] / total_hogs_ing * 100).round(1) if total_hogs_ing > 0 else 0.0
+        df_remesas_res['Texto_Etiqueta'] = df_remesas_res['Total'].astype(str) + " (" + df_remesas_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_remesas = px.bar(df_remesas_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#1D3557', '#457B9D', '#A8DADC'])
+        fig_remesas.update_traces(textposition='outside')
+        fig_remesas.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_remesas, use_container_width=True)
+
+    with i4:
+        st.subheader("44. ¿Considera que existen oportunidades de empleo y actividades seguras?")
+        df_op_res = df_filtered['oportunidad_empleo_clean'].value_counts().reset_index()
+        df_op_res.columns = ['Respuesta', 'Total']
+        df_op_res['Porcentaje'] = (df_op_res['Total'] / total_hogs_ing * 100).round(1) if total_hogs_ing > 0 else 0.0
+        df_op_res['Texto_Etiqueta'] = df_op_res['Total'].astype(str) + " (" + df_op_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_op = px.bar(df_op_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#457B9D', '#E76F51', '#2A9D8F'])
+        fig_op.update_traces(textposition='outside')
+        fig_op.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_op, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("45. ¿Cuál fue el total de ingreso de su hogar en el mes pasado?")
+    df_ing_res = df_filtered['ingresos_total_clean'].value_counts().reset_index()
+    df_ing_res.columns = ['RangoIngreso', 'Total']
+    
+    # Ordenamiento lógico de rangos en dólares
+    orden_rangos = ['De 1$ a 50$', 'De 51$ a 100$', 'De 101$ a 200$', 'De 201$ a 350$', 'De 351$ a 500$', 'Más de 500$', 'No sabe / No responde', 'No especificado']
+    df_ing_res['RangoIngreso'] = pd.Categorical(df_ing_res['RangoIngreso'], categories=orden_rangos, ordered=True)
+    df_ing_res = df_ing_res.sort_values('RangoIngreso')
+
+    df_ing_res['Porcentaje'] = (df_ing_res['Total'] / total_hogs_ing * 100).round(1) if total_hogs_ing > 0 else 0.0
+    df_ing_res['Texto_Etiqueta'] = df_ing_res['Total'].astype(str) + " (" + df_ing_res['Porcentaje'].astype(str) + "%)"
+
+    fig_ing = px.bar(
+        df_ing_res, x='RangoIngreso', y='Total', text='Texto_Etiqueta',
+        labels={'RangoIngreso': 'Rango de Ingreso Mensual (USD)', 'Total': 'Hogares'},
+        color_discrete_sequence=['#08327D']
+    )
+    fig_ing.update_traces(textposition='outside')
+    fig_ing.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+    st.plotly_chart(fig_ing, use_container_width=True)
+
+# TAB 5: BASE DE DATOS Y DESCARGA
+with tab5:
     st.subheader("Vista Previa de Registros Limpios")
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
-        'comunidad_clean', 'sexo_clean', 'agua_frec_clean', 'agua_beber_clean',
-        'agua_suf_clean', 'agua_trat_clean', 'almacena_clean', 'acceso_jabon_clean',
-        'higiene_menstru_clean', 'razon_menstru_clean', 'filtro_agua_clean', 'discapacidad_clean', 'pueblo_indigena_clean', 'hacinamiento_cat'
+        'comunidad_clean', 'sexo_clean', 'trabajo_act_clean', 'remesas_clean',
+        'oportunidad_empleo_clean', 'ingresos_total_clean', 'agua_frec_clean',
+        'higiene_menstru_clean', 'discapacidad_clean', 'pueblo_indigena_clean', 'hacinamiento_cat'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
 
