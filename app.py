@@ -408,7 +408,7 @@ with tab1:
         fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_edu, use_container_width=True)
 
-# TAB 2: VIVIENDA (Incluye Gráfico de Barras y Cuadro de Sexo del Jefe/a de Hogar, Hacinamiento y Tenencia)
+# TAB 2: VIVIENDA (Incluye Gráfico de Barras con Porcentajes y Cuadro de Sexo del Jefe/a de Hogar)
 with tab2:
     st.header("Vivienda y Habitabilidad")
     
@@ -426,7 +426,7 @@ with tab2:
 
     st.markdown("---")
 
-    # Nueva sección: Sexo del Jefe/a de Hogar (Informante) con Gráfico de Barras y Cuadro Resumen
+    # Sección: Sexo del Jefe/a de Hogar (Informante Principal) con porcentaje incorporado en barras
     st.subheader("Sexo del Jefe / Jefa de Hogar (Informante Principal)")
     jefe_col1, jefe_col2 = st.columns([2, 1])
     
@@ -434,25 +434,32 @@ with tab2:
         df_jefe_resumen = df_filtered['sexo_clean'].value_counts().reset_index()
         df_jefe_resumen.columns = ['Sexo', 'Total']
         
+        total_encuestas = len(df_filtered)
+        if total_encuestas > 0:
+            df_jefe_resumen['Porcentaje'] = (df_jefe_resumen['Total'] / total_encuestas * 100).round(2)
+        else:
+            df_jefe_resumen['Porcentaje'] = 0.0
+            
+        # Creamos una columna de etiqueta combinada (Valor y Porcentaje)
+        df_jefe_resumen['Texto_Etiqueta'] = df_jefe_resumen['Total'].astype(str) + " (" + df_jefe_resumen['Porcentaje'].astype(str) + "%)"
+        
         fig_jefe_bar = px.bar(
             df_jefe_resumen,
             x='Sexo',
             y='Total',
-            text='Total',
+            text='Texto_Etiqueta',
             color='Sexo',
-            color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F']
+            color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F', '#2B8CBE']
         )
+        fig_jefe_bar.update_traces(textposition='outside')
         fig_jefe_bar.update_layout(xaxis_title="", yaxis_title="Cantidad de Hogares", showlegend=False)
         st.plotly_chart(fig_jefe_bar, use_container_width=True)
         
     with jefe_col2:
         st.markdown("##### Cuadro Resumen")
-        total_encuestas = len(df_filtered)
-        if total_encuestas > 0:
-            df_jefe_resumen['Porcentaje (%)'] = (df_jefe_resumen['Total'] / total_encuestas * 100).round(2)
-        else:
-            df_jefe_resumen['Porcentaje (%)'] = 0.0
-        st.dataframe(df_jefe_resumen, use_container_width=True, hide_index=True)
+        df_tabla_jefe = df_jefe_resumen[['Sexo', 'Total', 'Porcentaje']].copy()
+        df_tabla_jefe.columns = ['Sexo', 'Total', 'Porcentaje (%)']
+        st.dataframe(df_tabla_jefe, use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
