@@ -408,7 +408,7 @@ with tab1:
         fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_edu, use_container_width=True)
 
-# TAB 2: VIVIENDA (Con Gráfico de Torta de Hacinamiento Crítico)
+# TAB 2: VIVIENDA (Incluye Gráfico de Barras y Cuadro de Sexo del Jefe/a de Hogar, Hacinamiento y Tenencia)
 with tab2:
     st.header("Vivienda y Habitabilidad")
     
@@ -424,6 +424,38 @@ with tab2:
         total_hacinados_criticos = (df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum()
         st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}")
 
+    st.markdown("---")
+
+    # Nueva sección: Sexo del Jefe/a de Hogar (Informante) con Gráfico de Barras y Cuadro Resumen
+    st.subheader("Sexo del Jefe / Jefa de Hogar (Informante Principal)")
+    jefe_col1, jefe_col2 = st.columns([2, 1])
+    
+    with jefe_col1:
+        df_jefe_resumen = df_filtered['sexo_clean'].value_counts().reset_index()
+        df_jefe_resumen.columns = ['Sexo', 'Total']
+        
+        fig_jefe_bar = px.bar(
+            df_jefe_resumen,
+            x='Sexo',
+            y='Total',
+            text='Total',
+            color='Sexo',
+            color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F']
+        )
+        fig_jefe_bar.update_layout(xaxis_title="", yaxis_title="Cantidad de Hogares", showlegend=False)
+        st.plotly_chart(fig_jefe_bar, use_container_width=True)
+        
+    with jefe_col2:
+        st.markdown("##### Cuadro Resumen")
+        total_encuestas = len(df_filtered)
+        if total_encuestas > 0:
+            df_jefe_resumen['Porcentaje (%)'] = (df_jefe_resumen['Total'] / total_encuestas * 100).round(2)
+        else:
+            df_jefe_resumen['Porcentaje (%)'] = 0.0
+        st.dataframe(df_jefe_resumen, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
     v1, v2 = st.columns(2)
     with v1:
         st.subheader("Tenencia de la Vivienda")
@@ -434,8 +466,7 @@ with tab2:
         st.plotly_chart(fig_ten, use_container_width=True)
 
     with v2:
-        st.subheader("Distribución Porcentual y Absoluta del Hacinamiento Crítico")
-        
+        st.subheader("Distribución del Hacinamiento Crítico (INE)")
         df_hac_resumen = df_filtered['hacinamiento_cat'].value_counts().reset_index()
         df_hac_resumen.columns = ['Condicion', 'Total']
         
