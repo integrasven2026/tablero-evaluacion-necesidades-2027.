@@ -190,21 +190,26 @@ col_ind = find_col(df_raw, ['etnia_indigena'])
 col_disc = find_col(df_raw, ['discapacidad_selec'])
 col_gestantes = find_col(df_raw, ['num_gestantes'])
 
-# Búsqueda flexible mejorada para campos de embarazo (21.1, 21.2, 21.3)
+# Campos de embarazo (21.1, 21.2, 21.3)
 col_total_embarazadas = find_col_flexible(df_raw, ['21_1', '_21_1', 'embarazadas_hay', 'num_embarazadas', 'gestantes'])
 col_emb_menores = find_col_flexible(df_raw, ['21_2', '_21_2', 'menores_de_edad', 'embarazadas_son_menores'])
 col_emb_control = find_col_flexible(df_raw, ['21_3', '_21_3', 'control_prenatal', 'acuden'])
 
 lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
 
+# Campos de Vivienda (Preguntas 22, 24, 25 para hacinamiento y habitaciones)
 col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivienda'])
-col_cuartos = find_col(df_raw, ['cuartos', 'habitaciones', 'dormir'])
-col_personas_viv = find_col(df_raw, ['personas_vivienda', 'total_personas'])
+col_personas_viv = find_col(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda'])
+col_cuartos = find_col(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir'])
 
+# Campos WASH solicitados
 col_agua_fuente = find_col(df_raw, ['26', 'fuentes_de_agua', 'principales_fuentes_de_agua', 'fuente_agua'])
 col_agua_frec = find_col(df_raw, ['27', 'frecuencia', 'frecuencia_reciben_agua', 'frecuencia_servicio_agua'])
-col_jabon = find_col(df_raw, ['acceso_jabon', 'jabon_manos'])
-col_basura = find_col(df_raw, ['disposicion_basura', 'desecho_basura'])
+col_agua_beber = find_col_flexible(df_raw, ['agua_beber', 'utilizan_el_agua_para_beber', 'beber'])
+col_agua_suf = find_col_flexible(df_raw, ['suficiente_agua', 'agua_suficiente', 'suficiente'])
+col_agua_trat = find_col_flexible(df_raw, ['tratamiento_agua', 'trata_agua', 'realizan_tratamiento'])
+col_tipo_trat = find_col_flexible(df_raw, ['principal_tratamiento', 'tipo_tratamiento', 'como_trata'])
+col_problema_agua = find_col_flexible(df_raw, ['problema_agua', 'color_olor_sabor', 'calidad_agua'])
 
 df_clean = df_raw.copy()
 
@@ -241,7 +246,7 @@ df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codi
 df_clean['discapacidad_clean'] = df_raw[col_disc].apply(lambda x: limpiar_codigo(x, MAPA_DISCAPACIDADES)) if col_disc else 'No especificado'
 df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes else 0
 
-# Conversión y asignación segura de datos de embarazo
+# Embarazos
 df_clean['total_embarazadas_val'] = pd.to_numeric(df_raw[col_total_embarazadas], errors='coerce').fillna(0) if col_total_embarazadas in df_raw.columns else 0
 df_clean['emb_menores_val'] = pd.to_numeric(df_raw[col_emb_menores], errors='coerce').fillna(0) if col_emb_menores in df_raw.columns else 0
 if col_emb_control in df_raw.columns:
@@ -249,8 +254,25 @@ if col_emb_control in df_raw.columns:
 else:
     df_clean['emb_control_val'] = 0
 
-df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(0) if col_personas_viv else 0
-df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(0) if col_cuartos else 0
+# Vivienda y cálculos de hacinamiento
+df_clean['personas_viv_val'] = pd.to_numeric(df_raw[col_personas_viv], errors='coerce').fillna(0) if col_personas_viv in df_raw.columns else 0
+df_clean['cuartos_val'] = pd.to_numeric(df_raw[col_cuartos], errors='coerce').fillna(0) if col_cuartos in df_raw.columns else 0
+
+# Lógica de Hacinamiento (más de 3 personas por habitación para dormir se considera hacinamiento crítico, o ratio personas/cuartos > 3)
+def calcular_hacinamiento(row):
+    p = row['personas_viv_val']
+    c = row['cuartos_val']
+    if c > 0:
+        ratio = p / c
+        if ratio > 3:
+            return 'Hacinamiento Crítico (>3 pers/cuarto)'
+        elif ratio > 2:
+            return 'Hacinamiento Moderado (2-3 pers/cuarto)'
+        else:
+            return 'Sin Hacinamiento (<=2 pers/cuarto)'
+    return 'No especificado'
+
+df_clean['hacinamiento_cat'] = df_clean.apply(calcular_hacinamiento, axis=1)
 
 df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
 df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 'Sí (Pueblo Indígena)' if x not in ['No Especificado', 'No especificado'] else 'No')
@@ -262,8 +284,11 @@ df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(
 df_clean['tenencia_clean'] = limpiar_texto_simple(col_tenencia)
 df_clean['agua_fuente_clean'] = limpiar_texto_simple(col_agua_fuente)
 df_clean['agua_frec_clean'] = limpiar_texto_simple(col_agua_frec)
-df_clean['jabon_clean'] = limpiar_texto_simple(col_jabon)
-df_clean['basura_clean'] = limpiar_texto_simple(col_basura)
+df_clean['agua_beber_clean'] = limpiar_texto_simple(col_agua_beber)
+df_clean['agua_suf_clean'] = limpiar_texto_simple(col_agua_suf)
+df_clean['agua_trat_clean'] = limpiar_texto_simple(col_agua_trat)
+df_clean['tipo_trat_clean'] = limpiar_texto_simple(col_tipo_trat)
+df_clean['problema_agua_clean'] = limpiar_texto_simple(col_problema_agua)
 
 # --- BARRA LATERAL DE FILTROS ---
 st.sidebar.header("Filtros del Tablero")
@@ -322,7 +347,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "Base de Datos"
 ])
 
-# TAB 1: POBLACIÓN (Renombrado de Cobertura y Demografía)
+# TAB 1: POBLACIÓN
 with tab1:
     c1, c2 = st.columns(2)
     with c1:
@@ -366,7 +391,6 @@ with tab1:
         fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_edu, use_container_width=True)
 
-    # GRÁFICO DE BARRAS: Seguimiento de Personas Embarazadas (Total, Menores de edad, Control prenatal)
     st.subheader("Seguimiento de Personas Embarazadas")
     df_emb_resumen = pd.DataFrame({
         'Indicador': [
@@ -425,8 +449,19 @@ with tab1:
         else:
             st.info("Sin reportes de población indígena en la selección actual.")
 
-# TAB 2: VIVIENDA (Renombrado de Vivienda y Habitabilidad)
+# TAB 2: VIVIENDA (Actualizado con Hacinamiento y Promedio de Personas)
 with tab2:
+    st.header("Vivienda y Habitabilidad")
+    
+    # Métricas clave de vivienda
+    promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 0
+    col_v_kpi1, col_v_kpi2 = st.columns(2)
+    with col_v_kpi1:
+        st.metric("Promedio de Personas por Hogar", f"{promedio_personas:.2f}")
+    with col_v_kpi2:
+        total_hacinados = (df_filtered['hacinamiento_cat'].str.contains('Hacinamiento', case=False, na=False)).sum()
+        st.metric("Hogares con Hacinamiento", f"{total_hacinados:,}")
+
     v1, v2 = st.columns(2)
     with v1:
         st.subheader("Tenencia de la Vivienda")
@@ -437,21 +472,33 @@ with tab2:
         st.plotly_chart(fig_ten, use_container_width=True)
 
     with v2:
-        st.subheader("Top 10 Municipios Evaluados")
-        fig_mun = px.bar(
-            df_filtered['municipio_clean'].value_counts().head(10).reset_index(),
-            x='count', y='municipio_clean', orientation='h', text_auto=True,
-            labels={'municipio_clean': 'Municipio / Parroquia', 'count': 'Encuestas'},
-            color_discrete_sequence=['#08327D']
+        st.subheader("Distribución del Hacinamiento en Hogares")
+        fig_hac = px.bar(
+            df_filtered['hacinamiento_cat'].value_counts().reset_index(),
+            x='count', y='hacinamiento_cat', orientation='h', text_auto=True,
+            labels={'hacinamiento_cat': 'Condición', 'count': 'Total Hogares'},
+            color_discrete_sequence=['#E76F51']
         )
-        fig_mun.update_layout(yaxis={'categoryorder': 'total ascending'})
-        st.plotly_chart(fig_mun, use_container_width=True)
+        fig_hac.update_layout(yaxis={'categoryorder': 'total ascending'}, xaxis_title="Hogares", yaxis_title="")
+        st.plotly_chart(fig_hac, use_container_width=True)
 
-# TAB 3: WASH
+    st.subheader("Top 10 Municipios Evaluados")
+    fig_mun = px.bar(
+        df_filtered['municipio_clean'].value_counts().head(10).reset_index(),
+        x='count', y='municipio_clean', orientation='h', text_auto=True,
+        labels={'municipio_clean': 'Municipio / Parroquia', 'count': 'Encuestas'},
+        color_discrete_sequence=['#08327D']
+    )
+    fig_mun.update_layout(yaxis={'categoryorder': 'total ascending'})
+    st.plotly_chart(fig_mun, use_container_width=True)
+
+# TAB 3: WASH (Actualizado con todas las solicitudes de agua)
 with tab3:
+    st.header("Agua, Saneamiento e Higiene (WASH)")
+    
     w1, w2 = st.columns(2)
     with w1:
-        st.subheader("Principales Fuentes de Agua")
+        st.subheader("Principales Fuentes de Agua del Hogar")
         fig_agua = px.bar(
             df_filtered['agua_fuente_clean'].value_counts().head(10).reset_index(),
             x='count', y='agua_fuente_clean', orientation='h', text_auto=True,
@@ -462,7 +509,7 @@ with tab3:
         st.plotly_chart(fig_agua, use_container_width=True)
 
     with w2:
-        st.subheader("Frecuencia del Servicio de Agua")
+        st.subheader("Frecuencia de Abastecimiento de Agua")
         fig_frec = px.bar(
             df_filtered['agua_frec_clean'].value_counts().reset_index(),
             x='count', y='agua_frec_clean', orientation='h', text_auto=True,
@@ -474,23 +521,50 @@ with tab3:
 
     w3, w4 = st.columns(2)
     with w3:
-        st.subheader("Acceso a Jabón para Lavado de Manos")
-        fig_jab = px.pie(
-            df_filtered, names='jabon_clean', hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Safe
+        st.subheader("¿Utilizan el Agua para Beber?")
+        fig_beber = px.pie(
+            df_filtered, names='agua_beber_clean', hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Set3
         )
-        st.plotly_chart(fig_jab, use_container_width=True)
+        st.plotly_chart(fig_beber, use_container_width=True)
 
     with w4:
-        st.subheader("Disposición de Basura / Desechos")
-        fig_bas = px.bar(
-            df_filtered['basura_clean'].value_counts().head(8).reset_index(),
-            x='count', y='basura_clean', orientation='h', text_auto=True,
-            labels={'basura_clean': 'Método de Disposición', 'count': 'Hogares'},
-            color_discrete_sequence=['#48CAE4']
+        st.subheader("¿Disponen de Suficiente Agua?")
+        fig_suf = px.pie(
+            df_filtered, names='agua_suf_clean', hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Pastel
         )
-        fig_bas.update_layout(yaxis={'categoryorder': 'total ascending'})
-        st.plotly_chart(fig_bas, use_container_width=True)
+        st.plotly_chart(fig_suf, use_container_width=True)
+
+    w5, w6 = st.columns(2)
+    with w5:
+        st.subheader("¿Realizan Tratamiento al Agua de Consumo?")
+        fig_trat = px.pie(
+            df_filtered, names='agua_trat_clean', hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Safe
+        )
+        st.plotly_chart(fig_trat, use_container_width=True)
+
+    with w6:
+        st.subheader("Principal Tratamiento Aplicado al Agua")
+        fig_tipotrat = px.bar(
+            df_filtered['tipo_trat_clean'].value_counts().head(8).reset_index(),
+            x='count', y='tipo_trat_clean', orientation='h', text_auto=True,
+            labels={'tipo_trat_clean': 'Tratamiento', 'count': 'Hogares'},
+            color_discrete_sequence=['#2A9D8F']
+        )
+        fig_tipotrat.update_layout(yaxis={'categoryorder': 'total ascending'})
+        st.plotly_chart(fig_tipotrat, use_container_width=True)
+
+    st.subheader("Problemas Identificados con el Agua (Color, Olor, Sabor)")
+    fig_prob = px.bar(
+        df_filtered['problema_agua_clean'].value_counts().head(10).reset_index(),
+        x='count', y='problema_agua_clean', orientation='h', text_auto=True,
+        labels={'problema_agua_clean': 'Problema Reportado', 'count': 'Hogares'},
+        color_discrete_sequence=['#E76F51']
+    )
+    fig_prob.update_layout(yaxis={'categoryorder': 'total ascending'})
+    st.plotly_chart(fig_prob, use_container_width=True)
 
 # TAB 4: BASE DE DATOS Y DESCARGA
 with tab4:
@@ -498,7 +572,7 @@ with tab4:
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
         'comunidad_clean', 'sexo_clean', 'edu_clean', 'nacionalidad_clean',
-        'discapacidad_clean', 'pueblo_indigena_clean', 'gestantes_val'
+        'discapacidad_clean', 'pueblo_indigena_clean', 'gestantes_val', 'hacinamiento_cat'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
 
