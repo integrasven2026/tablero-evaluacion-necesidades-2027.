@@ -222,16 +222,16 @@ col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivie
 col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda', '_24'])
 col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir', '_25'])
 
-# Búsqueda infalible para la Pregunta 27 (Frecuencia de agua) en Kobo
+# BÚSQUEDA INFALIBLE POR CONTENIDO DE DATOS PARA LA PREGUNTA 27
 col_agua_frec = None
 for c in df_raw.columns:
-    c_l = c.lower()
-    if ('27' in c_l or 'frecuencia' in c_l or 'abastec' in c_l) and ('agua' in c_l or c_l.endswith('_27') or c_l == '27'):
+    if df_raw[c].dropna().astype(str).str.lower().str.contains('diario|varios_dias|una_vez|cada_15', regex=True).any():
         col_agua_frec = c
         break
 if not col_agua_frec:
     for c in df_raw.columns:
-        if '27' in c:
+        c_l = c.lower()
+        if ('27' in c_l or 'frecuencia' in c_l or 'abastec' in c_l) and ('agua' in c_l or c_l.endswith('_27') or c_l == '27'):
             col_agua_frec = c
             break
 
@@ -336,7 +336,7 @@ df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(
 )
 
 df_clean['tenencia_clean'] = limpiar_texto_simple(col_tenencia)
-df_clean['agua_frec_clean'] = df_raw[col_agua_frec].apply(limpiar_frecuencia_agua) if col_agua_frec in df_raw.columns else 'No especificado'
+df_clean['agua_frec_clean'] = df_raw[col_agua_frec].apply(limpiar_frecuencia_agua) if col_agua_frec else 'No especificado'
 
 # --- BARRA LATERAL DE FILTROS ---
 st.sidebar.header("Filtros del Tablero")
@@ -526,7 +526,7 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Con porcentajes en Fuentes y Frecuencia corregida)
+# TAB 3: WASH (Con porcentajes y categorías limpias de Kobo)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     
