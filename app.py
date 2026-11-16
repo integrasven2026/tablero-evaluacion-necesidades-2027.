@@ -170,6 +170,15 @@ MAPA_FUENTES_AGUA_VALORES = {
     'ns_nc': 'No sabe / No responde'
 }
 
+MAPA_FRECUENCIA_AGUA = {
+    'diario': 'Diario (continuo)',
+    'diario_continuo': 'Diario (continuo)',
+    'varios_dias': 'Varios días a la semana',
+    'una_vez': 'Una vez a la semana',
+    'cada_15_dias': 'Cada 15 días o más',
+    'cada_15_dias_o_mas': 'Cada 15 días o más'
+}
+
 # --- FUNCIONES DE BÚSQUEDA ROBUSTA ---
 def find_col(df, keywords):
     for col in df.columns:
@@ -213,11 +222,11 @@ col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivie
 col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda', '_24'])
 col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir', '_25'])
 
-# Búsqueda infalible para la Pregunta 27 (Frecuencia de agua)
+# Búsqueda infalible para la Pregunta 27 (Frecuencia de agua) en Kobo
 col_agua_frec = None
 for c in df_raw.columns:
     c_l = c.lower()
-    if ('27' in c_l or 'frecuencia' in c_l) and ('agua' in c_l or 'recib' in c_l or 'abastecer' in c_l or c_l.endswith('_27') or c_l == '27'):
+    if ('27' in c_l or 'frecuencia' in c_l or 'abastec' in c_l) and ('agua' in c_l or c_l.endswith('_27') or c_l == '27'):
         col_agua_frec = c
         break
 if not col_agua_frec:
@@ -250,8 +259,9 @@ def limpiar_frecuencia_agua(val):
     if s in ['', 'nan', 'none', 'nat']:
         return 'No especificado'
     
-    # Mapeo exacto de los XML values comunes de KoboToolbox
-    if 'diario' in s or 'continuo' in s:
+    if s in MAPA_FRECUENCIA_AGUA:
+        return MAPA_FRECUENCIA_AGUA[s]
+    elif 'diario' in s or 'continuo' in s:
         return 'Diario (continuo)'
     elif 'varios' in s:
         return 'Varios días a la semana'
@@ -516,7 +526,7 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Con porcentajes y categorías limpias de Kobo)
+# TAB 3: WASH (Con porcentajes en Fuentes y Frecuencia corregida)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     
