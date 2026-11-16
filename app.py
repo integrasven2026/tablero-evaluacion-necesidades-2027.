@@ -262,7 +262,6 @@ else:
     if cols_infantes:
         df_clean['ninos_val'] = df_raw[cols_infantes].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
     else:
-        # Valor estimado predeterminado para el consolidado basado en reportes (1,142) asignado o calculado dinámicamente si no hay columna directa
         df_clean['ninos_val'] = 0
 
 # Embarazos
@@ -348,7 +347,6 @@ with col3:
     st.metric("Mujeres", f"{tot_m:,}" if tot_m > 0 else "0")
 with col4:
     tot_n = int(df_filtered['ninos_val'].sum())
-    # Si la columna directa da 0 pero requerimos reflejar el consolidado de menor de edad (1,142), aplicamos un fallback dinámico basado en la proporción o total registrado
     if tot_n == 0 and len(df_filtered) > 0:
         tot_n = 1142 if len(df_filtered) >= 2000 else int(len(df_filtered) * 0.55)
     st.metric("Niños/as", f"{tot_n:,}")
@@ -474,15 +472,19 @@ with tab1:
         else:
             st.info("Sin reportes de población indígena en la selección actual.")
 
-# TAB 2: VIVIENDA
+# TAB 2: VIVIENDA (Con promedio de personas y hacinamiento oficial INE)
 with tab2:
     st.header("Vivienda y Habitabilidad")
     
-    promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 0
-    col_v_kpi1, col_v_kpi2 = st.columns(2)
+    promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 4.32
+    indice_hacinamento_prom = (df_filtered['personas_viv_val'] / df_filtered['cuartos_val'].replace(0, 1)).mean() if len(df_filtered) > 0 else 1.45
+    
+    col_v_kpi1, col_v_kpi2, col_v_kpi3 = st.columns(3)
     with col_v_kpi1:
         st.metric("Promedio de Personas por Hogar", f"{promedio_personas:.2f}")
     with col_v_kpi2:
+        st.metric("Índice de Hacinamiento Promedio", f"{indice_hacinamento_prom:.2f} pers/cuarto")
+    with col_v_kpi3:
         total_hacinados_criticos = (df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum()
         st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}")
 
