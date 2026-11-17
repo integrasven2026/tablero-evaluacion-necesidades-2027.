@@ -936,16 +936,10 @@ with tab3:
 
     st.markdown("---")
 
-    # SECCIÓN 36.1: RESTRINGIDA Y FILTRADA ESTRICTAMENTE A LAS 5 PRIMERAS RAZONES
-    st.subheader("36.1. ¿Podría indicarnos por qué razón? (Top 5)")
-    
+    # NUEVA SECCIÓN: 36.1. RAZÓN POR LA QUE NO TIENEN ACCESO
+    st.subheader("36.1. ¿Podría indicarnos por qué razón?")
     df_razon_res = df_filtered['razon_menstru_clean'].value_counts().reset_index()
     df_razon_res.columns = ['Razon', 'Total']
-    
-    # Excluir 'No especificado' del conteo principal si se desea limpio, o mantenerlo. Aquí ordenamos y filtramos top 5
-    df_razon_res = df_razon_res[df_razon_res['Razon'] != 'No especificado']
-    df_razon_res = df_razon_res.nlargest(5, 'Total')
-    
     df_razon_res['Porcentaje'] = (df_razon_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
     df_razon_res['Texto_Etiqueta'] = df_razon_res['Total'].astype(str) + " (" + df_razon_res['Porcentaje'].astype(str) + "%)"
 
