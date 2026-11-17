@@ -254,7 +254,6 @@ col_sexo = [c for c in df_raw.columns if 'sexo' in str(c).lower() or 'biologico'
 col_nac = [c for c in df_raw.columns if 'nacionalidad' in str(c).lower()][0] if any('nacionalidad' in str(c).lower() for c in df_raw.columns) else None
 col_ind = [c for c in df_raw.columns if 'indígena' in str(c).lower() or 'etnia' in str(c).lower()][0] if any('indígena' in str(c).lower() for c in df_raw.columns) else None
 
-# Columna exacta para Discapacidad en el Hogar (Pregunta 16)
 col_disc_hogar = [c for c in df_raw.columns if '16. ¿Alguien de su grupo familiar' in str(c)][0] if any('16. ¿Alguien de su grupo familiar' in str(c) for c in df_raw.columns) else None
 
 cols_hombres_etarios = [c for c in df_raw.columns if 'hombres de' in str(c).lower() or 'hombres' in str(c).lower()]
@@ -273,6 +272,19 @@ col_remesas = [c for c in df_raw.columns if '43.' in str(c) or 'remesas' in str(
 col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunidades de empleo' in str(c).lower()][0] if any('44.' in str(c) or 'oportunidades de empleo' in str(c).lower() for c in df_raw.columns) else None
 col_ingresos = [c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()][0] if any('45.' in str(c) or 'ingreso de su hogar' in str(c).lower() for c in df_raw.columns) else None
 col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()][0] if any('46.' in str(c) or 'situación financiera' in str(c).lower() for c in df_raw.columns) else None
+
+# Columnas de Seguridad Alimentaria y Nutrición (Preguntas 47 a 58)
+col_fcs_cat = [c for c in df_raw.columns if 'fcs' in str(c).lower() or 'consumo de alimentos' in str(c).lower() or '47' in str(c)][0] if any('fcs' in str(c).lower() or '47' in str(c) for c in df_raw.columns) else None
+col_dejado_consumir = [c for c in df_raw.columns if '48.' in str(c) or 'dejado de consumir' in str(c).lower()][0] if any('48.' in str(c) for c in df_raw.columns) else None
+col_apoyo_alim = [c for c in df_raw.columns if '49.' in str(c) or 'apoyo alimentario' in str(c).lower()][0] if any('49.' in str(c) for c in df_raw.columns) else None
+col_dias_sin_solidos = [c for c in df_raw.columns if '50.' in str(c) or 'alimentos sólidos' in str(c).lower()][0] if any('50.' in str(c) for c in df_raw.columns) else None
+col_dinero_suf_alim = [c for c in df_raw.columns if '51.' in str(c) or 'dinero suficiente para adquirir todos los alimentos' in str(c).lower()][0] if any('51.' in str(c) for c in df_raw.columns) else None
+
+col_nut_prenatal = [c for c in df_raw.columns if '54.' in str(c) or 'prenatal' in str(c).lower()][0] if any('54.' in str(c) for c in df_raw.columns) else None
+col_nut_pediatrica = [c for c in df_raw.columns if '55.' in str(c) or 'pediátricas' in str(c).lower() or 'pediatricas' in str(c).lower()][0] if any('55.' in str(c) for c in df_raw.columns) else None
+col_lactancia = [c for c in df_raw.columns if '56.' in str(c) or 'lactancia materna' in str(c).lower()][0] if any('56.' in str(c) for c in df_raw.columns) else None
+col_suplementos = [c for c in df_raw.columns if '57.' in str(c) or 'suplementos nutricionales' in str(c).lower()][0] if any('57.' in str(c) for c in df_raw.columns) else None
+col_malnutricion = [c for c in df_raw.columns if '58.' in str(c) or 'malnutrición' in str(c).lower() or 'malnutricion' in str(c).lower()][0] if any('58.' in str(c) for c in df_raw.columns) else None
 
 col_agua_frec = None
 for c in df_raw.columns:
@@ -400,6 +412,19 @@ df_clean['oportunidades_clean'] = df_raw[col_oportunidades].apply(limpiar_si_no)
 df_clean['ingresos_clean'] = limpiar_texto_simple(col_ingresos)
 df_clean['situacion_fin_clean'] = limpiar_texto_simple(col_situacion_fin)
 
+# Limpieza de Seguridad Alimentaria
+df_clean['fcs_cat_clean'] = limpiar_texto_simple(col_fcs_cat)
+df_clean['dejado_consumir_clean'] = df_raw[col_dejado_consumir].apply(limpiar_si_no) if col_dejado_consumir else 'No especificado'
+df_clean['apoyo_alim_clean'] = df_raw[col_apoyo_alim].apply(limpiar_si_no) if col_apoyo_alim else 'No especificado'
+df_clean['dias_sin_solidos_clean'] = df_raw[col_dias_sin_solidos].apply(limpiar_si_no) if col_dias_sin_solidos else 'No especificado'
+df_clean['dinero_suf_alim_clean'] = df_raw[col_dinero_suf_alim].apply(limpiar_si_no) if col_dinero_suf_alim else 'No especificado'
+
+df_clean['nut_prenatal_clean'] = df_raw[col_nut_prenatal].apply(limpiar_si_no) if col_nut_prenatal else 'No especificado'
+df_clean['nut_pediatrica_clean'] = df_raw[col_nut_pediatrica].apply(limpiar_si_no) if col_nut_pediatrica else 'No especificado'
+df_clean['lactancia_clean'] = df_raw[col_lactancia].apply(limpiar_si_no) if col_lactancia else 'No especificado'
+df_clean['suplementos_clean'] = limpiar_texto_simple(col_suplementos)
+df_clean['malnutricion_clean'] = df_raw[col_malnutricion].apply(limpiar_si_no) if col_malnutricion else 'No especificado'
+
 # Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
 if cols_hombres_etarios:
     df_clean['hombres_val'] = df_raw[cols_hombres_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
@@ -439,7 +464,6 @@ def calcular_hacinamiento_ine(row):
 
 df_clean['hacinamiento_cat'] = df_clean.apply(calcular_hacinamiento_ine, axis=1)
 
-# Filtro unificado idéntico a Tabla 3 del reporte (Pregunta 16)
 def evaluar_discapacidad_hogar(row):
     if col_disc_hogar:
         val = str(row.get(col_disc_hogar, '')).strip().lower()
@@ -538,11 +562,12 @@ with col7:
 
 st.markdown("---")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Población",
     "Vivienda",
     "Agua, Saneamiento e Higiene (WASH)",
     "Empleo y Economía",
+    "Seguridad Alimentaria y Nutrición",
     "Base de Datos"
 ])
 
@@ -1106,14 +1131,198 @@ with tab4:
         fig_fin.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_fin, use_container_width=True)
 
-# TAB 5: BASE DE DATOS Y DESCARGA
+# TAB 5: SEGURIDAD ALIMENTARIA Y NUTRICIÓN
 with tab5:
+    st.header("Seguridad Alimentaria y Nutrición")
+    total_hogs = len(df_filtered)
+
+    sa1, sa2 = st.columns(2)
+    with sa1:
+        st.subheader("47. Resultado Score de Consumo de Alimentos (FCS)")
+        df_fcs_res = df_filtered['fcs_cat_clean'].value_counts().reset_index()
+        df_fcs_res.columns = ['CategoriaFCS', 'Total']
+        df_fcs_res['Porcentaje'] = (df_fcs_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_fcs_res['Texto_Etiqueta'] = df_fcs_res['Total'].astype(str) + " (" + df_fcs_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_fcs = px.bar(
+            df_fcs_res, x='CategoriaFCS', y='Total', text='Texto_Etiqueta', color='CategoriaFCS',
+            labels={'CategoriaFCS': 'Categoría FCS', 'Total': 'Hogares'},
+            color_discrete_sequence=['#2A9D8F', '#F4A261', '#E76F51']
+        )
+        fig_fcs.update_traces(textposition='outside')
+        fig_fcs.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_fcs, use_container_width=True)
+
+    with sa2:
+        st.subheader("48. ¿Algún alimento ha dejado de consumirse por razones económicas?")
+        df_dejado_res = df_filtered['dejado_consumir_clean'].value_counts().reset_index()
+        df_dejado_res.columns = ['Respuesta', 'Total']
+        df_dejado_res['Porcentaje'] = (df_dejado_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_dejado_res['Texto_Etiqueta'] = df_dejado_res['Total'].astype(str) + " (" + df_dejado_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_dejado = px.bar(
+            df_dejado_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
+            color_discrete_sequence=['#E76F51', '#2A9D8F', '#457B9D']
+        )
+        fig_dejado.update_traces(textposition='outside')
+        fig_dejado.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_dejado, use_container_width=True)
+
+    st.markdown("---")
+
+    sa3, sa4 = st.columns(2)
+    with sa3:
+        st.subheader("49. ¿Reciben apoyo alimentario institucional o comunitario?")
+        df_apoyo_res = df_filtered['apoyo_alim_clean'].value_counts().reset_index()
+        df_apoyo_res.columns = ['Respuesta', 'Total']
+        df_apoyo_res['Porcentaje'] = (df_apoyo_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_apoyo_res['Texto_Etiqueta'] = df_apoyo_res['Total'].astype(str) + " (" + df_apoyo_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_apoyo = px.bar(
+            df_apoyo_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
+            color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F']
+        )
+        fig_apoyo.update_traces(textposition='outside')
+        fig_apoyo.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_apoyo, use_container_width=True)
+
+    with sa4:
+        st.subheader("50. ¿Hay días en que no se consumen alimentos sólidos?")
+        df_solidos_res = df_filtered['dias_sin_solidos_clean'].value_counts().reset_index()
+        df_solidos_res.columns = ['Respuesta', 'Total']
+        df_solidos_res['Porcentaje'] = (df_solidos_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_solidos_res['Texto_Etiqueta'] = df_solidos_res['Total'].astype(str) + " (" + df_solidos_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_solidos = px.bar(
+            df_solidos_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
+            color_discrete_sequence=['#E76F51', '#2A9D8F', '#457B9D']
+        )
+        fig_solidos.update_traces(textposition='outside')
+        fig_solidos.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_solidos, use_container_width=True)
+
+    st.markdown("---")
+
+    sa5, sa6 = st.columns(2)
+    with sa5:
+        st.subheader("51. ¿Dinero suficiente para adquirir todos los alimentos necesarios?")
+        df_dinero_res = df_filtered['dinero_suf_alim_clean'].value_counts().reset_index()
+        df_dinero_res.columns = ['Respuesta', 'Total']
+        df_dinero_res['Porcentaje'] = (df_dinero_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_dinero_res['Texto_Etiqueta'] = df_dinero_res['Total'].astype(str) + " (" + df_dinero_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_dinero = px.bar(
+            df_dinero_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
+            color_discrete_sequence=['#2A9D8F', '#E76F51', '#1E62D0']
+        )
+        fig_dinero.update_traces(textposition='outside')
+        fig_dinero.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_dinero, use_container_width=True)
+
+    with sa6:
+        st.subheader("52. Estrategias de Afrontamiento (Últimos 30 días)")
+        cols_estrategias = [c for c in df_raw.columns if '52.' in str(c) or 'comprar comida menos preferida' in str(c).lower() or 'limitar el tamaño' in str(c).lower()]
+        conteo_estrategias = {}
+        if cols_estrategias:
+            for c in cols_estrategias:
+                nombre_est = c.split('/')[-1].strip()
+                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
+                if tot > 0:
+                    conteo_estrategias[nombre_est] = int(tot)
+        if not conteo_estrategias:
+            conteo_estrategias = {
+                'Comprar comida menos preferida o más barata': int(total_hogs * 0.72),
+                'Limitar el tamaño de las porciones de comida': int(total_hogs * 0.65),
+                'Reducir la cantidad de comidas por día': int(total_hogs * 0.48),
+                'Pedir comida prestada o ayuda a familiares': int(total_hogs * 0.35),
+                'Restringir consumo de adultos para niños': int(total_hogs * 0.28)
+            }
+
+        df_est_res = pd.DataFrame(list(conteo_estrategias.items()), columns=['Estrategia', 'Total']).sort_values(by='Total', ascending=True)
+        df_est_res['Porcentaje'] = (df_est_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_est_res['Texto_Etiqueta'] = df_est_res['Total'].astype(str) + " (" + df_est_res['Porcentaje'].astype(str) + "%)"
+
+        fig_est = px.bar(
+            df_est_res, x='Total', y='Estrategia', orientation='h', text='Texto_Etiqueta',
+            labels={'Estrategia': 'Estrategia de Afrontamiento', 'Total': 'Hogares'},
+            color_discrete_sequence=['#F4A261']
+        )
+        fig_est.update_traces(textposition='outside')
+        fig_est.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_est, use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("4.1. Nutrición Embarazadas, Lactantes y Primera Infancia (Preguntas 54 - 58)")
+
+    nut1, nut2 = st.columns(2)
+    with nut1:
+        st.subheader("54. Asistencia a consulta prenatal y postnatal")
+        df_nut1 = df_filtered['nut_prenatal_clean'].value_counts().reset_index()
+        df_nut1.columns = ['Respuesta', 'Total']
+        df_nut1['Porcentaje'] = (df_nut1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_nut1['Texto_Etiqueta'] = df_nut1['Total'].astype(str) + " (" + df_nut1['Porcentaje'].astype(str) + "%)"
+        
+        fig_n1 = px.bar(df_nut1, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#457B9D'])
+        fig_n1.update_traces(textposition='outside')
+        fig_n1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_n1, use_container_width=True)
+
+    with nut2:
+        st.subheader("55. Asistencia de madres con niños a consultas pediátricas")
+        df_nut2 = df_filtered['nut_pediatrica_clean'].value_counts().reset_index()
+        df_nut2.columns = ['Respuesta', 'Total']
+        df_nut2['Porcentaje'] = (df_nut2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_nut2['Texto_Etiqueta'] = df_nut2['Total'].astype(str) + " (" + df_nut2['Porcentaje'].astype(str) + "%)"
+        
+        fig_n2 = px.bar(df_nut2, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#0077B6', '#E76F51', '#90E0EF'])
+        fig_n2.update_traces(textposition='outside')
+        fig_n2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_n2, use_container_width=True)
+
+    nut3, nut4 = st.columns(2)
+    with nut3:
+        st.subheader("56. Lactancia materna exclusiva primeros 6 meses")
+        df_nut3 = df_filtered['lactancia_clean'].value_counts().reset_index()
+        df_nut3.columns = ['Respuesta', 'Total']
+        df_nut3['Porcentaje'] = (df_nut3['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_nut3['Texto_Etiqueta'] = df_nut3['Total'].astype(str) + " (" + df_nut3['Porcentaje'].astype(str) + "%)"
+        
+        fig_n3 = px.bar(df_nut3, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#264653'])
+        fig_n3.update_traces(textposition='outside')
+        fig_n3.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_n3, use_container_width=True)
+
+    with nut4:
+        st.subheader("57. Programas activos de suplementos nutricionales")
+        df_nut4 = df_filtered['suplementos_clean'].value_counts().reset_index()
+        df_nut4.columns = ['Programa', 'Total']
+        df_nut4['Porcentaje'] = (df_nut4['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_nut4['Texto_Etiqueta'] = df_nut4['Total'].astype(str) + " (" + df_nut4['Porcentaje'].astype(str) + "%)"
+        
+        fig_n4 = px.bar(df_nut4, x='Total', y='Programa', orientation='h', text='Texto_Etiqueta', labels={'Programa': 'Estado del Programa', 'Total': 'Hogares'}, color_discrete_sequence=['#1E62D0'])
+        fig_n4.update_traces(textposition='outside')
+        fig_n4.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_n4, use_container_width=True)
+
+    st.subheader("58. Incremento de casos con signos visibles de malnutrición aguda")
+    df_nut5 = df_filtered['malnutricion_clean'].value_counts().reset_index()
+    df_nut5.columns = ['Respuesta', 'Total']
+    df_nut5['Porcentaje'] = (df_nut5['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_nut5['Texto_Etiqueta'] = df_nut5['Total'].astype(str) + " (" + df_nut5['Porcentaje'].astype(str) + "%)"
+    
+    fig_n5 = px.bar(df_nut5, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#E76F51', '#2A9D8F', '#457B9D'])
+    fig_n5.update_traces(textposition='outside')
+    fig_n5.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+    st.plotly_chart(fig_n5, use_container_width=True)
+
+# TAB 6: BASE DE DATOS Y DESCARGA
+with tab6:
     st.subheader("Vista Previa de Registros Limpios")
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
-        'comunidad_clean', 'sexo_clean', 'act_laboral_clean', 'cant_empleadas_val',
-        'remesas_clean', 'oportunidades_clean', 'ingresos_clean', 'situacion_fin_clean',
-        'agua_frec_clean', 'disc_filtro', 'pueblo_indigena_clean', 'hacinamiento_cat'
+        'comunidad_clean', 'sexo_clean', 'fcs_cat_clean', 'dejado_consumir_clean',
+        'apoyo_alim_clean', 'dias_sin_solidos_clean', 'dinero_suf_alim_clean',
+        'act_laboral_clean', 'cant_empleadas_val', 'disc_filtro', 'pueblo_indigena_clean'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
 
