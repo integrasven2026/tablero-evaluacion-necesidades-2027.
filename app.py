@@ -268,7 +268,7 @@ col_cuartos = [c for c in df_raw.columns if '25' in str(c) or 'cuartos' in str(c
 # Columnas de Empleo y Finanzas
 col_act_laboral = [c for c in df_raw.columns if '39.' in str(c) or 'actividad laboral' in str(c).lower()][0] if any('39.' in str(c) or 'actividad laboral' in str(c).lower() for c in df_raw.columns) else None
 col_cant_empleadas = [c for c in df_raw.columns if '42.' in str(c) or 'empleadas' in str(c).lower()][0] if any('42.' in str(c) or 'empleadas' in str(c).lower() for c in df_raw.columns) else None
-col_remesas = [c for c in df_raw.columns if '43.' in str(c) or 'remesas' in str(c).lower()][0] if any('43.' in str(c) or 'remesas' in str(c).lower() for c in df_raw.columns) else None
+col_remesas = [c for c in df_raw.columns if '43.' in str(c) or 'remesas' in str(c).lower()][0] if any('43.' in str(c) for c in df_raw.columns) else None
 col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunidades de empleo' in str(c).lower()][0] if any('44.' in str(c) or 'oportunidades de empleo' in str(c).lower() for c in df_raw.columns) else None
 col_ingresos = [c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()][0] if any('45.' in str(c) or 'ingreso de su hogar' in str(c).lower() for c in df_raw.columns) else None
 col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()][0] if any('46.' in str(c) or 'situación financiera' in str(c).lower() for c in df_raw.columns) else None
@@ -277,15 +277,9 @@ col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación
 col_fcs_cat = None
 for c in df_raw.columns:
     c_low = str(c).lower()
-    if ('fcs' in c_low) or ('consumo' in c_low and 'alimento' in c_low) or ('47' in c_low):
+    if ('fcs' in c_low) or ('consumo' in c_low and 'alimento' in c_low) or ('47' in c_low) or ('score' in c_low):
         col_fcs_cat = c
         break
-if not col_fcs_cat:
-    for c in df_raw.columns:
-        c_low = str(c).lower()
-        if 'score' in c_low or 'fcs' in c_low:
-            col_fcs_cat = c
-            break
 
 col_dejado_consumir = [c for c in df_raw.columns if '48.' in str(c) or 'dejado de consumir' in str(c).lower()][0] if any('48.' in str(c) for c in df_raw.columns) else None
 col_apoyo_alim = [c for c in df_raw.columns if '49.' in str(c) or 'apoyo alimentario' in str(c).lower()][0] if any('49.' in str(c) for c in df_raw.columns) else None
