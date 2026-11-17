@@ -511,7 +511,6 @@ tot_gestantes = int(df_filtered['gestantes_val'].sum())
 tot_disc_hogares = int((df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum())
 tot_indigenas = int((df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)').sum())
 
-# Población total general (Hombres + Mujeres) para proporciones demográficas
 pob_total_general = tot_hombres + tot_mujeres
 
 pct_hombres = (tot_hombres / pob_total_general * 100) if pob_total_general > 0 else 0.0
@@ -521,7 +520,7 @@ pct_gestantes = (tot_gestantes / tot_encuestas * 100) if tot_encuestas > 0 else 
 pct_disc = (tot_disc_hogares / tot_encuestas * 100) if tot_encuestas > 0 else 0.0
 pct_indigena = (tot_indigenas / tot_encuestas * 100) if tot_encuestas > 0 else 0.0
 
-# --- TARJETAS KPI PRINCIPALES (CON VALOR ABSOLUTO Y PORCENTAJE) ---
+# --- TARJETAS KPI PRINCIPALES ---
 col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 with col1:
     st.metric("Encuestas", f"{tot_encuestas:,}", "100.0% del total")
@@ -585,18 +584,13 @@ with tab1:
 
     st.markdown("---")
 
-    # Sexo del Jefe/Jefa de Hogar (Informante Principal)
     st.subheader("Sexo del Jefe / Jefa de Hogar (Informante Principal)")
     jefe_col1, jefe_col2 = st.columns([2, 1])
     
     with jefe_col1:
         df_jefe_resumen = df_filtered['sexo_clean'].value_counts().reset_index()
         df_jefe_resumen.columns = ['Sexo', 'Total']
-        if tot_enc > 0:
-            df_jefe_resumen['Porcentaje'] = (df_jefe_resumen['Total'] / tot_enc * 100).round(1)
-        else:
-            df_jefe_resumen['Porcentaje'] = 0.0
-            
+        df_jefe_resumen['Porcentaje'] = (df_jefe_resumen['Total'] / tot_enc * 100).round(1) if tot_enc > 0 else 0.0
         df_jefe_resumen['Texto_Etiqueta'] = df_jefe_resumen['Total'].astype(str) + " (" + df_jefe_resumen['Porcentaje'].astype(str) + "%)"
         
         fig_jefe_bar = px.bar(
@@ -642,7 +636,6 @@ with tab1:
 
     st.markdown("---")
 
-    # Gráfico de Tabla con las Principales Discapacidades (Top 5)
     st.subheader("Top 5 Principales Tipos de Discapacidad en el Hogar")
     cols_disp_det = [c for c in df_raw.columns if '15.7. Discapacidad/' in c or '16.1. ¿Qué tipo de discapacidad presenta su familiar?/' in c]
     conteo_discapacidades = {}
@@ -722,7 +715,7 @@ with tab2:
         fig_hac_pie.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_hac_pie, use_container_width=True)
 
-# TAB 3: WASH (Sección completa de Agua, Saneamiento e Higiene)
+# TAB 3: WASH (Agua, Saneamiento e Higiene)
 with tab3:
     st.header("Agua, Saneamiento e Higiene (WASH)")
     total_hogs = len(df_filtered)
@@ -1050,6 +1043,8 @@ with tab4:
         st.subheader("42. Cantidad de personas empleadas en el grupo familiar")
         df_fam_emp = df_filtered['cant_empleadas_val'].value_counts().sort_index().reset_index()
         df_fam_emp.columns = ['NumPersonas', 'Total']
+        # Filtro solicitado: Excluir 5, 7, 8 y 12 personas
+        df_fam_emp = df_fam_emp[~df_fam_emp['NumPersonas'].isin([5, 7, 8, 12])]
         df_fam_emp['Porcentaje'] = (df_fam_emp['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_fam_emp['Texto_Etiqueta'] = df_fam_emp['Total'].astype(str) + " (" + df_fam_emp['Porcentaje'].astype(str) + "%)"
         df_fam_emp['NumPersonasStr'] = df_fam_emp['NumPersonas'].astype(str) + " pers."
