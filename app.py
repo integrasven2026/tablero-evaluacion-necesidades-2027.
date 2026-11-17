@@ -253,7 +253,9 @@ col_sexo = [c for c in df_raw.columns if 'sexo' in str(c).lower() or 'biologico'
 
 col_nac = [c for c in df_raw.columns if 'nacionalidad' in str(c).lower()][0] if any('nacionalidad' in str(c).lower() for c in df_raw.columns) else None
 col_ind = [c for c in df_raw.columns if 'indígena' in str(c).lower() or 'etnia' in str(c).lower()][0] if any('indígena' in str(c).lower() for c in df_raw.columns) else None
-col_disc = [c for c in df_raw.columns if '15.7. Discapacidad' in str(c)][0] if any('15.7. Discapacidad' in str(c) for c in df_raw.columns) else None
+
+# Columna exacta para Discapacidad en el Hogar (Pregunta 16)
+col_disc_hogar = [c for c in df_raw.columns if '16. ¿Alguien de su grupo familiar' in str(c)][0] if any('16. ¿Alguien de su grupo familiar' in str(c) for c in df_raw.columns) else None
 
 cols_hombres_etarios = [c for c in df_raw.columns if 'hombres de' in str(c).lower() or 'hombres' in str(c).lower()]
 cols_mujeres_etarios = [c for c in df_raw.columns if 'mujeres de' in str(c).lower() or 'mujeres' in str(c).lower()]
@@ -389,7 +391,6 @@ df_clean['edu_clean'] = df_raw[col_edu].apply(limpiar_educacion) if col_edu else
 
 df_clean['nacionalidad_clean'] = df_raw[col_nac].apply(lambda x: limpiar_codigo(x, MAPA_NACIONALIDAD)) if col_nac else 'No especificado'
 df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codigo(x, MAPA_PUEBLOS_INDIGENAS)) if col_ind else 'No especificado'
-df_clean['discapacidad_clean'] = df_raw[col_disc].apply(lambda x: str(x).strip()) if col_disc else 'No posee'
 
 # Limpieza de Empleo y Finanzas
 df_clean['act_laboral_clean'] = df_raw[col_act_laboral].apply(limpiar_si_no) if col_act_laboral else 'No especificado'
@@ -438,19 +439,17 @@ def calcular_hacinamiento_ine(row):
 
 df_clean['hacinamiento_cat'] = df_clean.apply(calcular_hacinamiento_ine, axis=1)
 
-col_disc_hogar = [c for c in df_raw.columns if '16. ¿Alguien de su grupo familiar' in str(c)][0] if any('16. ¿Alguien de su grupo familiar' in str(c) for c in df_raw.columns) else None
-col_ind_hogar = [c for c in df_raw.columns if '14. ¿Pertenece usted a un pueblo indígena' in str(c)][0] if any('14. ¿Pertenece usted a un pueblo indígena' in str(c) for c in df_raw.columns) else None
-
-def evaluar_discapacidad(row):
-    resp_disp = str(row.get('15.7. Discapacidad', 'no posee')).lower().strip()
-    fam_disp = str(row.get(col_disc_hogar, 'no')).lower().strip() if col_disc_hogar else 'no'
-    if resp_disp != 'no posee' and resp_disp != 'nan' and resp_disp != 'no especificado':
-        return 'Sí (Con Discapacidad)'
-    if 'sí' in fam_disp or 'si' in fam_disp:
-        return 'Sí (Con Discapacidad)'
+# Filtro unificado idéntico a Tabla 3 del reporte (Pregunta 16)
+def evaluar_discapacidad_hogar(row):
+    if col_disc_hogar:
+        val = str(row.get(col_disc_hogar, '')).strip().lower()
+        if 'sí' in val or 'si' in val:
+            return 'Sí (Con Discapacidad)'
     return 'No'
 
-df_clean['disc_filtro'] = df_clean.apply(evaluar_discapacidad, axis=1)
+col_ind_hogar = [c for c in df_raw.columns if '14. ¿Pertenece usted a un pueblo indígena' in str(c)][0] if any('14. ¿Pertenece usted a un pueblo indígena' in str(c) for c in df_raw.columns) else None
+
+df_clean['disc_filtro'] = df_clean.apply(evaluar_discapacidad_hogar, axis=1)
 df_clean['indigena_filtro'] = df_raw[col_ind_hogar].apply(lambda x: 'Sí (Pueblo Indígena)' if 'sí' in str(x).strip().lower() or 'si' in str(x).strip().lower() else 'No') if col_ind_hogar else 'No'
 
 df_clean['tenencia_clean'] = limpiar_texto_simple(col_tenencia)
@@ -1043,7 +1042,6 @@ with tab4:
         st.subheader("42. Cantidad de personas empleadas en el grupo familiar")
         df_fam_emp = df_filtered['cant_empleadas_val'].value_counts().sort_index().reset_index()
         df_fam_emp.columns = ['NumPersonas', 'Total']
-        # Filtro solicitado: Excluir 5, 7, 8 y 12 personas
         df_fam_emp = df_fam_emp[~df_fam_emp['NumPersonas'].isin([5, 7, 8, 12])]
         df_fam_emp['Porcentaje'] = (df_fam_emp['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_fam_emp['Texto_Etiqueta'] = df_fam_emp['Total'].astype(str) + " (" + df_fam_emp['Porcentaje'].astype(str) + "%)"
@@ -1115,7 +1113,7 @@ with tab5:
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
         'comunidad_clean', 'sexo_clean', 'act_laboral_clean', 'cant_empleadas_val',
         'remesas_clean', 'oportunidades_clean', 'ingresos_clean', 'situacion_fin_clean',
-        'agua_frec_clean', 'discapacidad_clean', 'pueblo_indigena_clean', 'hacinamiento_cat'
+        'agua_frec_clean', 'disc_filtro', 'pueblo_indigena_clean', 'hacinamiento_cat'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
 
