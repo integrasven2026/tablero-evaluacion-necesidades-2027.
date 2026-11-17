@@ -927,21 +927,16 @@ with tab3:
         fig_menstru.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_menstru, use_container_width=True)
 
-        total_mujeres_general = df_filtered['mujeres_val'].sum()
-        mujeres_con_acceso = df_filtered[df_filtered['higiene_menstru_clean'] == 'Sí']['mujeres_val'].sum()
-        pct_mujeres_acceso = (mujeres_con_acceso / total_mujeres_general * 100).round(1) if total_mujeres_general > 0 else 0.0
-
-        st.metric(
-            label="Porcentaje de mujeres de los hogares con acceso ('Sí')",
-            value=f"{pct_mujeres_acceso}%",
-            delta=f"({int(mujeres_con_acceso):,} de {int(total_mujeres_general):,} mujeres)"
-        )
-
     st.markdown("---")
 
+    # SECCIÓN: 36.1. RAZÓN POR LA QUE NO TIENEN ACCESO (Sin "No especificado")
     st.subheader("36.1. ¿Podría indicarnos por qué razón?")
     df_razon_res = df_filtered['razon_menstru_clean'].value_counts().reset_index()
     df_razon_res.columns = ['Razon', 'Total']
+    
+    # Excluir la categoría "No especificado" o equivalentes vacíos de la gráfica
+    df_razon_res = df_razon_res[~df_razon_res['Razon'].isin(['No especificado', 'No Especificado'])]
+    
     df_razon_res['Porcentaje'] = (df_razon_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
     df_razon_res['Texto_Etiqueta'] = df_razon_res['Total'].astype(str) + " (" + df_razon_res['Porcentaje'].astype(str) + "%)"
 
