@@ -36,7 +36,7 @@ st.markdown("""
     }
     .stMetric {
         background-color: #F4F7FC;
-        padding: 15px;
+        padding: 12px;
         border-radius: 10px;
         border-left: 5px solid #08327D;
     }
@@ -502,28 +502,41 @@ if df_filtered.empty:
     st.warning("⚠️ No hay registros que coincidan con los filtros seleccionados.")
     st.stop()
 
-# --- TARJETAS KPI PRINCIPALES ---
+# --- CÁLCULO DE TOTALES PARA PORCENTAJES EN KPIS ---
+tot_encuestas = len(df_filtered)
+tot_hombres = int(df_filtered['hombres_val'].sum())
+tot_mujeres = int(df_filtered['mujeres_val'].sum())
+tot_ninos = int(df_filtered['ninos_val'].sum())
+tot_gestantes = int(df_filtered['gestantes_val'].sum())
+tot_disc_hogares = int((df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum())
+tot_indigenas = int((df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)').sum())
+
+# Población total general (Hombres + Mujeres) para proporciones demográficas
+pob_total_general = tot_hombres + tot_mujeres
+
+pct_hombres = (tot_hombres / pob_total_general * 100) if pob_total_general > 0 else 0.0
+pct_mujeres = (tot_mujeres / pob_total_general * 100) if pob_total_general > 0 else 0.0
+pct_ninos = (tot_ninos / pob_total_general * 100) if pob_total_general > 0 else 0.0
+pct_gestantes = (tot_gestantes / tot_encuestas * 100) if tot_encuestas > 0 else 0.0
+pct_disc = (tot_disc_hogares / tot_encuestas * 100) if tot_encuestas > 0 else 0.0
+pct_indigena = (tot_indigenas / tot_encuestas * 100) if tot_encuestas > 0 else 0.0
+
+# --- TARJETAS KPI PRINCIPALES (CON VALOR ABSOLUTO Y PORCENTAJE) ---
 col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 with col1:
-    st.metric("Encuestas", f"{len(df_filtered):,}")
+    st.metric("Encuestas", f"{tot_encuestas:,}", "100.0% del total")
 with col2:
-    tot_h = int(df_filtered['hombres_val'].sum())
-    st.metric("Hombres", f"{tot_h:,}")
+    st.metric("Hombres", f"{tot_hombres:,}", f"{pct_hombres:.1f}% pobl.")
 with col3:
-    tot_m = int(df_filtered['mujeres_val'].sum())
-    st.metric("Mujeres", f"{tot_m:,}")
+    st.metric("Mujeres", f"{tot_mujeres:,}", f"{pct_mujeres:.1f}% pobl.")
 with col4:
-    tot_n = int(df_filtered['ninos_val'].sum())
-    st.metric("Niños/as", f"{tot_n:,}")
+    st.metric("Niños/as", f"{tot_ninos:,}", f"{pct_ninos:.1f}% pobl.")
 with col5:
-    total_gest = int(df_filtered['gestantes_val'].sum())
-    st.metric("Gestantes", f"{total_gest:,}")
+    st.metric("Gestantes", f"{tot_gestantes:,}", f"{pct_gestantes:.1f}% hogares")
 with col6:
-    total_disc = (df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum()
-    st.metric("c/ Discapacidad", f"{total_disc:,}")
+    st.metric("c/ Discapacidad", f"{tot_disc_hogares:,}", f"{pct_disc:.1f}% hogares")
 with col7:
-    total_ind = (df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)').sum()
-    st.metric("Indígenas", f"{total_ind:,}")
+    st.metric("Indígenas", f"{tot_indigenas:,}", f"{pct_indigena:.1f}% hogares")
 
 st.markdown("---")
 
@@ -675,7 +688,7 @@ with tab2:
         st.metric("Índice de Hacinamiento Promedio", f"{indice_hacinamento_prom:.2f} pers/cuarto")
     with col_v_kpi3:
         total_hacinados_criticos = (df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum()
-        st.metric("Hogares con Hacinamiento Crítico (NBI)", f"{total_hacinados_criticos:,}")
+        st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}")
 
     st.markdown("---")
 
@@ -1015,7 +1028,7 @@ with tab3:
     fig_tfiltro.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
     st.plotly_chart(fig_tfiltro, use_container_width=True)
 
-# TAB 4: EMPLEO Y ECONOMÍA (NUEVO CAPÍTULO)
+# TAB 4: EMPLEO Y ECONOMÍA
 with tab4:
     st.header("Empleo, Ingresos y Situación Financiera")
     total_hogs = len(df_filtered)
