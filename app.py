@@ -273,8 +273,20 @@ col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunida
 col_ingresos = [c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()][0] if any('45.' in str(c) or 'ingreso de su hogar' in str(c).lower() for c in df_raw.columns) else None
 col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()][0] if any('46.' in str(c) or 'situación financiera' in str(c).lower() for c in df_raw.columns) else None
 
-# Columnas de Seguridad Alimentaria y Nutrición (Preguntas 47 a 58)
-col_fcs_cat = [c for c in df_raw.columns if 'fcs' in str(c).lower() or 'consumo de alimentos' in str(c).lower() or '47' in str(c)][0] if any('fcs' in str(c).lower() or '47' in str(c) for c in df_raw.columns) else None
+# --- BÚSQUEDA ROBUSTA DE LA COLUMNA FCS (Pregunta 47) ---
+col_fcs_cat = None
+for c in df_raw.columns:
+    c_low = str(c).lower()
+    if ('fcs' in c_low) or ('consumo' in c_low and 'alimento' in c_low) or ('47' in c_low):
+        col_fcs_cat = c
+        break
+if not col_fcs_cat:
+    for c in df_raw.columns:
+        c_low = str(c).lower()
+        if 'score' in c_low or 'fcs' in c_low:
+            col_fcs_cat = c
+            break
+
 col_dejado_consumir = [c for c in df_raw.columns if '48.' in str(c) or 'dejado de consumir' in str(c).lower()][0] if any('48.' in str(c) for c in df_raw.columns) else None
 col_apoyo_alim = [c for c in df_raw.columns if '49.' in str(c) or 'apoyo alimentario' in str(c).lower()][0] if any('49.' in str(c) for c in df_raw.columns) else None
 col_dias_sin_solidos = [c for c in df_raw.columns if '50.' in str(c) or 'alimentos sólidos' in str(c).lower()][0] if any('50.' in str(c) for c in df_raw.columns) else None
@@ -375,6 +387,21 @@ def limpiar_si_no(val):
     else:
         return s.replace('_', ' ').capitalize()
 
+def limpiar_fcs(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip().lower()
+    if s in ['', 'nan', 'none', 'nat']:
+        return 'No especificado'
+    if 'pobre' in s or 'poor' in s:
+        return 'Pobre'
+    elif 'limitrofe' in s or 'limítrofe' in s or 'borderline' in s:
+        return 'Limítrofe'
+    elif 'aceptable' in s or 'acceptable' in s:
+        return 'Aceptable'
+    else:
+        return s.replace('_', ' ').capitalize()
+
 def limpiar_razon_menstrual(val):
     if pd.isna(val):
         return 'No especificado'
@@ -413,7 +440,7 @@ df_clean['ingresos_clean'] = limpiar_texto_simple(col_ingresos)
 df_clean['situacion_fin_clean'] = limpiar_texto_simple(col_situacion_fin)
 
 # Limpieza de Seguridad Alimentaria
-df_clean['fcs_cat_clean'] = limpiar_texto_simple(col_fcs_cat)
+df_clean['fcs_cat_clean'] = df_raw[col_fcs_cat].apply(limpiar_fcs) if col_fcs_cat else 'No especificado'
 df_clean['dejado_consumir_clean'] = df_raw[col_dejado_consumir].apply(limpiar_si_no) if col_dejado_consumir else 'No especificado'
 df_clean['apoyo_alim_clean'] = df_raw[col_apoyo_alim].apply(limpiar_si_no) if col_apoyo_alim else 'No especificado'
 df_clean['dias_sin_solidos_clean'] = df_raw[col_dias_sin_solidos].apply(limpiar_si_no) if col_dias_sin_solidos else 'No especificado'
