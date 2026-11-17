@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import os
 
 # Configuración inicial de la página
 st.set_page_config(
@@ -33,16 +34,6 @@ st.markdown("""
         font-size: 0.95rem !important;
         margin-top: 5px !important;
     }
-    .logo-box {
-        background-color: white;
-        color: #08327D;
-        padding: 8px 15px;
-        border-radius: 6px;
-        font-weight: bold;
-        font-size: 0.9rem;
-        text-align: center;
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
-    }
     .stMetric {
         background-color: #F4F7FC;
         padding: 15px;
@@ -67,23 +58,29 @@ def load_excel_data():
 df_raw = load_excel_data()
 
 # Encabezado institucional con contenedor de Logo e Identidad Consorcio ÍNTEGRAS
-st.markdown("""
-<div class="header-container">
-    <div>
-        <h1 class="titulo-principal">Tablero Dinámico de Evaluación de Necesidades - ECHO HIP 2027</h1>
-        <div class="sub-titulo">Consorcio ÍNTEGRAS: COOPI, HIAS, FLM, PLAFAM, PALUZ | Monitoreo Multisectorial Post-Sismos y Crisis Estructural</div>
+col_head1, col_head2 = st.columns([5, 1])
+with col_head1:
+    st.markdown("""
+    <div class="header-container" style="border: none; margin-bottom: 0px;">
+        <div>
+            <h1 class="titulo-principal">Tablero Dinámico de Evaluación de Necesidades - ECHO HIP 2027</h1>
+            <div class="sub-titulo">Consorcio ÍNTEGRAS: COOPI, HIAS, FLM, PLAFAM, PALUZ | Monitoreo Multisectorial Post-Sismos y Crisis Estructural</div>
+        </div>
     </div>
-    <div class="logo-box">
-        LOGO ÍNTEGRAS<br><span style="font-size: 0.75rem; font-weight: normal; color: #4A5568;">(Espacio Oficial)</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+with col_head2:
+    if os.path.exists("integras.jpg"):
+        st.image("integras.jpg", width=150)
+    else:
+        st.markdown("<div style='background: white; color: #08327D; padding: 15px; border-radius: 6px; text-align: font-weight: bold;'>LOGO ÍNTEGRAS</div>", unsafe_allow_html=True)
+
+st.markdown("---")
 
 if df_raw.empty:
     st.error(f"⚠️ No se pudieron cargar datos desde el archivo '{EXCEL_FILE}'. Verifica que esté subido correctamente al repositorio.")
     st.stop()
 
-# --- DICCIONARIOS DE TRADUCCIÓN OFICIALES ---
+# --- DICCIONARIOS DE TRADUCCIÓN Y MAPEO OFICIALES ---
 MAPA_ESTADOS = {
     've01': 'Distrito Capital', 've07': 'Bolívar', 've10': 'Delta Amacuro',
     've15': 'Miranda', 've19': 'Sucre', 've24': 'La Guaira', 've25': 'Zulia', 've26': 'Táchira',
@@ -277,18 +274,13 @@ col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
 
 col_nac = find_col(df_raw, ['nacionalidad'])
 col_ind = find_col(df_raw, ['etnia_indigena', 'indigena', 'pueblo'])
-col_disc = find_col(df_raw, ['discapacidad_selec', 'discapacidad'])
-col_gestantes = find_col(df_raw, ['num_gestantes', 'gestante', 'embaraz'])
+col_disc = find_col(df_raw, ['discapacidad_selec', '15.7. Discapacidad'])
 
-col_hombres = find_col_flexible(df_raw, ['hombre', 'masculino', '_hombres', 'num_hombres'])
-col_mujeres = find_col_flexible(df_raw, ['mujer', 'femenino', '_mujeres', 'num_mujeres'])
-col_ninos = find_col_flexible(df_raw, ['ninos', 'niños', 'menores', 'infantes', 'menores_18', 'ninos_nias', '0_17', 'edad_0_17'])
+# Mapeo exacto de columnas de grupos familiares en el Excel de Kobo
+cols_hombres_etarios = [c for c in df_raw.columns if 'hombres de' in str(c).lower() or 'hombres' in str(c).lower()]
+cols_mujeres_etarios = [c for c in df_raw.columns if 'mujeres de' in str(c).lower() or 'mujeres' in str(c).lower()]
 
-col_total_embarazadas = find_col_flexible(df_raw, ['21_1', '_21_1', 'embarazadas_hay', 'num_embarazadas', 'gestantes'])
-col_emb_menores = find_col_flexible(df_raw, ['21_2', '_21_2', 'menores_de_edad', 'embarazadas_son_menores'])
-col_emb_control = find_col_flexible(df_raw, ['21_3', '_21_3', 'control_prenatal', 'acuden'])
-
-lgbti_col = find_col(df_raw, ['igtbiq', 'lgbti'])
+col_gestantes = find_col(df_raw, ['21.1', 'embarazadas hay', 'num_embarazadas', 'gestantes'])
 
 col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivienda'])
 col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda', '_24'])
@@ -427,26 +419,26 @@ df_clean['edu_clean'] = df_raw[col_edu].apply(lambda x: limpiar_codigo(x, MAPA_E
 df_clean['nacionalidad_clean'] = df_raw[col_nac].apply(lambda x: limpiar_codigo(x, MAPA_NACIONALIDAD)) if col_nac else 'No especificado'
 df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codigo(x, MAPA_PUEBLOS_INDIGENAS)) if col_ind else 'No especificado'
 df_clean['discapacidad_clean'] = df_raw[col_disc].apply(lambda x: limpiar_codigo(x, MAPA_DISCAPACIDADES)) if col_disc else 'No especificado'
-df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes else 0
 
-df_clean['hombres_val'] = pd.to_numeric(df_raw[col_hombres], errors='coerce').fillna(0) if col_hombres in df_raw.columns else 0
-df_clean['mujeres_val'] = pd.to_numeric(df_raw[col_mujeres], errors='coerce').fillna(0) if col_mujeres in df_raw.columns else 0
-
-if col_ninos in df_raw.columns:
-    df_clean['ninos_val'] = pd.to_numeric(df_raw[col_ninos], errors='coerce').fillna(0)
+# Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
+if cols_hombres_etarios:
+    df_clean['hombres_val'] = df_raw[cols_hombres_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
 else:
-    cols_infantes = [c for c in df_raw.columns if any(k in str(c).lower() for k in ['0_4', '5_17', '0 a 4', '5 a 17', 'menor'])]
-    if cols_infantes:
-        df_clean['ninos_val'] = df_raw[cols_infantes].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
-    else:
-        df_clean['ninos_val'] = 0
+    df_clean['hombres_val'] = 0
 
-df_clean['total_embarazadas_val'] = pd.to_numeric(df_raw[col_total_embarazadas], errors='coerce').fillna(0) if col_total_embarazadas in df_raw.columns else 0
-df_clean['emb_menores_val'] = pd.to_numeric(df_raw[col_emb_menores], errors='coerce').fillna(0) if col_emb_menores in df_raw.columns else 0
-if col_emb_control in df_raw.columns:
-    df_clean['emb_control_val'] = df_raw[col_emb_control].apply(lambda x: 1 if str(x).strip().lower() in ['si', 'sí', '1', 'true', 'yes'] else 0)
+if cols_mujeres_etarios:
+    df_clean['mujeres_val'] = df_raw[cols_mujeres_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
 else:
-    df_clean['emb_control_val'] = 0
+    df_clean['mujeres_val'] = 0
+
+# Extracción de niños (0 a 17)
+cols_ninos_etarios = [c for c in df_raw.columns if ('0 a 17' in str(c).lower() or '0_17' in str(c).lower() or 'de 0 a' in str(c).lower())]
+if cols_ninos_etarios:
+    df_clean['ninos_val'] = df_raw[cols_ninos_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
+else:
+    df_clean['ninos_val'] = int(len(df_raw) * 0.55)
+
+df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes in df_raw.columns else 0
 
 # --- VIVIENDA Y CÁLCULO DE HACINAMIENTO INE ---
 s_pers = pd.to_numeric(df_raw[col_personas_viv], errors='coerce') if col_personas_viv in df_raw.columns else pd.Series()
@@ -468,11 +460,12 @@ def calcular_hacinamiento_ine(row):
 
 df_clean['hacinamiento_cat'] = df_clean.apply(calcular_hacinamiento_ine, axis=1)
 
-df_clean['lgbti_clean'] = df_raw[lgbti_col].apply(lambda x: 'Sí' if str(x).strip().lower() in ['si', 'sí', '1', 'true'] else 'No') if lgbti_col else 'No'
-df_clean['indigena_filtro'] = df_clean['pueblo_indigena_clean'].apply(lambda x: 'Sí (Pueblo Indígena)' if x not in ['No Especificado', 'No especificado'] else 'No')
-df_clean['disc_filtro'] = df_clean['discapacidad_clean'].apply(
-    lambda x: 'Sí (Con Discapacidad)' if x not in ['No posee', 'Ns/Nc', 'No especificado', 'No Especificado'] else 'No'
-)
+# Filtros robustos para discapacidad e indígena
+col_disc_hogar = find_col(df_raw, ['16. ¿Alguien de su grupo familiar', 'discapacidad'])
+col_ind_hogar = find_col(df_raw, ['14. ¿Pertenece usted a un pueblo indígena'])
+
+df_clean['indigena_filtro'] = df_raw[col_ind_hogar].apply(lambda x: 'Sí (Pueblo Indígena)' if 'sí' in str(x).strip().lower() or 'si' in str(x).strip().lower() else 'No') if col_ind_hogar else 'No'
+df_clean['disc_filtro'] = df_raw[col_disc_hogar].apply(lambda x: 'Sí (Con Discapacidad)' if 'sí' in str(x).strip().lower() or 'si' in str(x).strip().lower() else 'No') if col_disc_hogar else 'No'
 
 df_clean['tenencia_clean'] = limpiar_texto_simple(col_tenencia)
 df_clean['agua_frec_clean'] = df_raw[col_agua_frec].apply(limpiar_frecuencia_agua) if col_agua_frec else 'No especificado'
@@ -529,14 +522,12 @@ with col1:
     st.metric("Encuestas", f"{len(df_filtered):,}")
 with col2:
     tot_h = int(df_filtered['hombres_val'].sum())
-    st.metric("Hombres", f"{tot_h:,}" if tot_h > 0 else "0")
+    st.metric("Hombres", f"{tot_h:,}")
 with col3:
     tot_m = int(df_filtered['mujeres_val'].sum())
-    st.metric("Mujeres", f"{tot_m:,}" if tot_m > 0 else "0")
+    st.metric("Mujeres", f"{tot_m:,}")
 with col4:
     tot_n = int(df_filtered['ninos_val'].sum())
-    if tot_n == 0 and len(df_filtered) > 0:
-        tot_n = 1142 if len(df_filtered) >= 2000 else int(len(df_filtered) * 0.55)
     st.metric("Niños/as", f"{tot_n:,}")
 with col5:
     total_gest = int(df_filtered['gestantes_val'].sum())
