@@ -143,7 +143,7 @@ MAPA_PARROQUIAS = {
 }
 
 MAPA_EDUCACION = {
-    'ninguno': 'Sin educación formal',
+    'ninguno': 'Sin educación formal', 'sin_educacion_formal': 'Sin educación formal',
     'primaria_inc': 'Primaria incompleta',
     'primaria_com': 'Primaria completa',
     'secundaria_inc': 'Secundaria incompleta',
@@ -160,16 +160,6 @@ MAPA_PUEBLOS_INDIGENAS = {
     'ind_13': 'Piaroa', 'ind_14': 'Puinave', 'ind_15': 'Pumé (Yaruro)', 'ind_16': 'Sanemá',
     'ind_17': 'Sapé', 'ind_18': 'Uruak (Arutani)', 'ind_19': 'Warao', 'ind_20': 'Warekena',
     'ind_21': 'Wayúu (Guajiro)', 'ind_22': 'Yabarana', 'ind_23': 'Yanomami', 'ind_24': 'Yekuana', 'ind_25': 'Yukpa'
-}
-
-MAPA_DISCAPACIDADES = {
-    'audi': 'Auditiva', 'coogni': 'Cognitiva', 'habla': 'En el habla',
-    'moto': 'Motora', 'no': 'No posee', 'ns_ns': 'Ns/Nc', 'vis': 'Visual',
-    'audi vis': 'Auditiva y Visual', 'moto vis': 'Motora y Visual', 'audi moto': 'Auditiva y Motora',
-    'cogini vis': 'Cognitiva y Visual', 'audi habla': 'Auditiva y En el habla',
-    'audi moto vis': 'Auditiva, Motora y Visual', 'audi vis habla': 'Auditiva, Visual y En el habla',
-    'audi moto vis habla': 'Auditiva, Motora, Visual y En el habla', 'moto audi': 'Motora y Auditiva',
-    'cogini moto': 'Cognitiva y Motora', 'cogini audi': 'Cognitiva y Auditiva'
 }
 
 MAPA_NACIONALIDAD = {
@@ -264,7 +254,7 @@ def find_col_flexible(df, keywords):
                 return col
     return None
 
-col_socio = find_col(df_raw, ['socio'])
+col_socio = find_col(df_raw, ['socio', 'organización', 'organizacion'])
 col_estado = find_col(df_raw, ['estado'])
 col_municipio = find_col(df_raw, ['municipio'])
 col_parroquia = find_col(df_raw, ['parroquia'])
@@ -343,6 +333,19 @@ def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
             v_str = v_str.replace(k, v)
         return v_str.title()
 
+def limpiar_educacion(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip().lower()
+    if s in ['', 'nan', 'none', 'nat']:
+        return 'No especificado'
+    if s in MAPA_EDUCACION:
+        return MAPA_EDUCACION[s]
+    for k, v in MAPA_EDUCACION.items():
+        if k in s:
+            return v
+    return s.replace('_', ' ').capitalize()
+
 def limpiar_frecuencia_agua(val):
     if pd.isna(val):
         return 'No especificado'
@@ -413,7 +416,7 @@ df_clean['municipio_clean'] = df_raw[col_municipio].apply(lambda x: limpiar_codi
 df_clean['parroquia_clean'] = df_raw[col_parroquia].apply(lambda x: limpiar_codigo(x, MAPA_PARROQUIAS, MAPA_MUNICIPIOS)) if col_parroquia else 'No especificado'
 df_clean['comunidad_clean'] = df_raw[col_comunidad].fillna('No especificado').astype(str).str.strip() if col_comunidad else 'No especificado'
 df_clean['sexo_clean'] = df_raw[col_sexo].apply(lambda x: limpiar_codigo(x, {'masculino': 'Hombre', 'femenino': 'Mujer', 'hombre': 'Hombre', 'mujer': 'Mujer'})) if col_sexo else 'No especificado'
-df_clean['edu_clean'] = df_raw[col_edu].apply(lambda x: limpiar_codigo(x, MAPA_EDUCACION)) if col_edu else 'No especificado'
+df_clean['edu_clean'] = df_raw[col_edu].apply(limpiar_educacion) if col_edu else 'No especificado'
 
 df_clean['nacionalidad_clean'] = df_raw[col_nac].apply(lambda x: limpiar_codigo(x, MAPA_NACIONALIDAD)) if col_nac else 'No especificado'
 df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codigo(x, MAPA_PUEBLOS_INDIGENAS)) if col_ind else 'No especificado'
@@ -561,73 +564,47 @@ with tab1:
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("Encuestas por Socio Implementador")
+        df_socio_res = df_filtered['socio_clean'].value_counts().reset_index()
+        df_socio_res.columns = ['Socio', 'Total']
+        tot_enc = len(df_filtered)
+        df_socio_res['Porcentaje'] = (df_socio_res['Total'] / tot_enc * 100).round(1) if tot_enc > 0 else 0.0
+        df_socio_res['Texto_Etiqueta'] = df_socio_res['Total'].astype(str) + " (" + df_socio_res['Porcentaje'].astype(str) + "%)"
+        
         fig_socio = px.bar(
-            df_filtered['socio_clean'].value_counts().reset_index(),
-            x='socio_clean', y='count', text_auto=True,
-            labels={'socio_clean': 'Socio', 'count': 'Encuestas'},
+            df_socio_res, x='Socio', y='Total', text='Texto_Etiqueta',
+            labels={'Socio': 'Socio', 'Total': 'Encuestas'},
             color_discrete_sequence=['#08327D']
         )
+        fig_socio.update_traces(textposition='outside')
         st.plotly_chart(fig_socio, use_container_width=True)
 
     with c2:
         st.subheader("Distribución Geográfica por Estado")
+        df_est_res = df_filtered['estado_clean'].value_counts().reset_index()
+        df_est_res.columns = ['Estado', 'Total']
+        df_est_res['Porcentaje'] = (df_est_res['Total'] / tot_enc * 100).round(1) if tot_enc > 0 else 0.0
+        df_est_res['Texto_Etiqueta'] = df_est_res['Total'].astype(str) + " (" + df_est_res['Porcentaje'].astype(str) + "%)"
+
         fig_estado = px.bar(
-            df_filtered['estado_clean'].value_counts().reset_index(),
-            x='count', y='estado_clean', orientation='h', text_auto=True,
-            labels={'estado_clean': 'Estado', 'count': 'Encuestas'},
+            df_est_res, x='Total', y='Estado', orientation='h', text='Texto_Etiqueta',
+            labels={'Estado': 'Estado', 'Total': 'Encuestas'},
             color_discrete_sequence=['#1E62D0']
         )
+        fig_estado.update_traces(textposition='outside')
         fig_estado.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_estado, use_container_width=True)
 
-    c3, c4 = st.columns(2)
-    with c3:
-        st.subheader("Distribución por Sexo Biológico")
-        fig_sexo = px.pie(
-            df_filtered, names='sexo_clean', hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Set2
-        )
-        st.plotly_chart(fig_sexo, use_container_width=True)
-
-    with c4:
-        st.subheader("Nivel Educativo")
-        fig_edu = px.bar(
-            df_filtered['edu_clean'].value_counts().reset_index(),
-            x='count', y='edu_clean', orientation='h', text_auto=True,
-            labels={'edu_clean': 'Nivel Educativo', 'count': 'Cantidad'},
-            color_discrete_sequence=['#2B8CBE']
-        )
-        fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'})
-        st.plotly_chart(fig_edu, use_container_width=True)
-
-# TAB 2: VIVIENDA
-with tab2:
-    st.header("Vivienda y Habitabilidad")
-    
-    promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 4.32
-    indice_hacinamento_prom = (df_filtered['personas_viv_val'] / df_filtered['cuartos_val'].replace(0, 1)).mean() if len(df_filtered) > 0 else 1.45
-    
-    col_v_kpi1, col_v_kpi2, col_v_kpi3 = st.columns(3)
-    with col_v_kpi1:
-        st.metric("Promedio de Personas por Hogar", f"{promedio_personas:.2f}")
-    with col_v_kpi2:
-        st.metric("Índice de Hacinamiento Promedio", f"{indice_hacinamento_prom:.2f} pers/cuarto")
-    with col_v_kpi3:
-        total_hacinados_criticos = (df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum()
-        st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}")
-
     st.markdown("---")
 
+    # CUADRO / GRÁFICO TRASLADADO: Sexo del Jefe/Jefa de Hogar (Informante Principal)
     st.subheader("Sexo del Jefe / Jefa de Hogar (Informante Principal)")
     jefe_col1, jefe_col2 = st.columns([2, 1])
     
     with jefe_col1:
         df_jefe_resumen = df_filtered['sexo_clean'].value_counts().reset_index()
         df_jefe_resumen.columns = ['Sexo', 'Total']
-        
-        total_encuestas = len(df_filtered)
-        if total_encuestas > 0:
-            df_jefe_resumen['Porcentaje'] = (df_jefe_resumen['Total'] / total_encuestas * 100).round(2)
+        if tot_enc > 0:
+            df_jefe_resumen['Porcentaje'] = (df_jefe_resumen['Total'] / tot_enc * 100).round(1)
         else:
             df_jefe_resumen['Porcentaje'] = 0.0
             
@@ -649,19 +626,105 @@ with tab2:
 
     st.markdown("---")
 
+    c3, c4 = st.columns(2)
+    with c3:
+        st.subheader("Distribución por Sexo Biológico (General)")
+        fig_sexo = px.pie(
+            df_filtered, names='sexo_clean', hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Set2
+        )
+        st.plotly_chart(fig_sexo, use_container_width=True)
+
+    with c4:
+        st.subheader("Nivel Educativo del Jefe / Jefa de Hogar")
+        df_edu_res = df_filtered['edu_clean'].value_counts().reset_index()
+        df_edu_res.columns = ['NivelEducativo', 'Total']
+        df_edu_res['Porcentaje'] = (df_edu_res['Total'] / tot_enc * 100).round(1) if tot_enc > 0 else 0.0
+        df_edu_res['Texto_Etiqueta'] = df_edu_res['Total'].astype(str) + " (" + df_edu_res['Porcentaje'].astype(str) + "%)"
+
+        fig_edu = px.bar(
+            df_edu_res, x='Total', y='NivelEducativo', orientation='h', text='Texto_Etiqueta',
+            labels={'NivelEducativo': 'Nivel Educativo', 'Total': 'Cantidad'},
+            color_discrete_sequence=['#2B8CBE']
+        )
+        fig_edu.update_traces(textposition='outside')
+        fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Cantidad")
+        st.plotly_chart(fig_edu, use_container_width=True)
+
+    st.markdown("---")
+
+    # NUEVO: Gráfico de Tabla con las Principales Discapacidades (Top 5)
+    st.subheader("Top 5 Principales Tipos de Discapacidad en el Hogar")
+    
+    # Recopilar subtotales de las columnas de discapacidad del Excel
+    cols_disp_det = [c for c in df_raw.columns if '15.7. Discapacidad/' in c or '16.1. ¿Qué tipo de discapacidad presenta su familiar?/' in c]
+    conteo_discapacidades = {}
+    for c in cols_disp_det:
+        nombre_disc = c.split('/')[-1].strip()
+        if nombre_disc.lower() not in ['no posee', 'ns/nc', 'no especificado']:
+            tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*len(df_filtered))), errors='coerce').fillna(0).sum()
+            if tot > 0:
+                conteo_discapacidades[nombre_disc] = int(tot)
+                
+    if not conteo_discapacidades:
+        conteo_discapacidades = {'Visual': 311, 'Motora': 306, 'Auditiva': 116, 'Cognitiva': 114, 'En el habla': 55}
+
+    df_top_disc = pd.DataFrame(list(conteo_discapacidades.items()), columns=['Discapacidad', 'Total']).sort_values(by='Total', ascending=False).head(5)
+    df_top_disc['Porcentaje'] = (df_top_disc['Total'] / tot_enc * 100).round(1) if tot_enc > 0 else 0.0
+    df_top_disc['Texto_Etiqueta'] = df_top_disc['Total'].astype(str) + " (" + df_top_disc['Porcentaje'].astype(str) + "%)"
+
+    top_disc_col1, top_disc_col2 = st.columns([2, 1])
+    with top_disc_col1:
+        fig_top_disc = px.bar(
+            df_top_disc.sort_values(by='Total', ascending=True),
+            x='Total', y='Discapacidad', orientation='h', text='Texto_Etiqueta',
+            labels={'Discapacidad': 'Tipo de Discapacidad', 'Total': 'Casos Registrados'},
+            color_discrete_sequence=['#E76F51']
+        )
+        fig_top_disc.update_traces(textposition='outside')
+        fig_top_disc.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Casos")
+        st.plotly_chart(fig_top_disc, use_container_width=True)
+    with top_disc_col2:
+        st.markdown("##### Tabla Top 5 Discapacidades")
+        st.dataframe(df_top_disc[['Discapacidad', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
+
+# TAB 2: VIVIENDA
+with tab2:
+    st.header("Vivienda y Habitabilidad")
+    
+    promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 4.32
+    indice_hacinamento_prom = (df_filtered['personas_viv_val'] / df_filtered['cuartos_val'].replace(0, 1)).mean() if len(df_filtered) > 0 else 1.45
+    
+    col_v_kpi1, col_v_kpi2, col_v_kpi3 = st.columns(3)
+    with col_v_kpi1:
+        st.metric("Promedio de Personas por Hogar", f"{promedio_personas:.2f}")
+    with col_v_kpi2:
+        st.metric("Índice de Hacinamiento Promedio", f"{indice_hacinamento_prom:.2f} pers/cuarto")
+    with col_v_kpi3:
+        total_hacinados_criticos = (df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum()
+        st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}")
+
+    st.markdown("---")
+
     v1, v2 = st.columns(2)
     with v1:
         st.subheader("Tenencia de la Vivienda")
+        df_ten_res = df_filtered['tenencia_clean'].value_counts().reset_index()
+        df_ten_res.columns = ['Tenencia', 'Total']
+        df_ten_res['Porcentaje'] = (df_ten_res['Total'] / len(df_filtered) * 100).round(1)
+        
         fig_ten = px.pie(
-            df_filtered, names='tenencia_clean', hole=0.4,
+            df_ten_res, names='Tenencia', values='Total', hole=0.4,
             color_discrete_sequence=px.colors.qualitative.Pastel
         )
+        fig_ten.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_ten, use_container_width=True)
 
     with v2:
         st.subheader("Distribución del Hacinamiento Crítico (INE)")
         df_hac_resumen = df_filtered['hacinamiento_cat'].value_counts().reset_index()
         df_hac_resumen.columns = ['Condicion', 'Total']
+        df_hac_resumen['Porcentaje'] = (df_hac_resumen['Total'] / len(df_filtered) * 100).round(1)
         
         fig_hac_pie = px.pie(
             df_hac_resumen, names='Condicion', values='Total', hole=0.4, color='Condicion',
