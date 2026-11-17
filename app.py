@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import requests
 
 # Configuración inicial de la página
 st.set_page_config(
@@ -53,34 +52,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Constantes de conexión API KoboToolbox (Europa)
-KOBO_URL = "https://eu.kobotoolbox.org/api/v2/assets/aDLGup9ApcZVFUy8JTo7qZ/data/?format=json"
-TOKEN = "a18c017a2e697f4ea1272375dae261ccec6b19d7"
+# Carga de datos desde el archivo Excel local estandarizado
+EXCEL_FILE = "BBDD_ECHO_HIP_2027_Estandarizada.xlsx"
 
 @st.cache_data(ttl=300)
-def load_kobo_data():
-    headers = {"Authorization": f"Token {TOKEN}"}
-    all_results = []
-    url = KOBO_URL
+def load_excel_data():
     try:
-        while url:
-            response = requests.get(url, headers=headers, timeout=20)
-            if response.status_code == 200:
-                data = response.json()
-                results = data.get('results', [])
-                all_results.extend(results)
-                url = data.get('next')
-            else:
-                st.error(f"Error HTTP {response.status_code} al conectar con KoboToolbox.")
-                break
-        if all_results:
-            return pd.DataFrame(all_results)
-        return pd.DataFrame()
+        df = pd.read_excel(EXCEL_FILE)
+        return df
     except Exception as e:
-        st.error(f"Error de conexión con KoboToolbox: {e}")
+        st.error(f"Error al cargar el archivo Excel '{EXCEL_FILE}': {e}")
         return pd.DataFrame()
 
-df_raw = load_kobo_data()
+df_raw = load_excel_data()
 
 # Encabezado institucional con contenedor de Logo e Identidad Consorcio ÍNTEGRAS
 st.markdown("""
@@ -96,7 +80,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if df_raw.empty:
-    st.error("⚠️ No se pudieron extraer datos de la API de KoboToolbox. Verifica el token o la conexión.")
+    st.error(f"⚠️ No se pudieron cargar datos desde el archivo '{EXCEL_FILE}'. Verifica que esté subido correctamente al repositorio.")
     st.stop()
 
 # --- DICCIONARIOS DE TRADUCCIÓN OFICIALES ---
@@ -521,7 +505,7 @@ df_clean['filtro_agua_clean'] = df_raw[col_filtro_agua].apply(limpiar_si_no) if 
 
 # --- BARRA LATERAL DE FILTROS ---
 st.sidebar.header("Filtros del Tablero")
-if st.sidebar.button("🔄 Actualizar datos de Kobo"):
+if st.sidebar.button("🔄 Recargar datos del Excel"):
     st.cache_data.clear()
     st.rerun()
 
@@ -936,7 +920,7 @@ with tab3:
 
     st.markdown("---")
 
-    # NUEVA SECCIÓN: 36.1. RAZÓN POR LA QUE NO TIENEN ACCESO
+    # SECCIÓN: 36.1. RAZÓN POR LA QUE NO TIENEN ACCESO
     st.subheader("36.1. ¿Podría indicarnos por qué razón?")
     df_razon_res = df_filtered['razon_menstru_clean'].value_counts().reset_index()
     df_razon_res.columns = ['Razon', 'Total']
@@ -1010,28 +994,4 @@ with tab3:
 
     df_tfiltro_res = pd.DataFrame(list(conteo_tfiltro.items()), columns=['TipoFiltro', 'Total']).sort_values(by='Total', ascending=True)
     df_tfiltro_res['Porcentaje'] = (df_tfiltro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_tfiltro_res['Texto_Etiqueta'] = df_tfiltro_res['Total'].astype(str) + " (" + df_tfiltro_res['Porcentaje'].astype(str) + "%)"
-    
-    fig_tfiltro = px.bar(df_tfiltro_res, x='Total', y='TipoFiltro', orientation='h', text='Texto_Etiqueta', labels={'TipoFiltro': 'Tipo de Filtro', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
-    fig_tfiltro.update_traces(textposition='outside')
-    fig_tfiltro.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-    st.plotly_chart(fig_tfiltro, use_container_width=True)
-
-# TAB 4: BASE DE DATOS Y DESCARGA
-with tab4:
-    st.subheader("Vista Previa de Registros Limpios")
-    cols_mostrar = [
-        'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
-        'comunidad_clean', 'sexo_clean', 'agua_frec_clean', 'agua_beber_clean',
-        'agua_suf_clean', 'agua_trat_clean', 'almacena_clean', 'acceso_jabon_clean',
-        'higiene_menstru_clean', 'razon_menstru_clean', 'filtro_agua_clean', 'discapacidad_clean', 'pueblo_indigena_clean', 'hacinamiento_cat'
-    ]
-    st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
-
-    csv_data = df_filtered[cols_mostrar].to_csv(index=False).encode('utf-8-sig')
-    st.download_button(
-        label="📥 Descargar Datos Filtrados (CSV)",
-        data=csv_data,
-        file_name="evaluacion_necesidades_echo_hip_2027.csv",
-        mime="text/csv"
-    )
+    df_tfiltro_res['Texto_Etiqueta'] = df_tfiltro_res['Total'].astype(str) + " (" + df
