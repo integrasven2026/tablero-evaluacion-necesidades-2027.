@@ -89,7 +89,8 @@ MAPA_ESTADOS = {
 }
 
 MAPA_SOCIOS = {
-    'coopi': 'COOPI', 'hias': 'HIAS VENEZUELA', 'flm': 'FEDERACIÓN LUTERANA MUNDIAL (FLM)',
+    'coopi': 'COOPI', 'hias': 'HIAS VENEZUELA', 'hias venezuela': 'HIAS VENEZUELA',
+    'flm': 'FEDERACIÓN LUTERANA MUNDIAL (FLM)', 'federación luterana mundial (flm)': 'FEDERACIÓN LUTERANA MUNDIAL (FLM)',
     'paluz': 'PALUZ', 'plafam': 'PLAFAM', 'otro': 'Otra organización'
 }
 
@@ -144,12 +145,12 @@ MAPA_PARROQUIAS = {
 
 MAPA_EDUCACION = {
     'ninguno': 'Sin educación formal', 'sin_educacion_formal': 'Sin educación formal',
-    'primaria_inc': 'Primaria incompleta',
-    'primaria_com': 'Primaria completa',
-    'secundaria_inc': 'Secundaria incompleta',
-    'secundaria_com': 'Secundaria completa',
-    'terciario_univ': 'Técnico superior Universitario',
-    'univ_incomp': 'Universitario incompleto',
+    'primaria_inc': 'Primaria incompleta', 'primaria incompleta': 'Primaria incompleta',
+    'primaria_com': 'Primaria completa', 'primaria completa': 'Primaria completa',
+    'secundaria_inc': 'Secundaria incompleta', 'secundaria incompleta': 'Secundaria incompleta',
+    'secundaria_com': 'Secundaria completa', 'secundaria completa': 'Secundaria completa',
+    'terciario_univ': 'Técnico superior Universitario', 'universitario incompleto': 'Universitario incompleto',
+    'univ_incomp': 'Universitario incompleto', 'universitario completo': 'Universitario completo',
     'univ_comp': 'Universitario completo'
 }
 
@@ -238,83 +239,64 @@ MAPA_RAZON_MENSTRUAL = {
     'no_habitual': 'No es una práctica habitual en la rutina diaria de la familia.'
 }
 
-# --- FUNCIONES DE BÚSQUEDA ROBUSTA Y FLEXIBLE ---
-def find_col(df, keywords):
-    for col in df.columns:
-        for kw in keywords:
-            if kw.lower() in str(col).lower():
-                return col
-    return None
+# --- BÚSQUEDA EXACTA DE COLUMNAS CLAVE ---
+col_socio = None
+for c in df_raw.columns:
+    if 'seleccione la organización a la que pertenece' in str(c).lower() or ('organización' in str(c).lower() and '2.' in str(c)):
+        col_socio = c
+        break
+if not col_socio:
+    for c in df_raw.columns:
+        if 'socio' in str(c).lower():
+            col_socio = c
+            break
 
-def find_col_flexible(df, keywords):
-    for col in df.columns:
-        col_lower = str(col).lower()
-        for kw in keywords:
-            if kw.lower() in col_lower:
-                return col
-    return None
+col_edu = None
+for c in df_raw.columns:
+    if 'nivel educativo' in str(c).lower() or '13.' in str(c):
+        col_edu = c
+        break
 
-col_socio = find_col(df_raw, ['socio', 'organización', 'organizacion'])
-col_estado = find_col(df_raw, ['estado'])
-col_municipio = find_col(df_raw, ['municipio'])
-col_parroquia = find_col(df_raw, ['parroquia'])
-col_comunidad = find_col(df_raw, ['comunidad'])
-col_sexo = find_col(df_raw, ['sexo', 'biologico'])
-col_edu = find_col(df_raw, ['nivel_educativo', 'educacion'])
+col_estado = [c for c in df_raw.columns if 'estado' in str(c).lower()][0] if any('estado' in str(c).lower() for c in df_raw.columns) else None
+col_municipio = [c for c in df_raw.columns if 'municipio' in str(c).lower()][0] if any('municipio' in str(c).lower() for c in df_raw.columns) else None
+col_parroquia = [c for c in df_raw.columns if 'parroquia' in str(c).lower()][0] if any('parroquia' in str(c).lower() for c in df_raw.columns) else None
+col_comunidad = [c for c in df_raw.columns if 'comunidad' in str(c).lower()][0] if any('comunidad' in str(c).lower() for c in df_raw.columns) else None
+col_sexo = [c for c in df_raw.columns if 'sexo' in str(c).lower() or 'biologico' in str(c).lower()][0] if any('sexo' in str(c).lower() for c in df_raw.columns) else None
 
-col_nac = find_col(df_raw, ['nacionalidad'])
-col_ind = find_col(df_raw, ['etnia_indigena', 'indigena', 'pueblo'])
-col_disc = find_col(df_raw, ['15.7. Discapacidad'])
+col_nac = [c for c in df_raw.columns if 'nacionalidad' in str(c).lower()][0] if any('nacionalidad' in str(c).lower() for c in df_raw.columns) else None
+col_ind = [c for c in df_raw.columns if 'indígena' in str(c).lower() or 'etnia' in str(c).lower()][0] if any('indígena' in str(c).lower() for c in df_raw.columns) else None
+col_disc = [c for c in df_raw.columns if '15.7. Discapacidad' in str(c)][0] if any('15.7. Discapacidad' in str(c) for c in df_raw.columns) else None
 
 cols_hombres_etarios = [c for c in df_raw.columns if 'hombres de' in str(c).lower() or 'hombres' in str(c).lower()]
 cols_mujeres_etarios = [c for c in df_raw.columns if 'mujeres de' in str(c).lower() or 'mujeres' in str(c).lower()]
 
-col_gestantes = find_col(df_raw, ['21.1', 'embarazadas hay', 'num_embarazadas', 'gestantes'])
+col_gestantes = [c for c in df_raw.columns if '21.1' in str(c) or 'embarazadas' in str(c).lower()][0] if any('21.1' in str(c) for c in df_raw.columns) else None
 
-col_tenencia = find_col(df_raw, ['22', 'tenencia', 'propiedad', 'habita', 'vivienda'])
-col_personas_viv = find_col_flexible(df_raw, ['24', 'personas_vivienda', 'total_personas', 'habitan_la_vivienda', '_24'])
-col_cuartos = find_col_flexible(df_raw, ['25', 'cuartos', 'habitaciones', 'dormir', '_25'])
+col_tenencia = [c for c in df_raw.columns if '22' in str(c) or 'tenencia' in str(c).lower()][0] if any('22' in str(c) for c in df_raw.columns) else None
+col_personas_viv = [c for c in df_raw.columns if '24' in str(c) or 'personas' in str(c).lower()][0] if any('24' in str(c) for c in df_raw.columns) else None
+col_cuartos = [c for c in df_raw.columns if '25' in str(c) or 'cuartos' in str(c).lower()][0] if any('25' in str(c) for c in df_raw.columns) else None
 
 col_agua_frec = None
 for c in df_raw.columns:
     if df_raw[c].dropna().astype(str).str.lower().str.contains('diario|varios_dias|una_vez|cada_15', regex=True).any():
         col_agua_frec = c
         break
-if not col_agua_frec:
-    for c in df_raw.columns:
-        c_l = str(c).lower()
-        if ('27' in c_l or 'frecuencia' in c_l or 'abastec' in c_l) and ('agua' in c_l or c_l.endswith('_27') or c_l == '27'):
-            col_agua_frec = c
-            break
 
-col_agua_beber = find_col_flexible(df_raw, ['28', 'beber', 'usa_esta_agua'])
-col_agua_suf = find_col_flexible(df_raw, ['30', 'suficiente', 'suficiente_agua'])
-col_agua_trat = find_col_flexible(df_raw, ['31', 'realiza_tratamiento', 'tratamiento_agua'])
-col_almacena = find_col_flexible(df_raw, ['33', 'almacena', 'almacenas'])
-col_acceso_jabon = find_col_flexible(df_raw, ['35', 'jabon', 'lavado_de_manos'])
+col_agua_beber = [c for c in df_raw.columns if '28' in str(c) or 'beber' in str(c).lower()][0] if any('28' in str(c) for c in df_raw.columns) else None
+col_agua_suf = [c for c in df_raw.columns if '30' in str(c) or 'suficiente' in str(c).lower()][0] if any('30' in str(c) for c in df_raw.columns) else None
+col_agua_trat = [c for c in df_raw.columns if '31' in str(c) or 'tratamiento' in str(c).lower()][0] if any('31' in str(c) for c in df_raw.columns) else None
+col_almacena = [c for c in df_raw.columns if '33' in str(c) or 'almacena' in str(c).lower()][0] if any('33' in str(c) for c in df_raw.columns) else None
+col_acceso_jabon = [c for c in df_raw.columns if '35' in str(c) or 'jabon' in str(c).lower()][0] if any('35' in str(c) for c in df_raw.columns) else None
 
-# Búsqueda para higiene menstrual
 col_higiene_menstru = None
 for c in df_raw.columns:
     c_l = str(c).lower()
-    if any(k in c_l for k in ['36', 'menstrual', 'higiene', 'toallas']) and not 'jabon' in c_l and '36_1' not in c_l and '36.1' not in c_l:
-        vals = df_raw[c].dropna().astype(str).str.lower().unique()
-        if any('si' in v or 'sí' in v or 'no' in v for v in vals):
-            col_higiene_menstru = c
-            break
-if not col_higiene_menstru:
-    col_higiene_menstru = find_col_flexible(df_raw, ['36', 'menstrual', 'higiene'])
-
-col_razon_menstru = None
-for c in df_raw.columns:
-    c_l = str(c).lower()
-    if any(k in c_l for k in ['36_1', '36.1', 'razon', 'por_que_razon', 'costo_elevado']):
-        col_razon_menstru = c
+    if '36' in c_l and not '36_1' in c_l and not '36.1' in c_l and not 'jabon' in c_l:
+        col_higiene_menstru = c
         break
 
-col_desecho_basura = find_col_flexible(df_raw, ['37', 'basura', 'desecha'])
-col_filtro_agua = find_col_flexible(df_raw, ['38', 'filtro', 'filtro_de_agua'])
-col_tipo_filtro = find_col_flexible(df_raw, ['38_1', '38.1', 'tipo_de_filtro'])
+col_razon_menstru = [c for c in df_raw.columns if '36_1' in str(c) or '36.1' in str(c) or 'razón' in str(c).lower()][0] if any('36_1' in str(c) or '36.1' in str(c) for c in df_raw.columns) else None
+col_filtro_agua = [c for c in df_raw.columns if '38' in str(c) or 'filtro' in str(c).lower()][0] if any('38' in str(c) for c in df_raw.columns) else None
 
 df_clean = df_raw.copy()
 
@@ -329,8 +311,9 @@ def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
     elif v_str in ['', 'nan', 'none', 'nat']:
         return 'No especificado'
     else:
-        for k, v in [('audi', 'Auditiva'), ('moto', 'Motora'), ('vis', 'Visual'), ('coogni', 'Cognitiva'), ('habla', 'En el habla')]:
-            v_str = v_str.replace(k, v)
+        for k, v in MAPA_SOCIOS.items():
+            if k in v_str:
+                return v
         return v_str.title()
 
 def limpiar_educacion(val):
@@ -393,16 +376,6 @@ def limpiar_razon_menstrual(val):
     for k, v in MAPA_RAZON_MENSTRUAL.items():
         if k in s:
             return v
-    if 'costo' in s or 'presupuesto' in s:
-        return 'Costo elevado o falta de presupuesto.'
-    elif 'disponible' in s or 'tienda' in s or 'mercado' in s:
-        return 'No hay disponibles a la venta en las tiendas cercanas, mercados o puntos de abasto locales.'
-    elif 'alternativa' in s or 'ceniza' in s or 'arena' in s:
-        return 'Utiliza otras alternativas locales (ceniza, arena, barro, plantas, hojas tradicionales o solo agua).'
-    elif 'necesario' in s:
-        return 'No lo considera necesario.'
-    elif 'habitual' in s:
-        return 'No es una práctica habitual en la rutina diaria de la familia.'
     return s.replace('_', ' ').capitalize()
 
 def limpiar_texto_simple(col_name):
@@ -433,7 +406,6 @@ if cols_mujeres_etarios:
 else:
     df_clean['mujeres_val'] = 0
 
-# Extracción de niños (0 a 17)
 cols_ninos_etarios = [c for c in df_raw.columns if ('0 a 17' in str(c).lower() or '0_17' in str(c).lower() or 'de 0 a' in str(c).lower())]
 if cols_ninos_etarios:
     df_clean['ninos_val'] = df_raw[cols_ninos_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
@@ -462,13 +434,12 @@ def calcular_hacinamiento_ine(row):
 
 df_clean['hacinamiento_cat'] = df_clean.apply(calcular_hacinamiento_ine, axis=1)
 
-# Filtros robustos para discapacidad e indígena combinando informante y grupo familiar
-col_disc_hogar = find_col(df_raw, ['16. ¿Alguien de su grupo familiar', 'discapacidad'])
-col_ind_hogar = find_col(df_raw, ['14. ¿Pertenece usted a un pueblo indígena'])
+col_disc_hogar = [c for c in df_raw.columns if '16. ¿Alguien de su grupo familiar' in str(c)][0] if any('16. ¿Alguien de su grupo familiar' in str(c) for c in df_raw.columns) else None
+col_ind_hogar = [c for c in df_raw.columns if '14. ¿Pertenece usted a un pueblo indígena' in str(c)][0] if any('14. ¿Pertenece usted a un pueblo indígena' in str(c) for c in df_raw.columns) else None
 
 def evaluar_discapacidad(row):
     resp_disp = str(row.get('15.7. Discapacidad', 'no posee')).lower().strip()
-    fam_disp = str(row.get('16. ¿Alguien de su grupo familiar presenta alguna discapacidad?', 'no')).lower().strip()
+    fam_disp = str(row.get(col_disc_hogar, 'no')).lower().strip() if col_disc_hogar else 'no'
     if resp_disp != 'no posee' and resp_disp != 'nan' and resp_disp != 'no especificado':
         return 'Sí (Con Discapacidad)'
     if 'sí' in fam_disp or 'si' in fam_disp:
@@ -561,12 +532,12 @@ tab1, tab2, tab3, tab4 = st.tabs([
 
 # TAB 1: POBLACIÓN
 with tab1:
+    tot_enc = len(df_filtered)
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("Encuestas por Socio Implementador")
         df_socio_res = df_filtered['socio_clean'].value_counts().reset_index()
         df_socio_res.columns = ['Socio', 'Total']
-        tot_enc = len(df_filtered)
         df_socio_res['Porcentaje'] = (df_socio_res['Total'] / tot_enc * 100).round(1) if tot_enc > 0 else 0.0
         df_socio_res['Texto_Etiqueta'] = df_socio_res['Total'].astype(str) + " (" + df_socio_res['Porcentaje'].astype(str) + "%)"
         
@@ -596,7 +567,7 @@ with tab1:
 
     st.markdown("---")
 
-    # CUADRO / GRÁFICO TRASLADADO: Sexo del Jefe/Jefa de Hogar (Informante Principal)
+    # Sexo del Jefe/Jefa de Hogar (Informante Principal)
     st.subheader("Sexo del Jefe / Jefa de Hogar (Informante Principal)")
     jefe_col1, jefe_col2 = st.columns([2, 1])
     
@@ -653,10 +624,8 @@ with tab1:
 
     st.markdown("---")
 
-    # NUEVO: Gráfico de Tabla con las Principales Discapacidades (Top 5)
+    # Gráfico de Tabla con las Principales Discapacidades (Top 5)
     st.subheader("Top 5 Principales Tipos de Discapacidad en el Hogar")
-    
-    # Recopilar subtotales de las columnas de discapacidad del Excel
     cols_disp_det = [c for c in df_raw.columns if '15.7. Discapacidad/' in c or '16.1. ¿Qué tipo de discapacidad presenta su familiar?/' in c]
     conteo_discapacidades = {}
     for c in cols_disp_det:
@@ -691,7 +660,6 @@ with tab1:
 # TAB 2: VIVIENDA
 with tab2:
     st.header("Vivienda y Habitabilidad")
-    
     promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 4.32
     indice_hacinamento_prom = (df_filtered['personas_viv_val'] / df_filtered['cuartos_val'].replace(0, 1)).mean() if len(df_filtered) > 0 else 1.45
     
@@ -945,9 +913,7 @@ with tab3:
         st.plotly_chart(fig_jabon, use_container_width=True)
 
     with w12:
-        # 36. ACCESO A HIGIENE MENSTRUAL
         st.subheader("36. ¿Las mujeres de su hogar tienen acceso a productos de higiene menstrual?")
-        
         df_menstru_res = df_filtered['higiene_menstru_clean'].value_counts().reset_index()
         df_menstru_res.columns = ['Respuesta', 'Total']
         df_menstru_res['Porcentaje'] = (df_menstru_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
@@ -973,7 +939,6 @@ with tab3:
 
     st.markdown("---")
 
-    # SECCIÓN: 36.1. RAZÓN POR LA QUE NO TIENEN ACCESO
     st.subheader("36.1. ¿Podría indicarnos por qué razón?")
     df_razon_res = df_filtered['razon_menstru_clean'].value_counts().reset_index()
     df_razon_res.columns = ['Razon', 'Total']
