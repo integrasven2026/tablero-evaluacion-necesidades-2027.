@@ -1074,24 +1074,32 @@ with tab3:
 
     with w10:
         st.subheader("34. Enfermedades hídricas en últimos 30 días")
-        cols_enf_kobo = [c for c in df_raw.columns if '34' in str(c) or 'diarrea' in str(c).lower() or 'enfermedades_piel' in str(c).lower()]
+        
+        # Mapeo exacto a las subcolumnas de la pregunta 34 en Kobo/Excel (excluyendo "Ninguno")
+        cols_enf_map = {
+            'Diarreas': [c for c in df_raw.columns if '34.' in str(c) and 'Diarreas' in str(c)],
+            'Vómitos': [c for c in df_raw.columns if '34.' in str(c) and 'Vomitos' in str(c)],
+            'Enfermedades de piel': [c for c in df_raw.columns if '34.' in str(c) and 'Enfermedades de piel' in str(c)],
+            'Otros': [c for c in df_raw.columns if '34.' in str(c) and 'Otros' in str(c)]
+        }
+        
         conteo_enf = {}
-        if cols_enf_kobo:
-            for k, label_oficial in MAPA_ENFERMEDADES_HIDRICAS.items():
-                match_col = [c for c in cols_enf_kobo if k in str(c).lower()]
-                if match_col:
-                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
-                    if tot > 0:
-                        conteo_enf[label_oficial] = int(tot)
-        if not conteo_enf:
-            conteo_enf = {'Diarreas': int(total_hogs * 0.18), 'Enfermedades de piel': int(total_hogs * 0.12), 'Vómitos': int(total_hogs * 0.10), 'Ninguno': int(total_hogs * 0.68)}
+        for label_oficial, cols in cols_enf_map.items():
+            if cols:
+                tot = pd.to_numeric(df_filtered[cols[0]], errors='coerce').fillna(0).sum()
+                if tot > 0:
+                    conteo_enf[label_oficial] = int(tot)
 
         df_enf_res = pd.DataFrame(list(conteo_enf.items()), columns=['Enfermedad', 'Total']).sort_values(by='Total', ascending=True)
         df_enf_res['Porcentaje'] = (df_enf_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_enf_res['Texto_Etiqueta'] = df_enf_res['Total'].astype(str) + " (" + df_enf_res['Porcentaje'].astype(str) + "%)"
         
-        fig_enf = px.bar(df_enf_res, x='Total', y='Enfermedad', orientation='h', text='Texto_Etiqueta', labels={'Enfermedad': 'Patología / Condición', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[0]])
-        fig_enf.update_traces(textposition='outside')
+        fig_enf = px.bar(
+            df_enf_res, x='Total', y='Enfermedad', orientation='h', text='Texto_Etiqueta',
+            labels={'Enfermedad': 'Patología / Condición', 'Total': 'Hogares'},
+            color_discrete_sequence=[INTEGRAS_COLORS[0]]
+        )
+        fig_enf.update_traces(textposition='outside', cliponaxis=False)
         fig_enf.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_enf, use_container_width=True)
 
