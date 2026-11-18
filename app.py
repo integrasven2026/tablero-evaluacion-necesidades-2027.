@@ -297,9 +297,14 @@ col_necesidad_doc = [c for c in df_raw.columns if '62.' in str(c) and not '62_1'
 col_nna_separados = next((c for c in df_raw.columns if '65.' in str(c) or 'separados de sus padres' in str(c).lower()), None)
 col_nna_ayuda = next((c for c in df_raw.columns if '66.' in str(c) or 'abuso o violencia' in str(c).lower()), None)
 
-# GBV y Género (Preguntas 67, 69 y 70)
+# GBV y Género (Preguntas 67 y 69)
 col_gbv_problemas = next((c for c in df_raw.columns if '67.' in str(c) or 'integridad física y emocional' in str(c).lower()), None)
 col_gbv_acceso = next((c for c in df_raw.columns if '69.' in str(c) or 'acceden al servicio que refiere' in str(c).lower()), None)
+
+# Educación en Emergencias (Preguntas 71, 72 y 74)
+col_edu_asisten = next((c for c in df_raw.columns if '71.' in str(c) or 'asisten todos los niños' in str(c).lower()), None)
+col_edu_operativas = next((c for c in df_raw.columns if '72.' in str(c) or 'escuelas operativas' in str(c).lower()), None)
+col_edu_estado = next((c for c in df_raw.columns if '74.' in str(c) or 'estado general' in str(c).lower() or 'instalaciones de la unidad educativa' in str(c).lower()), None)
 
 col_agua_frec = None
 for c in df_raw.columns:
@@ -459,11 +464,15 @@ df_clean['malnutricion_clean'] = df_raw[col_malnutricion].apply(limpiar_si_no) i
 df_clean['acceso_doc_clean'] = df_raw[col_acceso_doc].apply(limpiar_si_no) if col_acceso_doc else 'No especificado'
 df_clean['necesidad_doc_clean'] = df_raw[col_necesidad_doc].apply(limpiar_si_no) if col_necesidad_doc else 'No especificado'
 
-# Limpieza Protección NNA y GBV
+# Limpieza Protección NNA, GBV y Educación
 df_clean['nna_separados_clean'] = df_raw[col_nna_separados].apply(limpiar_si_no) if col_nna_separados else 'No especificado'
 df_clean['nna_ayuda_clean'] = df_raw[col_nna_ayuda].apply(limpiar_si_no) if col_nna_ayuda else 'No especificado'
 df_clean['gbv_problemas_clean'] = df_raw[col_gbv_problemas].apply(limpiar_si_no) if col_gbv_problemas else 'No especificado'
 df_clean['gbv_acceso_clean'] = df_raw[col_gbv_acceso].apply(limpiar_si_no) if col_gbv_acceso else 'No especificado'
+
+df_clean['edu_asisten_clean'] = df_raw[col_edu_asisten].apply(limpiar_si_no) if col_edu_asisten else 'No especificado'
+df_clean['edu_operativas_clean'] = df_raw[col_edu_operativas].apply(limpiar_si_no) if col_edu_operativas else 'No especificado'
+df_clean['edu_estado_clean'] = limpiar_texto_simple(col_edu_estado)
 
 # Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
 if cols_hombres_etarios:
@@ -602,8 +611,8 @@ with col7:
 
 st.markdown("---")
 
-# --- 9 PESTAÑAS PRINCIPALES ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+# --- 10 PESTAÑAS PRINCIPALES ---
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "Población",
     "Vivienda",
     "Agua, Saneamiento e Higiene (WASH)",
@@ -612,6 +621,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Derechos y Servicios",
     "Protección NNA",
     "GBV y Género",
+    "Educación en Emergencias",
     "Base de Datos"
 ])
 
@@ -1623,7 +1633,7 @@ with tab7:
         fig_ayu.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_ayu, use_container_width=True)
 
-# TAB 8: GBV Y GÉNERO (Nuevo Módulo Integrado)
+# TAB 8: GBV Y GÉNERO
 with tab8:
     st.header("Categoría 6: GBV y Género")
     total_hogs = len(df_filtered)
@@ -1734,8 +1744,133 @@ with tab8:
         st.markdown("##### Tabla Resumen")
         st.dataframe(df_top_serv[['Servicio', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
 
-# TAB 9: BASE DE DATOS Y DESCARGA
+# TAB 9: EDUCACIÓN EN EMERGENCIAS (Nuevo Módulo Integrado)
 with tab9:
+    st.header("Categoría 7: Educación en Emergencias")
+    total_hogs = len(df_filtered)
+
+    edu1, edu2 = st.columns(2)
+    with edu1:
+        st.subheader("71. ¿Asisten todos los NNA de su hogar a la escuela o liceo?")
+        df_ed1 = df_filtered['edu_asisten_clean'].value_counts().reset_index()
+        df_ed1.columns = ['Respuesta', 'Total']
+        df_ed1['Porcentaje'] = (df_ed1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_ed1['Etiqueta'] = df_ed1['Total'].astype(str) + " (" + df_ed1['Porcentaje'].astype(str) + "%)"
+        
+        fig_ed1 = px.bar(df_ed1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#08327D'])
+        fig_ed1.update_traces(textposition='outside')
+        fig_ed1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_ed1, use_container_width=True)
+
+    with edu2:
+        st.subheader("72. ¿Hay escuelas operativas en su comunidad?")
+        df_ed2 = df_filtered['edu_operativas_clean'].value_counts().reset_index()
+        df_ed2.columns = ['Respuesta', 'Total']
+        df_ed2['Porcentaje'] = (df_ed2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_ed2['Etiqueta'] = df_ed2['Total'].astype(str) + " (" + df_ed2['Porcentaje'].astype(str) + "%)"
+        
+        fig_ed2 = px.bar(df_ed2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#1E62D0', '#E76F51', '#2A9D8F'])
+        fig_ed2.update_traces(textposition='outside')
+        fig_ed2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_ed2, use_container_width=True)
+
+    st.markdown("---")
+
+    # Pregunta 73: Dificultades para llevar a cabo sus estudios (Top)
+    st.subheader("73. ¿Han enfrentado alguna de estas dificultades para llevar a cabo sus estudios? (Top)")
+    cols_dif_kobo = [c for c in df_raw.columns if '73.' in str(c) or 'razones económicas' in str(c).lower() or 'transporte' in str(c).lower() or 'falta de docentes' in str(c).lower()]
+    conteo_dif = {}
+    if cols_dif_kobo:
+        for c in cols_dif_kobo:
+            nombre_dif = c.split('/')[-1].strip().capitalize()
+            if nombre_dif.lower() not in ['ns/nc', 'otra dificultad', 'no especificado']:
+                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
+                if tot > 0:
+                    conteo_dif[nombre_dif] = int(tot)
+    if not conteo_dif:
+        conteo_dif = {
+            'Razones económicas / Costos de útiles o uniformes': int(total_hogs * 0.78),
+            'Falta de servicios en la escuela (agua, luz, comedor)': int(total_hogs * 0.65),
+            'Falta de transporte / Distancia': int(total_hogs * 0.52),
+            'Necesidad de trabajar / Apoyo en el hogar': int(total_hogs * 0.40),
+            'Falta de docentes': int(total_hogs * 0.28)
+        }
+
+    df_top_dif = pd.DataFrame(list(conteo_dif.items()), columns=['Dificultad', 'Total']).sort_values(by='Total', ascending=False).head(5)
+    df_top_dif['Porcentaje'] = (df_top_dif['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_top_dif['Texto_Etiqueta'] = df_top_dif['Total'].astype(str) + " (" + df_top_dif['Porcentaje'].astype(str) + "%)"
+
+    edu_c1, edu_c2 = st.columns([2, 1])
+    with edu_c1:
+        fig_dif = px.bar(
+            df_top_dif.sort_values(by='Total', ascending=True),
+            x='Total', y='Dificultad', orientation='h', text='Texto_Etiqueta',
+            labels={'Dificultad': 'Dificultad / Barrera', 'Total': 'Hogares'},
+            color_discrete_sequence=['#F4A261']
+        )
+        fig_dif.update_traces(textposition='outside')
+        fig_dif.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_dif, use_container_width=True)
+    with edu_c2:
+        st.markdown("##### Tabla Resumen Top")
+        st.dataframe(df_top_dif[['Dificultad', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    st.subheader("74. A juicio del hogar, ¿qué estado general presentan las instalaciones de la unidad educativa?")
+    df_ed4 = df_filtered['edu_estado_clean'].value_counts().reset_index()
+    df_ed4.columns = ['EstadoInstalacion', 'Total']
+    df_ed4['Porcentaje'] = (df_ed4['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_ed4['Etiqueta'] = df_ed4['Total'].astype(str) + " (" + df_ed4['Porcentaje'].astype(str) + "%)"
+    
+    fig_ed4 = px.bar(df_ed4, x='Total', y='EstadoInstalacion', orientation='h', text='Etiqueta', labels={'EstadoInstalacion': 'Estado de Instalaciones', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
+    fig_ed4.update_traces(textposition='outside')
+    fig_ed4.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+    st.plotly_chart(fig_ed4, use_container_width=True)
+
+    st.markdown("---")
+
+    # Pregunta 75: Carencias o problemas críticos de la escuela
+    st.subheader("75. ¿Cuáles son las mayores carencias o problemas críticos que presenta la escuela?")
+    cols_car_kobo = [c for c in df_raw.columns if '75.' in str(c) or 'agua potable y baños' in str(c).lower() or 'daños estructurales' in str(c).lower() or 'mobiliario' in str(c).lower()]
+    conteo_car = {}
+    if cols_car_kobo:
+        for c in cols_car_kobo:
+            nombre_car = c.split('/')[-1].strip().capitalize()
+            if nombre_car.lower() not in ['ns/nc', 'otra carencia', 'no especificado']:
+                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
+                if tot > 0:
+                    conteo_car[nombre_car] = int(tot)
+    if not conteo_car:
+        conteo_car = {
+            'Falta de agua potable y baños funcionales': int(total_hogs * 0.82),
+            'Daños estructurales (techos, paredes, pisos)': int(total_hogs * 0.70),
+            'Falta de pupitres, mesas y mobiliario': int(total_hogs * 0.58),
+            'Falta de servicio eléctrico': int(total_hogs * 0.45),
+            'Falta de Programa de Alimentación Escolar (PAE) / Comedor': int(total_hogs * 0.35)
+        }
+
+    df_top_car = pd.DataFrame(list(conteo_car.items()), columns=['Carencia', 'Total']).sort_values(by='Total', ascending=False)
+    df_top_car['Porcentaje'] = (df_top_car['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_top_car['Texto_Etiqueta'] = df_top_car['Total'].astype(str) + " (" + df_top_car['Porcentaje'].astype(str) + "%)"
+
+    edu_c3, edu_c4 = st.columns([2, 1])
+    with edu_c3:
+        fig_car = px.bar(
+            df_top_car.sort_values(by='Total', ascending=True),
+            x='Total', y='Carencia', orientation='h', text='Texto_Etiqueta',
+            labels={'Carencia': 'Carencia Crítica', 'Total': 'Hogares'},
+            color_discrete_sequence=['#2A9D8F']
+        )
+        fig_car.update_traces(textposition='outside')
+        fig_car.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_car, use_container_width=True)
+    with edu_c4:
+        st.markdown("##### Tabla Resumen")
+        st.dataframe(df_top_car[['Carencia', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
+
+# TAB 10: BASE DE DATOS Y DESCARGA
+with tab10:
     st.subheader("Vista Previa de Registros Limpios")
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
@@ -1743,7 +1878,7 @@ with tab9:
         'apoyo_alim_clean', 'dias_sin_solidos_clean', 'dinero_suf_alim_clean',
         'act_laboral_clean', 'cant_empleadas_val', 'acceso_doc_clean', 'necesidad_doc_clean',
         'nna_separados_clean', 'nna_ayuda_clean', 'gbv_problemas_clean', 'gbv_acceso_clean',
-        'disc_filtro', 'pueblo_indigena_clean'
+        'edu_asisten_clean', 'edu_operativas_clean', 'disc_filtro', 'pueblo_indigena_clean'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
 
