@@ -309,7 +309,7 @@ col_edu_asisten = next((c for c in df_raw.columns if '71.' in str(c) or 'asisten
 col_edu_operativas = next((c for c in df_raw.columns if '72.' in str(c) or 'escuelas operativas' in str(c).lower()), None)
 col_edu_estado = next((c for c in df_raw.columns if '74.' in str(c) or 'estado general' in str(c).lower() or 'instalaciones de la unidad educativa' in str(c).lower()), None)
 
-# Salud y Salud Sexual y Reproductiva (Preguntas 76 - 79)[cite: 1, 2]
+# Salud y Salud Sexual y Reproductiva (Preguntas 76 - 79)
 col_salud_problema = next((c for c in df_raw.columns if '76.' in str(c) or 'problema de salud y necesitó acceder a atención médica' in str(c).lower()), None)
 col_salud_donde = next((c for c in df_raw.columns if '76.1' in str(c) or '76_1' in str(c) or 'dónde acudió para recibir atención médica' in str(c).lower()), None)
 col_salud_obtener = next((c for c in df_raw.columns if '76.2' in str(c) or '76_2' in str(c) or 'pudieron obtener atención médica' in str(c).lower()), None)
@@ -1954,14 +1954,14 @@ with tab9:
         st.markdown("##### Tabla Resumen")
         st.dataframe(df_top_car[['Carencia', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
 
-# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA (NUEVO CAPÍTULO)[cite: 1, 2]
+# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA
 with tab10:
     st.header("Salud y Salud Sexual y Reproductiva (Preguntas 76 - 79)")
     total_hogs = len(df_filtered)
 
     s1, s2 = st.columns(2)
     with s1:
-        st.subheader("76. Durante los últimos 6 meses, ¿alguien en su hogar tuvo algún problema de salud y necesitó acceder a atención médica?")[cite: 1]
+        st.subheader("76. Durante los últimos 6 meses, ¿alguien en su hogar tuvo algún problema de salud y necesitó acceder a atención médica?")
         df_s76 = df_filtered['salud_problema_clean'].value_counts().reset_index()
         df_s76.columns = ['Respuesta', 'Total']
         df_s76['Porcentaje'] = (df_s76['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
@@ -1973,7 +1973,7 @@ with tab10:
         st.plotly_chart(fig_s76, use_container_width=True)
 
     with s2:
-        st.subheader("76.2. ¿Todas las veces que se acercaron al centro médico pudieron obtener atención médica cuando consideraron que la necesitaban?")[cite: 1]
+        st.subheader("76.2. ¿Todas las veces que se acercaron al centro médico pudieron obtener atención médica cuando consideraron que la necesitaban?")
         df_s76_2 = df_filtered['salud_obtener_clean'].value_counts().reset_index()
         df_s76_2.columns = ['Respuesta', 'Total']
         df_s76_2['Porcentaje'] = (df_s76_2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
@@ -1988,7 +1988,7 @@ with tab10:
 
     s3, s4 = st.columns(2)
     with s3:
-        st.subheader("76.1. ¿Dónde acudió para recibir atención médica? (Top)")[cite: 1]
+        st.subheader("76.1. ¿Dónde acudió para recibir atención médica? (Top)")
         cols_donde_salud = [c for c in df_raw.columns if '76.1' in str(c) or '76_1' in str(c) or 'ambulatorios' in str(c).lower() or 'clínicas' in str(c).lower() or 'cdi' in str(c).lower()]
         conteo_donde_salud = {}
         if cols_donde_salud:
@@ -2022,7 +2022,7 @@ with tab10:
         st.plotly_chart(fig_ds, use_container_width=True)
 
     with s4:
-        st.subheader("77. ¿Ha experimentado su hogar alguna de las siguientes barreras al acceder a la atención sanitaria?")[cite: 1]
+        st.subheader("77. ¿Ha experimentado su hogar alguna de las siguientes barreras al acceder a la atención sanitaria?")
         cols_barreras_salud = [c for c in df_raw.columns if '77.' in str(c) or 'centros de salud cerrados' in str(c).lower() or 'dificultades para acceder al centro' in str(c).lower()]
         conteo_barreras = {}
         if cols_barreras_salud:
@@ -2059,7 +2059,7 @@ with tab10:
 
     s5, s6 = st.columns(2)
     with s5:
-        st.subheader("78. ¿Cuánto tiempo (en minutos) tarda en llegar al centro de salud más cercano y operativo?")[cite: 2]
+        st.subheader("78. ¿Cuánto tiempo (en minutos) tarda en llegar al centro de salud más cercano y operativo?")
         df_s78 = df_filtered['salud_tiempo_clean'].value_counts().reset_index()
         df_s78.columns = ['Tiempo', 'Total']
         df_s78['Porcentaje'] = (df_s78['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
@@ -2075,7 +2075,7 @@ with tab10:
         st.plotly_chart(fig_s78, use_container_width=True)
 
     with s6:
-        st.subheader("79. ¿Cómo obtienen las personas los medicamentos indicados por profesionales de la salud? (Top)")[cite: 2]
+        st.subheader("79. ¿Cómo obtienen las personas los medicamentos indicados por profesionales de la salud? (Top)")
         cols_med_salud = [c for c in df_raw.columns if '79.' in str(c) or 'compran en farmacias locales' in str(c).lower() or 'centro de salud' in str(c).lower() or 'donación' in str(c).lower()]
         conteo_med = {}
         if cols_med_salud:
