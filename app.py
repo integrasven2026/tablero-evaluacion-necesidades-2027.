@@ -2262,7 +2262,7 @@ with tab12:
     st.header("12.2. Síntomas o manifestaciones de malestar psicológico (SMAPS)")
     total_hogs = len(df_filtered)
 
-    st.markdown("### 🧠 PHQ-2 (Tamizaje de Depresión)")
+    st.markdown("### PHQ-2 (Tamizaje de Depresión)")
     smaps_col1, smaps_col2 = st.columns(2)
     with smaps_col1:
         st.subheader("101.1. Poco interés o placer en hacer las cosas")
@@ -2289,7 +2289,7 @@ with tab12:
         st.plotly_chart(fig_p2, use_container_width=True)
 
     st.markdown("---")
-    st.markdown("### ⚡ GAD-2 (Tamizaje de Ansiedad)")
+    st.markdown("### GAD-2 (Tamizaje de Ansiedad)")
 
     smaps_col3, smaps_col4 = st.columns(2)
     with smaps_col3:
