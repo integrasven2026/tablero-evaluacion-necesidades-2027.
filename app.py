@@ -368,6 +368,22 @@ def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
                 return v
         return v_str.title()
 
+# Función específica y segura para limpiar el sexo sin mezclarlo con socios
+def limpiar_sexo(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip().lower()
+    if s in ['', 'nan', 'none', 'nat']:
+        return 'No especificado'
+    if s in ['masculino', 'hombre', 'm']:
+        return 'Hombre'
+    elif s in ['femenino', 'mujer', 'f']:
+        return 'Mujer'
+    elif s in ['otro', 'otra', 'prefiero no decir', 'intersexual', 'non_binary', 'no_binario']:
+        return 'Otro'
+    else:
+        return s.replace('_', ' ').capitalize()
+
 def limpiar_educacion(val):
     if pd.isna(val):
         return 'No especificado'
@@ -455,7 +471,7 @@ df_clean['estado_clean'] = df_raw[col_estado].apply(lambda x: limpiar_codigo(x, 
 df_clean['municipio_clean'] = df_raw[col_municipio].apply(lambda x: limpiar_codigo(x, MAPA_MUNICIPIOS, MAPA_PARROQUIAS)) if col_municipio else 'No especificado'
 df_clean['parroquia_clean'] = df_raw[col_parroquia].apply(lambda x: limpiar_codigo(x, MAPA_PARROQUIAS, MAPA_MUNICIPIOS)) if col_parroquia else 'No especificado'
 df_clean['comunidad_clean'] = df_raw[col_comunidad].fillna('No especificado').astype(str).str.strip() if col_comunidad else 'No especificado'
-df_clean['sexo_clean'] = df_raw[col_sexo].apply(lambda x: limpiar_codigo(x, {'masculino': 'Hombre', 'femenino': 'Mujer', 'hombre': 'Hombre', 'mujer': 'Mujer'})) if col_sexo else 'No especificado'
+df_clean['sexo_clean'] = df_raw[col_sexo].apply(limpiar_sexo) if col_sexo else 'No especificado'
 df_clean['edu_clean'] = df_raw[col_edu].apply(limpiar_educacion) if col_edu else 'No especificado'
 
 df_clean['nacionalidad_clean'] = df_raw[col_nac].apply(lambda x: limpiar_codigo(x, MAPA_NACIONALIDAD)) if col_nac else 'No especificado'
