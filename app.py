@@ -445,15 +445,15 @@ def limpiar_fcs(val):
     if s in ['', 'nan', 'none', 'nat']:
         return 'No especificado'
     
-if 'aceptable' in s or 'acceptable' in s:
+    if 'aceptable' in s or 'acceptable' in s:
         return 'Aceptable'
     elif 'limite' in s or 'limítrofe' in s or 'marginal' in s or 'borderline' in s:
         return 'Límite (Marginal)'
     elif 'deficiente' in s or 'pobre' in s or 'poor' in s:
         return 'Deficiente (Pobre)'
     else:
-        return s.replace('_', ' ').capitalize()  
-
+        return s.replace('_', ' ').capitalize()
+    
 def limpiar_razon_menstrual(val):
     if pd.isna(val):
         return 'No especificado'
