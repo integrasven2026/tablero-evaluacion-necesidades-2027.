@@ -260,7 +260,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
 # TAB 1: POBLACIÓN
 with tab1:
     st.subheader("Resumen de Población y Cobertura")
-    tot_enc = len(df_filtered)
     c1, c2 = st.columns(2)
     with c1:
         df_socio_res = df_filtered['socio_clean'].value_counts().reset_index()
@@ -286,7 +285,6 @@ with tab3:
 # TAB 4: EMPLEO Y ECONOMÍA
 with tab4:
     st.header("Empleo, Ingresos y Situación Financiera")
-    total_hogs = len(df_filtered)
     e1, e2 = st.columns(2)
     with e1:
         st.subheader("39. Actividad laboral actual")
@@ -321,8 +319,13 @@ with tab5:
         st.subheader("48. Alimentos dejados de consumir por razones económicas")
         df_dej = df_filtered['dejado_consumir_clean'].value_counts().reset_index()
         df_dej.columns = ['Respuesta', 'Total']
-        fig_dej = px.bar(df_dej, x='Respuesta', y='Total', text='Total', color_discrete_sequence=['#E76F51'])
-        st.plotly_chart(df_dej, use_container_width=True)
+        df_dej['Porcentaje'] = (df_dej['Total'] / total_hogs * 100).round(1)
+        df_dej['Etiqueta'] = df_dej['Total'].astype(str) + " (" + df_dej['Porcentaje'].astype(str) + "%)"
+        
+        # Corrección: Se renderiza la variable 'fig_dej' correctamente
+        fig_dej = px.bar(df_dej, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#E76F51'])
+        fig_dej.update_traces(textposition='outside')
+        st.plotly_chart(fig_dej, use_container_width=True)
 
 # TAB 6: DERECHOS Y SERVICIOS
 with tab6:
@@ -342,12 +345,12 @@ with tab6:
         fig_nec = px.bar(df_nec, x='Respuesta', y='Total', text='Total', color_discrete_sequence=['#E76F51'])
         st.plotly_chart(fig_nec, use_container_width=True)
 
-# TAB 7: PROTECCIÓN NNA (Nuevo Módulo)
+# TAB 7: PROTECCIÓN NNA
 with tab7:
     st.header("5.1. Protección de Niñas, Niños y Adolescentes (NNA)")
     total_hogs = len(df_filtered)
 
-    # Pregunta 63: Peligros o riesgos que enfrentan los NNA (Top 5 / Opción Múltiple)
+    # Pregunta 63: Peligros o riesgos que enfrentan los NNA (Top 5)
     st.subheader("63. Peligros o riesgos que enfrentan los NNA de la comunidad (Top 5)")
     cols_riesgos_kobo = [c for c in df_raw.columns if '63.' in str(c) or 'trabajo infantil' in str(c).lower() or 'deserción escolar' in str(c).lower() or 'violencia física' in str(c).lower()]
     conteo_riesgos = {}
@@ -388,7 +391,7 @@ with tab7:
 
     st.markdown("---")
 
-    # Pregunta 64: Lugares de la comunidad donde los NNA corren más riesgos (Opción Múltiple)
+    # Pregunta 64: Lugares de la comunidad donde los NNA corren más riesgos
     st.subheader("64. Lugares de la comunidad donde los NNA corren más riesgos")
     cols_lugares_kobo = [c for c in df_raw.columns if '64.' in str(c) or 'escuela' in str(c).lower() or 'parques' in str(c).lower() or 'en sus casas' in str(c).lower()]
     conteo_lugares = {}
