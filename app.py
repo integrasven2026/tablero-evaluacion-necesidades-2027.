@@ -322,6 +322,12 @@ col_mov_residencia = next((c for c in df_raw.columns if '83.' in str(c) or 'camb
 col_mov_pais = next((c for c in df_raw.columns if '84.' in str(c) or 'salido o salió del país con el propósito' in str(c).lower()), None)
 col_mov_comunidad = next((c for c in df_raw.columns if '85.' in str(c) or 'conoce personas que hayan salido en los últimos tres meses' in str(c).lower()), None)
 
+# SMAPS - PHQ-2 y GAD-2 (Preguntas 101.1 a 101.4)
+col_phq1 = next((c for c in df_raw.columns if '101.1' in str(c) or '101_1' in str(c) or 'poco interés o placer' in str(c).lower()), None)
+col_phq2 = next((c for c in df_raw.columns if '101.2' in str(c) or '101_2' in str(c) or 'sentirse deprimido o desesperado' in str(c).lower()), None)
+col_gad1 = next((c for c in df_raw.columns if '101.3' in str(c) or '101_3' in str(c) or 'sentirte nervioso' in str(c).lower() or 'sentirse nervioso' in str(c).lower()), None)
+col_gad2 = next((c for c in df_raw.columns if '101.4' in str(c) or '101_4' in str(c) or 'no ser capaz de parar o controlar' in str(c).lower()), None)
+
 col_agua_frec = None
 for c in df_raw.columns:
     if df_raw[c].dropna().astype(str).str.lower().str.contains('diario|varios_dias|una_vez|cada_15', regex=True).any():
@@ -502,6 +508,28 @@ df_clean['mov_residencia_clean'] = df_raw[col_mov_residencia].apply(limpiar_si_n
 df_clean['mov_pais_clean'] = df_raw[col_mov_pais].apply(limpiar_si_no) if col_mov_pais else 'No especificado'
 df_clean['mov_comunidad_clean'] = df_raw[col_mov_comunidad].apply(limpiar_si_no) if col_mov_comunidad else 'No especificado'
 
+# Limpieza SMAPS (PHQ-2 y GAD-2)
+def limpiar_smaps_escala(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip().lower()
+    if 'ningún' in s or 'ningun' in s or s == '0':
+        return 'Ningún día (0)'
+    elif 'algunos' in s or s == '1':
+        return 'Alguna(s) día(s) (1)'
+    elif 'mitad' in s or s == '2':
+        return 'Más de la mitad de los días (2)'
+    elif 'casi' in s or s == '3':
+        return 'Casi todos los días (3)'
+    elif 'ns' in s or 'nc' in s:
+        return 'Ns/nc'
+    return s.replace('_', ' ').capitalize()
+
+df_clean['phq1_clean'] = df_raw[col_phq1].apply(limpiar_smaps_escala) if col_phq1 else 'No especificado'
+df_clean['phq2_clean'] = df_raw[col_phq2].apply(limpiar_smaps_escala) if col_phq2 else 'No especificado'
+df_clean['gad1_clean'] = df_raw[col_gad1].apply(limpiar_smaps_escala) if col_gad1 else 'No especificado'
+df_clean['gad2_clean'] = df_raw[col_gad2].apply(limpiar_smaps_escala) if col_gad2 else 'No especificado'
+
 # Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
 if cols_hombres_etarios:
     df_clean['hombres_val'] = df_raw[cols_hombres_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
@@ -639,8 +667,8 @@ with col7:
 
 st.markdown("---")
 
-# --- 12 PESTAÑAS PRINCIPALES (INCLUYENDO MOVILIDAD HUMANA) ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs([
+# --- 13 PESTAÑAS PRINCIPALES (INCLUYENDO SMAPS) ---
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
     "Población",
     "Vivienda",
     "Agua, Saneamiento e Higiene (WASH)",
@@ -652,6 +680,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.t
     "Educación en Emergencias",
     "Salud y Salud Sexual y Reproductiva",
     "Movilidad Humana",
+    "SMAPS (Salud Mental)",
     "Base de Datos"
 ])
 
@@ -2185,7 +2214,7 @@ with tab10:
     fig_ssr82.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
     st.plotly_chart(fig_ssr82, use_container_width=True)
 
-# TAB 11: MOVILIDAD HUMANA (NUEVO CAPÍTULO)
+# TAB 11: MOVILIDAD HUMANA
 with tab11:
     st.header("Categoría 9: Movilidad Humana (Preguntas 83, 84 y 85)")
     total_hogs = len(df_filtered)
@@ -2228,8 +2257,70 @@ with tab11:
     fig_m85.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
     st.plotly_chart(fig_m85, use_container_width=True)
 
-# TAB 12: BASE DE DATOS Y DESCARGA
+# TAB 12: SMAPS (SALUD MENTAL Y APOYO PSICOSOCIAL - PHQ-2 Y GAD-2)
 with tab12:
+    st.header("12.2. Síntomas o manifestaciones de malestar psicológico (SMAPS)")
+    total_hogs = len(df_filtered)
+
+    st.markdown("### 🧠 PHQ-2 (Tamizaje de Depresión)")
+    smaps_col1, smaps_col2 = st.columns(2)
+    with smaps_col1:
+        st.subheader("101.1. Poco interés o placer en hacer las cosas")
+        df_phq1 = df_filtered['phq1_clean'].value_counts().reset_index()
+        df_phq1.columns = ['Respuesta', 'Total']
+        df_phq1['Porcentaje'] = (df_phq1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_phq1['Etiqueta'] = df_phq1['Total'].astype(str) + " (" + df_phq1['Porcentaje'].astype(str) + "%)"
+        
+        fig_p1 = px.bar(df_phq1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_p1.update_traces(textposition='outside')
+        fig_p1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_p1, use_container_width=True)
+
+    with smaps_col2:
+        st.subheader("101.2. Sentirse deprimido o desesperado")
+        df_phq2 = df_filtered['phq2_clean'].value_counts().reset_index()
+        df_phq2.columns = ['Respuesta', 'Total']
+        df_phq2['Porcentaje'] = (df_phq2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_phq2['Etiqueta'] = df_phq2['Total'].astype(str) + " (" + df_phq2['Porcentaje'].astype(str) + "%)"
+        
+        fig_p2 = px.bar(df_phq2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_p2.update_traces(textposition='outside')
+        fig_p2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_p2, use_container_width=True)
+
+    st.markdown("---")
+    st.markdown("### ⚡ GAD-2 (Tamizaje de Ansiedad)")
+
+    smaps_col3, smaps_col4 = st.columns(2)
+    with smaps_col3:
+        st.subheader("101.3. Sentirse nervioso(a), ansioso(a) o al borde")
+        df_gad1 = df_filtered['gad1_clean'].value_counts().reset_index()
+        df_gad1.columns = ['Respuesta', 'Total']
+        df_gad1['Porcentaje'] = (df_gad1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_gad1['Etiqueta'] = df_gad1['Total'].astype(str) + " (" + df_gad1['Porcentaje'].astype(str) + "%)"
+        
+        fig_g1 = px.bar(df_gad1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_g1.update_traces(textposition='outside')
+        fig_g1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_g1, use_container_width=True)
+
+    with smaps_col4:
+        st.subheader("101.4. No ser capaz de parar o controlar la preocupación")
+        df_gad2 = df_filtered['gad2_clean'].value_counts().reset_index()
+        df_gad2.columns = ['Respuesta', 'Total']
+        df_gad2['Porcentaje'] = (df_gad2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_gad2['Etiqueta'] = df_gad2['Total'].astype(str) + " (" + df_gad2['Porcentaje'].astype(str) + "%)"
+        
+        fig_g2 = px.bar(df_gad2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_g2.update_traces(textposition='outside')
+        fig_g2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_g2, use_container_width=True)
+
+    st.markdown("---")
+    st.info("ℹ️ **Nota SMAPS:** La puntuación total de cada test (PHQ-2 y GAD-2) se evalúa agregando los valores numéricos entre 0 y 3 por cada pregunta para determinar niveles de riesgo clínico psicosocial.")
+
+# TAB 13: BASE DE DATOS Y DESCARGA
+with tab13:
     st.subheader("Vista Previa de Registros Limpios")
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
@@ -2240,6 +2331,7 @@ with tab12:
         'edu_asisten_clean', 'edu_operativas_clean', 'salud_problema_clean', 'salud_obtener_clean',
         'ssr_servicios_clean', 'ssr_charlas_clean',
         'mov_residencia_clean', 'mov_pais_clean', 'mov_comunidad_clean',
+        'phq1_clean', 'phq2_clean', 'gad1_clean', 'gad2_clean',
         'disc_filtro', 'pueblo_indigena_clean'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
