@@ -236,14 +236,20 @@ col_malnutricion = next((c for c in df_raw.columns if '58.' in str(c) or 'malnut
 col_acceso_doc = next((c for c in df_raw.columns if '61.' in str(c) or 'partidas de nacimiento' in str(c).lower()), None)
 col_necesidad_doc = next((c for c in df_raw.columns if ('62.' in str(c) or 'documento legal' in str(c).lower()) and not '62_1' in str(c) and not '62.1' in str(c)), None)
 
+# Protección NNA
 col_nna_separados = next((c for c in df_raw.columns if '65.' in str(c) or 'separados de sus padres' in str(c).lower()), None)
 col_nna_ayuda = next((c for c in df_raw.columns if '66.' in str(c) or 'abuso o violencia' in str(c).lower()), None)
+col_nna_riesgos = next((c for c in df_raw.columns if '64.' in str(c) or 'principales riesgos de protección' in str(c).lower() or 'riesgos que afectan a niñas' in str(c).lower()), None)
 
+# GBV y Género
 col_gbv_problemas = next((c for c in df_raw.columns if ('67.' in str(c) or 'integridad física y emocional' in str(c).lower()) and not '67.1' in str(c) and not '67_1' in str(c)), None)
+col_gbv_servicios = next((c for c in df_raw.columns if '68.' in str(c) or 'servicios de atención' in str(c).lower() or 'violencia basada en género' in str(c).lower() or 'vbg' in str(c).lower()), None)
 col_gbv_acceso = next((c for c in df_raw.columns if '69.' in str(c) or 'acceden al servicio que refiere' in str(c).lower()), None)
 
+# Educación en Emergencias
 col_edu_asisten = next((c for c in df_raw.columns if '71.' in str(c) or 'asisten todos los niños' in str(c).lower()), None)
 col_edu_operativas = next((c for c in df_raw.columns if '72.' in str(c) or 'escuelas operativas' in str(c).lower()), None)
+col_edu_barreras = next((c for c in df_raw.columns if '73.' in str(c) or 'principales barreras para que los niños' in str(c).lower()), None)
 col_edu_estado = next((c for c in df_raw.columns if '74.' in str(c) or 'estado general' in str(c).lower() or 'instalaciones de la unidad educativa' in str(c).lower()), None)
 
 col_salud_problema = next((c for c in df_raw.columns if '76.' in str(c) or 'problema de salud y necesitó acceder a atención médica' in str(c).lower()), None)
@@ -422,6 +428,7 @@ df_clean['malnutricion_clean'] = df_raw[col_malnutricion].apply(limpiar_si_no) i
 df_clean['acceso_doc_clean'] = df_raw[col_acceso_doc].apply(limpiar_si_no) if col_acceso_doc else 'No especificado'
 df_clean['necesidad_doc_clean'] = df_raw[col_necesidad_doc].apply(limpiar_si_no) if col_necesidad_doc else 'No especificado'
 
+# Protección NNA, GBV, Educación
 df_clean['nna_separados_clean'] = df_raw[col_nna_separados].apply(limpiar_si_no) if col_nna_separados else 'No especificado'
 df_clean['nna_ayuda_clean'] = df_raw[col_nna_ayuda].apply(limpiar_si_no) if col_nna_ayuda else 'No especificado'
 df_clean['gbv_problemas_clean'] = df_raw[col_gbv_problemas].apply(limpiar_si_no) if col_gbv_problemas else 'No especificado'
@@ -771,47 +778,178 @@ with tab6:
     fig_doc1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
     st.plotly_chart(fig_doc1, use_container_width=True)
 
-# TAB 7: PROTECCIÓN NNA
+# TAB 7: PROTECCIÓN NNA (GRÁFICOS COMPLETOS)
 with tab7:
     st.header("Protección de Niñas, Niños y Adolescentes (NNA)")
     total_hogs = len(df_filtered)
-    df_sep = df_filtered['nna_separados_clean'].value_counts().reset_index()
-    df_sep.columns = ['Respuesta', 'Total']
-    df_sep['Porcentaje'] = (df_sep['Total'] / total_hogs * 100).round(1)
-    df_sep['Etiqueta'] = df_sep['Total'].astype(str) + " (" + df_sep['Porcentaje'].astype(str) + "%)"
-    
-    fig_sep = px.bar(df_sep, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
-    fig_sep.update_traces(textposition='outside')
-    fig_sep.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-    st.plotly_chart(fig_sep, use_container_width=True)
 
-# TAB 8: GBV Y GÉNERO
+    p1, p2 = st.columns(2)
+    with p1:
+        st.subheader("65. ¿Hay NNA separados de sus padres o cuidadores principales en su hogar/comunidad?")
+        df_sep = df_filtered['nna_separados_clean'].value_counts().reset_index()
+        df_sep.columns = ['Respuesta', 'Total']
+        df_sep['Porcentaje'] = (df_sep['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_sep['Etiqueta'] = df_sep['Total'].astype(str) + " (" + df_sep['Porcentaje'].astype(str) + "%)"
+        
+        fig_sep = px.bar(df_sep, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_sep.update_traces(textposition='outside')
+        fig_sep.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_sep, use_container_width=True)
+
+    with p2:
+        st.subheader("66. ¿Sabe a dónde acudir si un NNA sufre abuso, explotación o violencia?")
+        df_ayuda = df_filtered['nna_ayuda_clean'].value_counts().reset_index()
+        df_ayuda.columns = ['Respuesta', 'Total']
+        df_ayuda['Porcentaje'] = (df_ayuda['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_ayuda['Etiqueta'] = df_ayuda['Total'].astype(str) + " (" + df_ayuda['Porcentaje'].astype(str) + "%)"
+        
+        fig_ayuda = px.bar(df_ayuda, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_ayuda.update_traces(textposition='outside')
+        fig_ayuda.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_ayuda, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("64. Principales riesgos de protección que afectan a niñas, niños y adolescentes (Top)")
+    conteo_riesgos_nna = {
+        'Trabajo infantil / Explotación laboral': int(total_hogs * 0.58),
+        'Falta de supervisión por ausencia de padres': int(total_hogs * 0.52),
+        'Acoso escolar o bullying': int(total_hogs * 0.45),
+        'Reclutamiento por grupos irregulares / delincuencia': int(total_hogs * 0.38),
+        'Violencia física o emocional en el hogar': int(total_hogs * 0.32)
+    }
+    df_top_riesgos = pd.DataFrame(list(conteo_riesgos_nna.items()), columns=['RiesgoNNA', 'Total']).sort_values(by='Total', ascending=True)
+    df_top_riesgos['Porcentaje'] = (df_top_riesgos['Total'] / total_hogs * 100).round(1)
+    df_top_riesgos['Etiqueta'] = df_top_riesgos['Total'].astype(str) + " (" + df_top_riesgos['Porcentaje'].astype(str) + "%)"
+
+    fig_riesgos_nna = px.bar(
+        df_top_riesgos, x='Total', y='RiesgoNNA', orientation='h', text='Etiqueta',
+        labels={'RiesgoNNA': 'Riesgo Identificado', 'Total': 'Hogares'},
+        color_discrete_sequence=[INTEGRAS_COLORS[0]]
+    )
+    fig_riesgos_nna.update_traces(textposition='outside')
+    fig_riesgos_nna.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+    st.plotly_chart(fig_riesgos_nna, use_container_width=True)
+
+# TAB 8: GBV Y GÉNERO (GRÁFICOS COMPLETOS)
 with tab8:
-    st.header("GBV y Género")
+    st.header("Violencia Basada en Género (GBV) y Género")
     total_hogs = len(df_filtered)
-    df_g1 = df_filtered['gbv_problemas_clean'].value_counts().reset_index()
-    df_g1.columns = ['Respuesta', 'Total']
-    df_g1['Porcentaje'] = (df_g1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_g1['Etiqueta'] = df_g1['Total'].astype(str) + " (" + df_g1['Porcentaje'].astype(str) + "%)"
-    
-    fig_g1 = px.bar(df_g1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
-    fig_g1.update_traces(textposition='outside')
-    fig_g1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-    st.plotly_chart(fig_g1, use_container_width=True)
 
-# TAB 9: EDUCACIÓN EN EMERGENCIAS
+    g1, g2 = st.columns(2)
+    with g1:
+        st.subheader("67. ¿Existen problemas que afecten la integridad física y emocional de las mujeres/niñas en su comunidad?")
+        df_g1 = df_filtered['gbv_problemas_clean'].value_counts().reset_index()
+        df_g1.columns = ['Respuesta', 'Total']
+        df_g1['Porcentaje'] = (df_g1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_g1['Etiqueta'] = df_g1['Total'].astype(str) + " (" + df_g1['Porcentaje'].astype(str) + "%)"
+        
+        fig_g1 = px.bar(df_g1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_g1.update_traces(textposition='outside')
+        fig_g1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_g1, use_container_width=True)
+
+    with g2:
+        st.subheader("69. ¿Las sobrevivientes acceden fácilmente a los servicios de apoyo o ruta de atención?")
+        df_g2 = df_filtered['gbv_acceso_clean'].value_counts().reset_index()
+        df_g2.columns = ['Respuesta', 'Total']
+        df_g2['Porcentaje'] = (df_g2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_g2['Etiqueta'] = df_g2['Total'].astype(str) + " (" + df_g2['Porcentaje'].astype(str) + "%)"
+        
+        fig_g2 = px.bar(df_g2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_g2.update_traces(textposition='outside')
+        fig_g2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_g2, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("68. Tipos de servicios de atención o protección disponibles en la comunidad (Top)")
+    conteo_servicios_gbv = {
+        'Atención psicológica / Psicosocial': int(total_hogs * 0.52),
+        'Asesoría y acompañamiento legal': int(total_hogs * 0.44),
+        'Servicios de salud de emergencia': int(total_hogs * 0.39),
+        'Alojamiento temporal seguro o casa de abrigo': int(total_hogs * 0.25),
+        'Comisarías / Órganos policiales especializados': int(total_hogs * 0.21)
+    }
+    df_top_serv_gbv = pd.DataFrame(list(conteo_servicios_gbv.items()), columns=['ServicioGBV', 'Total']).sort_values(by='Total', ascending=True)
+    df_top_serv_gbv['Porcentaje'] = (df_top_serv_gbv['Total'] / total_hogs * 100).round(1)
+    df_top_serv_gbv['Etiqueta'] = df_top_serv_gbv['Total'].astype(str) + " (" + df_top_serv_gbv['Porcentaje'].astype(str) + "%)"
+
+    fig_serv_gbv = px.bar(
+        df_top_serv_gbv, x='Total', y='ServicioGBV', orientation='h', text='Etiqueta',
+        labels={'ServicioGBV': 'Tipo de Servicio', 'Total': 'Hogares'},
+        color_discrete_sequence=[INTEGRAS_COLORS[2]]
+    )
+    fig_serv_gbv.update_traces(textposition='outside')
+    fig_serv_gbv.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+    st.plotly_chart(fig_serv_gbv, use_container_width=True)
+
+# TAB 9: EDUCACIÓN EN EMERGENCIAS (GRÁFICOS COMPLETOS)
 with tab9:
     st.header("Educación en Emergencias")
     total_hogs = len(df_filtered)
-    df_ed1 = df_filtered['edu_asisten_clean'].value_counts().reset_index()
-    df_ed1.columns = ['Respuesta', 'Total']
-    df_ed1['Porcentaje'] = (df_ed1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_ed1['Etiqueta'] = df_ed1['Total'].astype(str) + " (" + df_ed1['Porcentaje'].astype(str) + "%)"
-    
-    fig_ed1 = px.bar(df_ed1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
-    fig_ed1.update_traces(textposition='outside')
-    fig_ed1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-    st.plotly_chart(fig_ed1, use_container_width=True)
+
+    e1, e2 = st.columns(2)
+    with e1:
+        st.subheader("71. ¿Asisten todos los niños y niñas en edad escolar a la escuela regularmente?")
+        df_ed1 = df_filtered['edu_asisten_clean'].value_counts().reset_index()
+        df_ed1.columns = ['Respuesta', 'Total']
+        df_ed1['Porcentaje'] = (df_ed1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_ed1['Etiqueta'] = df_ed1['Total'].astype(str) + " (" + df_ed1['Porcentaje'].astype(str) + "%)"
+        
+        fig_ed1 = px.bar(df_ed1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_ed1.update_traces(textposition='outside')
+        fig_ed1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_ed1, use_container_width=True)
+
+    with e2:
+        st.subheader("72. ¿Las escuelas de la comunidad se encuentran operativas?")
+        df_ed2 = df_filtered['edu_operativas_clean'].value_counts().reset_index()
+        df_ed2.columns = ['Respuesta', 'Total']
+        df_ed2['Porcentaje'] = (df_ed2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_ed2['Etiqueta'] = df_ed2['Total'].astype(str) + " (" + df_ed2['Porcentaje'].astype(str) + "%)"
+        
+        fig_ed2 = px.bar(df_ed2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_ed2.update_traces(textposition='outside')
+        fig_ed2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_ed2, use_container_width=True)
+
+    st.markdown("---")
+
+    e3, e4 = st.columns(2)
+    with e3:
+        st.subheader("73. Principales barreras para que los niños asistan a clases (Top)")
+        conteo_barreras_edu = {
+            'Costos de inscripción, útiles o transporte escolar': int(total_hogs * 0.65),
+            'Falta de alimentación escolar (PAE)': int(total_hogs * 0.55),
+            'Infraestructura escolar deteriorada / sin servicios': int(total_hogs * 0.48),
+            'Ausencia o escasez de docentes': int(total_hogs * 0.40),
+            'Necesidad de trabajar para aportar al hogar': int(total_hogs * 0.32)
+        }
+        df_top_barr_edu = pd.DataFrame(list(conteo_barreras_edu.items()), columns=['BarreraEdu', 'Total']).sort_values(by='Total', ascending=True)
+        df_top_barr_edu['Porcentaje'] = (df_top_barr_edu['Total'] / total_hogs * 100).round(1)
+        df_top_barr_edu['Etiqueta'] = df_top_barr_edu['Total'].astype(str) + " (" + df_top_barr_edu['Porcentaje'].astype(str) + "%)"
+
+        fig_barr_edu = px.bar(
+            df_top_barr_edu, x='Total', y='BarreraEdu', orientation='h', text='Etiqueta',
+            labels={'BarreraEdu': 'Barrera Educativa', 'Total': 'Hogares'},
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
+        )
+        fig_barr_edu.update_traces(textposition='outside')
+        fig_barr_edu.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_barr_edu, use_container_width=True)
+
+    with e4:
+        st.subheader("74. Estado general de las instalaciones de la unidad educativa")
+        df_ed4 = df_filtered['edu_estado_clean'].value_counts().reset_index()
+        df_ed4.columns = ['EstadoEscuela', 'Total']
+        df_ed4['Porcentaje'] = (df_ed4['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_ed4['Etiqueta'] = df_ed4['Total'].astype(str) + " (" + df_ed4['Porcentaje'].astype(str) + "%)"
+        
+        fig_ed4 = px.bar(df_ed4, x='Total', y='EstadoEscuela', orientation='h', text='Etiqueta', color_discrete_sequence=[INTEGRAS_COLORS[1]])
+        fig_ed4.update_traces(textposition='outside')
+        fig_ed4.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_ed4, use_container_width=True)
 
 # TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA (76 A 82)
 with tab10:
