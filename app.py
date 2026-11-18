@@ -482,7 +482,39 @@ df_clean['edu_clean'] = df_raw[col_edu].apply(limpiar_educacion) if col_edu else
 
 df_clean['nacionalidad_clean'] = df_raw[col_nac].apply(lambda x: limpiar_codigo(x, MAPA_NACIONALIDAD)) if col_nac else 'No especificado'
 df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codigo(x, MAPA_PUEBLOS_INDIGENAS)) if col_ind else 'No especificado'
+col_razon_menstru = next((c for c in df_raw.columns if '36.1' in str(c) or '36_1' in str(c)), None)
 
+def limpiar_razon_menstru(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip()
+    if s.lower() in ['', 'nan', 'none', 'nat', 'no especificado']:
+        return 'No especificado'
+    return s
+
+df_clean['razon_menstru_clean'] = df_raw[col_razon_menstru].apply(limpiar_razon_menstru) if col_razon_menstru else 'No especificado'
+
+# Limpieza de la razón de acceso a jabón (Pregunta 35.1)
+col_razon_jabon = next((c for c in df_raw.columns if '35.1' in str(c) or '35_1' in str(c)), None)
+
+def limpiar_razon_jabon(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip()
+    if s.lower() in ['', 'nan', 'none', 'nat', 'no especificado']:
+        return 'No especificado'
+    return s
+
+df_clean['razon_jabon_clean'] = df_raw[col_razon_jabon].apply(limpiar_razon_jabon) if col_razon_jabon else 'No especificado'
+def limpiar_razon_menstru(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip()
+    if s.lower() in ['', 'nan', 'none', 'nat', 'no especificado']:
+        return 'No especificado'
+    return s
+
+df_clean['razon_menstru_clean'] = df_raw[col_razon_menstru].apply(limpiar_razon_menstru) if col_razon_menstru else 'No especificado'
 # Limpieza de Empleo y Finanzas
 df_clean['act_laboral_clean'] = df_raw[col_act_laboral].apply(limpiar_si_no) if col_act_laboral else 'No especificado'
 df_clean['cant_empleadas_val'] = pd.to_numeric(df_raw[col_cant_empleadas], errors='coerce').fillna(0) if col_cant_empleadas else 0
@@ -1104,9 +1136,11 @@ with tab3:
         st.plotly_chart(fig_enf, use_container_width=True)
 
     st.markdown("---")
-
-    w11, w12 = st.columns(2)
-    with w11:
+    
+    # Fila 1: Pregunta 35 al lado de la Pregunta 35.1
+    w35_1, w35_2 = st.columns(2)
+    
+    with w35_1:
         st.subheader("35. Acceso a jabón para lavado de manos")
         df_jabon_res = df_filtered['acceso_jabon_clean'].value_counts().reset_index()
         df_jabon_res.columns = ['Respuesta', 'Total']
@@ -1118,7 +1152,31 @@ with tab3:
         fig_jabon.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_jabon, use_container_width=True)
 
-    with w12:
+    with w35_2:
+        st.subheader("35.1. ¿Podría indicarnos por qué razón?")
+        df_razon_jabon_res = df_filtered['razon_jabon_clean'].value_counts().reset_index()
+        df_razon_jabon_res.columns = ['Razon', 'Total']
+        df_razon_jabon_res = df_razon_jabon_res[~df_razon_jabon_res['Razon'].isin(['No especificado', 'No Especificado'])]
+        
+        df_razon_jabon_res['Porcentaje'] = (df_razon_jabon_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_razon_jabon_res['Texto_Etiqueta'] = df_razon_jabon_res['Total'].astype(str) + " (" + df_razon_jabon_res['Porcentaje'].astype(str) + "%)"
+
+        fig_razon_jabon = px.bar(
+            df_razon_jabon_res.sort_values(by='Total', ascending=True),
+            x='Total', y='Razon', orientation='h', text='Texto_Etiqueta',
+            labels={'Razon': 'Motivo / Razón', 'Total': 'Hogares'},
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
+        )
+        fig_razon_jabon.update_traces(textposition='outside', cliponaxis=False)
+        fig_razon_jabon.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_razon_jabon, use_container_width=True)
+
+    st.markdown("---")
+
+    # Fila 2: Pregunta 36 al lado de la Pregunta 36.1
+    w36_1, w36_2 = st.columns(2)
+    
+    with w36_1:
         st.subheader("36. ¿Las mujeres de su hogar tienen acceso a productos de higiene menstrual?")
         df_menstru_res = df_filtered['higiene_menstru_clean'].value_counts().reset_index()
         df_menstru_res.columns = ['Respuesta', 'Total']
@@ -1133,25 +1191,24 @@ with tab3:
         fig_menstru.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_menstru, use_container_width=True)
 
-    st.markdown("---")
+    with w36_2:
+        st.subheader("36.1. ¿Podría indicarnos por qué razón?")
+        df_razon_res = df_filtered['razon_menstru_clean'].value_counts().reset_index()
+        df_razon_res.columns = ['Razon', 'Total']
+        df_razon_res = df_razon_res[~df_razon_res['Razon'].isin(['No especificado', 'No Especificado'])]
+        
+        df_razon_res['Porcentaje'] = (df_razon_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_razon_res['Texto_Etiqueta'] = df_razon_res['Total'].astype(str) + " (" + df_razon_res['Porcentaje'].astype(str) + "%)"
 
-    st.subheader("36.1. ¿Podría indicarnos por qué razón?")
-    df_razon_res = df_filtered['razon_menstru_clean'].value_counts().reset_index()
-    df_razon_res.columns = ['Razon', 'Total']
-    df_razon_res = df_razon_res[~df_razon_res['Razon'].isin(['No especificado', 'No Especificado'])]
-    df_razon_res['Porcentaje'] = (df_razon_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_razon_res['Texto_Etiqueta'] = df_razon_res['Total'].astype(str) + " (" + df_razon_res['Porcentaje'].astype(str) + "%)"
-
-    fig_razon = px.bar(
-        df_razon_res, x='Total', y='Razon', orientation='h', text='Texto_Etiqueta',
-        labels={'Razon': 'Motivo / Razón', 'Total': 'Hogares'},
-        color_discrete_sequence=[INTEGRAS_COLORS[3]]
-    )
-    fig_razon.update_traces(textposition='outside')
-    fig_razon.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-    st.plotly_chart(fig_razon, use_container_width=True)
-
-    st.markdown("---")
+        fig_razon = px.bar(
+            df_razon_res.sort_values(by='Total', ascending=True),
+            x='Total', y='Razon', orientation='h', text='Texto_Etiqueta',
+            labels={'Razon': 'Motivo / Razón', 'Total': 'Hogares'},
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
+        )
+        fig_razon.update_traces(textposition='outside', cliponaxis=False)
+        fig_razon.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_razon, use_container_width=True)
 
     w13, w14 = st.columns(2)
     with w13:
