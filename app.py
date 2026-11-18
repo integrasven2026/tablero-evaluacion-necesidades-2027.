@@ -901,17 +901,22 @@ with tab3:
     w1, w2 = st.columns(2)
     with w1:
         st.subheader("26. Principales Fuentes de Agua en su Hogar")
-        cols_fuentes_kobo = [c for c in df_raw.columns if '26' in str(c) or 'fuente' in str(c).lower()]
+        
+        # Mapeo exacto a las subcolumnas binarias reales de Kobo/Excel
+        cols_fuentes_map = {
+            'Red de tubería (acueducto)': [c for c in df_raw.columns if '26' in str(c) and 'Red de tubería' in str(c)],
+            'Camión cisterna': [c for c in df_raw.columns if '26' in str(c) and 'Camión cisterna' in str(c)],
+            'Pozo subterráneo / Manantial': [c for c in df_raw.columns if '26' in str(c) and 'Pozo subterráneo' in str(c)],
+            'Agua embotellada / Botellón': [c for c in df_raw.columns if '26' in str(c) and 'Agua embotellada' in str(c)],
+            'Otra fuente': [c for c in df_raw.columns if '26' in str(c) and 'Otra fuente' in str(c)]
+        }
+        
         conteo_fuentes = {}
-        if cols_fuentes_kobo:
-            for k, label_oficial in MAPA_FUENTES_AGUA_VALORES.items():
-                match_col = [c for c in cols_fuentes_kobo if k in str(c).lower()]
-                if match_col:
-                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
-                    if tot > 0:
-                        conteo_fuentes[label_oficial] = int(tot)
-        if not conteo_fuentes:
-            conteo_fuentes = {'Red de tubería (acueducto)': int(total_hogs * 0.78), 'Agua embotellada / Botellón': int(total_hogs * 0.52), 'Camión cisterna': int(total_hogs * 0.35), 'Pozo subterráneo / Manantial': int(total_hogs * 0.12)}
+        for label, cols in cols_fuentes_map.items():
+            if cols:
+                tot = sum(pd.to_numeric(df_filtered[cols[0]], errors='coerce').fillna(0).sum())
+                if tot > 0:
+                    conteo_fuentes[label] = int(tot)
 
         df_fuentes_res = pd.DataFrame(list(conteo_fuentes.items()), columns=['Fuente', 'Total']).sort_values(by='Total', ascending=True)
         df_fuentes_res['Porcentaje'] = (df_fuentes_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
