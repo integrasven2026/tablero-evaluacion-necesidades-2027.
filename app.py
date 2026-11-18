@@ -602,6 +602,8 @@ df_clean['agua_beber_clean'] = df_raw[col_agua_beber].apply(limpiar_si_no) if co
 df_clean['agua_suf_clean'] = df_raw[col_agua_suf].apply(limpiar_si_no) if col_agua_suf else 'No especificado'
 df_clean['agua_trat_clean'] = df_raw[col_agua_trat].apply(limpiar_si_no) if col_agua_trat else 'No especificado'
 df_clean['almacena_clean'] = df_raw[col_almacena].apply(limpiar_si_no) if col_almacena else 'No especificado'
+col_forma_almacena = next((c for c in df_raw.columns if '33.1' in str(c) or '33_1' in str(c)), None)
+df_clean['forma_almacena_clean'] = df_raw[col_forma_almacena].fillna('No especificado').astype(str).str.strip() if col_forma_almacena else 'No especificado'
 df_clean['acceso_jabon_clean'] = df_raw[col_acceso_jabon].apply(limpiar_si_no) if col_acceso_jabon else 'No especificado'
 
 if col_higiene_menstru:
