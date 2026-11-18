@@ -1053,24 +1053,20 @@ with tab3:
     w9, w10 = st.columns(2)
     with w9:
         st.subheader("33.1. Principal forma de almacenamiento")
-        cols_forma_kobo = [c for c in df_raw.columns if '33_1' in str(c) or '33.1' in str(c) or 'recipientes' in str(c).lower()]
-        conteo_forma = {}
-        if cols_forma_kobo:
-            for k, label_oficial in MAPA_ALMACENAMIENTO_FORMA.items():
-                match_col = [c for c in cols_forma_kobo if k in str(c).lower()]
-                if match_col:
-                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
-                    if tot > 0:
-                        conteo_forma[label_oficial] = int(tot)
-        if not conteo_forma:
-            conteo_forma = {'En recipientes cubiertos dentro de la casa': int(total_hogs * 0.55), 'En recipientes cubiertos fuera de la casa': int(total_hogs * 0.25), 'En recipientes destapados dentro de la casa': int(total_hogs * 0.12), 'En recipientes destapados fuera de la casa': int(total_hogs * 0.08)}
-
-        df_forma_res = pd.DataFrame(list(conteo_forma.items()), columns=['Forma', 'Total']).sort_values(by='Total', ascending=True)
+        df_forma_res = df_filtered['forma_almacena_clean'].value_counts().reset_index()
+        df_forma_res.columns = ['Forma', 'Total']
+        df_forma_res = df_forma_res[~df_forma_res['Forma'].isin(['No especificado', 'No Especificado'])]
+        
         df_forma_res['Porcentaje'] = (df_forma_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_forma_res['Texto_Etiqueta'] = df_forma_res['Total'].astype(str) + " (" + df_forma_res['Porcentaje'].astype(str) + "%)"
         
-        fig_forma = px.bar(df_forma_res, x='Total', y='Forma', orientation='h', text='Texto_Etiqueta', labels={'Forma': 'Forma de Almacenamiento', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[2]])
-        fig_forma.update_traces(textposition='outside')
+        fig_forma = px.bar(
+            df_forma_res.sort_values(by='Total', ascending=True),
+            x='Total', y='Forma', orientation='h', text='Texto_Etiqueta',
+            labels={'Forma': 'Forma de Almacenamiento', 'Total': 'Hogares'},
+            color_discrete_sequence=[INTEGRAS_COLORS[2]]
+        )
+        fig_forma.update_traces(textposition='outside', cliponaxis=False)
         fig_forma.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_forma, use_container_width=True)
 
