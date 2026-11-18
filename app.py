@@ -10,6 +10,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Paleta de colores oficial del Consorcio ÍNTEGRAS basada en su logotipo
+INTEGRAS_COLORS = ['#08327D', '#1E62D0', '#00BCD4', '#F4A261', '#D8B4E2', '#2A9D8F', '#E76F51']
+
 # Estilos CSS institucionales (Consorcio ÍNTEGRAS)
 st.markdown("""
 <style>
@@ -639,7 +642,7 @@ with tab1:
         fig_socio = px.bar(
             df_socio_res, x='Socio', y='Total', text='Texto_Etiqueta',
             labels={'Socio': 'Socio', 'Total': 'Encuestas'},
-            color_discrete_sequence=['#08327D']
+            color_discrete_sequence=[INTEGRAS_COLORS[0]]
         )
         fig_socio.update_traces(textposition='outside')
         st.plotly_chart(fig_socio, use_container_width=True)
@@ -654,7 +657,7 @@ with tab1:
         fig_estado = px.bar(
             df_est_res, x='Total', y='Estado', orientation='h', text='Texto_Etiqueta',
             labels={'Estado': 'Estado', 'Total': 'Encuestas'},
-            color_discrete_sequence=['#1E62D0']
+            color_discrete_sequence=[INTEGRAS_COLORS[1]]
         )
         fig_estado.update_traces(textposition='outside')
         fig_estado.update_layout(yaxis={'categoryorder': 'total ascending'})
@@ -673,7 +676,7 @@ with tab1:
         
         fig_jefe_bar = px.bar(
             df_jefe_resumen, x='Sexo', y='Total', text='Texto_Etiqueta', color='Sexo',
-            color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F', '#2B8CBE']
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_jefe_bar.update_traces(textposition='outside')
         fig_jefe_bar.update_layout(xaxis_title="", yaxis_title="Cantidad de Hogares", showlegend=False)
@@ -692,7 +695,7 @@ with tab1:
         st.subheader("Distribución por Sexo Biológico (General)")
         fig_sexo = px.pie(
             df_filtered, names='sexo_clean', hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Set2
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         st.plotly_chart(fig_sexo, use_container_width=True)
 
@@ -706,7 +709,7 @@ with tab1:
         fig_edu = px.bar(
             df_edu_res, x='Total', y='NivelEducativo', orientation='h', text='Texto_Etiqueta',
             labels={'NivelEducativo': 'Nivel Educativo', 'Total': 'Cantidad'},
-            color_discrete_sequence=['#2B8CBE']
+            color_discrete_sequence=[INTEGRAS_COLORS[2]]
         )
         fig_edu.update_traces(textposition='outside')
         fig_edu.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Cantidad")
@@ -737,7 +740,7 @@ with tab1:
             df_top_disc.sort_values(by='Total', ascending=True),
             x='Total', y='Discapacidad', orientation='h', text='Texto_Etiqueta',
             labels={'Discapacidad': 'Tipo de Discapacidad', 'Total': 'Casos Registrados'},
-            color_discrete_sequence=['#E76F51']
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
         )
         fig_top_disc.update_traces(textposition='outside')
         fig_top_disc.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Casos")
@@ -772,7 +775,7 @@ with tab2:
         
         fig_ten = px.pie(
             df_ten_res, names='Tenencia', values='Total', hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Pastel
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_ten.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_ten, use_container_width=True)
@@ -786,8 +789,8 @@ with tab2:
         fig_hac_pie = px.pie(
             df_hac_resumen, names='Condicion', values='Total', hole=0.4, color='Condicion',
             color_discrete_map={
-                'Hacinamiento Crítico (NBI)': '#E76F51',
-                'Sin Hacinamiento Crítico (<=3 pers/cuarto)': '#2A9D8F'
+                'Hacinamiento Crítico (NBI)': INTEGRAS_COLORS[3],
+                'Sin Hacinamiento Crítico (<=3 pers/cuarto)': INTEGRAS_COLORS[2]
             }
         )
         fig_hac_pie.update_traces(textinfo='percent+value')
@@ -817,7 +820,7 @@ with tab3:
         df_fuentes_res['Porcentaje'] = (df_fuentes_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_fuentes_res['Texto_Etiqueta'] = df_fuentes_res['Total'].astype(str) + " (" + df_fuentes_res['Porcentaje'].astype(str) + "%)"
         
-        fig_agua = px.bar(df_fuentes_res, x='Total', y='Fuente', orientation='h', text='Texto_Etiqueta', labels={'Fuente': 'Fuente de Agua', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
+        fig_agua = px.bar(df_fuentes_res, x='Total', y='Fuente', orientation='h', text='Texto_Etiqueta', labels={'Fuente': 'Fuente de Agua', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[1]])
         fig_agua.update_traces(textposition='outside')
         fig_agua.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_agua, use_container_width=True)
@@ -829,7 +832,7 @@ with tab3:
         df_frec_res['Porcentaje'] = (df_frec_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_frec_res['Texto_Etiqueta'] = df_frec_res['Total'].astype(str) + " (" + df_frec_res['Porcentaje'].astype(str) + "%)"
         
-        fig_frec = px.bar(df_frec_res, x='Total', y='Frecuencia', orientation='h', text='Texto_Etiqueta', labels={'Frecuencia': 'Frecuencia de Servicio', 'Total': 'Hogares'}, color_discrete_sequence=['#00B4D8'])
+        fig_frec = px.bar(df_frec_res, x='Total', y='Frecuencia', orientation='h', text='Texto_Etiqueta', labels={'Frecuencia': 'Frecuencia de Servicio', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[2]])
         fig_frec.update_traces(textposition='outside')
         fig_frec.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_frec, use_container_width=True)
@@ -844,7 +847,7 @@ with tab3:
         df_beber_res['Porcentaje'] = (df_beber_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_beber_res['Texto_Etiqueta'] = df_beber_res['Total'].astype(str) + " (" + df_beber_res['Porcentaje'].astype(str) + "%)"
         
-        fig_beber = px.bar(df_beber_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#0096C7', '#48CAE4', '#90E0EF'])
+        fig_beber = px.bar(df_beber_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_beber.update_traces(textposition='outside')
         fig_beber.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_beber, use_container_width=True)
@@ -856,7 +859,7 @@ with tab3:
         df_suf_res['Porcentaje'] = (df_suf_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_suf_res['Texto_Etiqueta'] = df_suf_res['Total'].astype(str) + " (" + df_suf_res['Porcentaje'].astype(str) + "%)"
         
-        fig_suf = px.bar(df_suf_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#03045E', '#0077B6', '#00B4D8'])
+        fig_suf = px.bar(df_suf_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_suf.update_traces(textposition='outside')
         fig_suf.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_suf, use_container_width=True)
@@ -871,7 +874,7 @@ with tab3:
         df_trat_res['Porcentaje'] = (df_trat_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_trat_res['Texto_Etiqueta'] = df_trat_res['Total'].astype(str) + " (" + df_trat_res['Porcentaje'].astype(str) + "%)"
         
-        fig_trat = px.bar(df_trat_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#1D3557', '#457B9D', '#A8DADC'])
+        fig_trat = px.bar(df_trat_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_trat.update_traces(textposition='outside')
         fig_trat.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_trat, use_container_width=True)
@@ -894,7 +897,7 @@ with tab3:
         df_trat_det['Porcentaje'] = (df_trat_det['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_trat_det['Texto_Etiqueta'] = df_trat_det['Total'].astype(str) + " (" + df_trat_det['Porcentaje'].astype(str) + "%)"
 
-        fig_trat_det = px.bar(df_trat_det, x='Total', y='Tratamiento', orientation='h', text='Texto_Etiqueta', labels={'Tratamiento': 'Método', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
+        fig_trat_det = px.bar(df_trat_det, x='Total', y='Tratamiento', orientation='h', text='Texto_Etiqueta', labels={'Tratamiento': 'Método', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[1]])
         fig_trat_det.update_traces(textposition='outside')
         fig_trat_det.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_trat_det, use_container_width=True)
@@ -920,7 +923,7 @@ with tab3:
         df_prob_res['Porcentaje'] = (df_prob_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_prob_res['Texto_Etiqueta'] = df_prob_res['Total'].astype(str) + " (" + df_prob_res['Porcentaje'].astype(str) + "%)"
         
-        fig_prob = px.bar(df_prob_res, x='Total', y='Problema', orientation='h', text='Texto_Etiqueta', labels={'Problema': 'Tipo de Problema', 'Total': 'Hogares'}, color_discrete_sequence=['#E76F51'])
+        fig_prob = px.bar(df_prob_res, x='Total', y='Problema', orientation='h', text='Texto_Etiqueta', labels={'Problema': 'Tipo de Problema', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[3]])
         fig_prob.update_traces(textposition='outside')
         fig_prob.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_prob, use_container_width=True)
@@ -932,7 +935,7 @@ with tab3:
         df_alm_res['Porcentaje'] = (df_alm_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_alm_res['Texto_Etiqueta'] = df_alm_res['Total'].astype(str) + " (" + df_alm_res['Porcentaje'].astype(str) + "%)"
         
-        fig_alm = px.bar(df_alm_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#264653'])
+        fig_alm = px.bar(df_alm_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_alm.update_traces(textposition='outside')
         fig_alm.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_alm, use_container_width=True)
@@ -958,7 +961,7 @@ with tab3:
         df_forma_res['Porcentaje'] = (df_forma_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_forma_res['Texto_Etiqueta'] = df_forma_res['Total'].astype(str) + " (" + df_forma_res['Porcentaje'].astype(str) + "%)"
         
-        fig_forma = px.bar(df_forma_res, x='Total', y='Forma', orientation='h', text='Texto_Etiqueta', labels={'Forma': 'Forma de Almacenamiento', 'Total': 'Hogares'}, color_discrete_sequence=['#457B9D'])
+        fig_forma = px.bar(df_forma_res, x='Total', y='Forma', orientation='h', text='Texto_Etiqueta', labels={'Forma': 'Forma de Almacenamiento', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[2]])
         fig_forma.update_traces(textposition='outside')
         fig_forma.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_forma, use_container_width=True)
@@ -981,7 +984,7 @@ with tab3:
         df_enf_res['Porcentaje'] = (df_enf_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_enf_res['Texto_Etiqueta'] = df_enf_res['Total'].astype(str) + " (" + df_enf_res['Porcentaje'].astype(str) + "%)"
         
-        fig_enf = px.bar(df_enf_res, x='Total', y='Enfermedad', orientation='h', text='Texto_Etiqueta', labels={'Enfermedad': 'Patología / Condición', 'Total': 'Hogares'}, color_discrete_sequence=['#1D3557'])
+        fig_enf = px.bar(df_enf_res, x='Total', y='Enfermedad', orientation='h', text='Texto_Etiqueta', labels={'Enfermedad': 'Patología / Condición', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[0]])
         fig_enf.update_traces(textposition='outside')
         fig_enf.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_enf, use_container_width=True)
@@ -996,7 +999,7 @@ with tab3:
         df_jabon_res['Porcentaje'] = (df_jabon_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_jabon_res['Texto_Etiqueta'] = df_jabon_res['Total'].astype(str) + " (" + df_jabon_res['Porcentaje'].astype(str) + "%)"
         
-        fig_jabon = px.bar(df_jabon_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#264653'])
+        fig_jabon = px.bar(df_jabon_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_jabon.update_traces(textposition='outside')
         fig_jabon.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_jabon, use_container_width=True)
@@ -1010,7 +1013,7 @@ with tab3:
         
         fig_menstru = px.bar(
             df_menstru_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
-            color_discrete_sequence=['#2A9D8F', '#E76F51', '#264653']
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_menstru.update_traces(textposition='outside')
         fig_menstru.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
@@ -1028,7 +1031,7 @@ with tab3:
     fig_razon = px.bar(
         df_razon_res, x='Total', y='Razon', orientation='h', text='Texto_Etiqueta',
         labels={'Razon': 'Motivo / Razón', 'Total': 'Hogares'},
-        color_discrete_sequence=['#E76F51']
+        color_discrete_sequence=[INTEGRAS_COLORS[3]]
     )
     fig_razon.update_traces(textposition='outside')
     fig_razon.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1055,7 +1058,7 @@ with tab3:
         df_basura_res['Porcentaje'] = (df_basura_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_basura_res['Texto_Etiqueta'] = df_basura_res['Total'].astype(str) + " (" + df_basura_res['Porcentaje'].astype(str) + "%)"
         
-        fig_basura = px.bar(df_basura_res, x='Total', y='Método', orientation='h', text='Texto_Etiqueta', labels={'Método': 'Disposición de Basura', 'Total': 'Hogares'}, color_discrete_sequence=['#457B9D'])
+        fig_basura = px.bar(df_basura_res, x='Total', y='Método', orientation='h', text='Texto_Etiqueta', labels={'Método': 'Disposición de Basura', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[2]])
         fig_basura.update_traces(textposition='outside')
         fig_basura.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_basura, use_container_width=True)
@@ -1067,7 +1070,7 @@ with tab3:
         df_filtro_res['Porcentaje'] = (df_filtro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_filtro_res['Texto_Etiqueta'] = df_filtro_res['Total'].astype(str) + " (" + df_filtro_res['Porcentaje'].astype(str) + "%)"
         
-        fig_filtro = px.bar(df_filtro_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#1D3557', '#457B9D', '#A8DADC'])
+        fig_filtro = px.bar(df_filtro_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_filtro.update_traces(textposition='outside')
         fig_filtro.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_filtro, use_container_width=True)
@@ -1094,7 +1097,7 @@ with tab3:
     df_tfiltro_res['Porcentaje'] = (df_tfiltro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
     df_tfiltro_res['Texto_Etiqueta'] = df_tfiltro_res['Total'].astype(str) + " (" + df_tfiltro_res['Porcentaje'].astype(str) + "%)"
     
-    fig_tfiltro = px.bar(df_tfiltro_res, x='Total', y='TipoFiltro', orientation='h', text='Texto_Etiqueta', labels={'TipoFiltro': 'Tipo de Filtro', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
+    fig_tfiltro = px.bar(df_tfiltro_res, x='Total', y='TipoFiltro', orientation='h', text='Texto_Etiqueta', labels={'TipoFiltro': 'Tipo de Filtro', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[1]])
     fig_tfiltro.update_traces(textposition='outside')
     fig_tfiltro.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
     st.plotly_chart(fig_tfiltro, use_container_width=True)
@@ -1112,7 +1115,7 @@ with tab4:
         df_act_res['Porcentaje'] = (df_act_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_act_res['Texto_Etiqueta'] = df_act_res['Total'].astype(str) + " (" + df_act_res['Porcentaje'].astype(str) + "%)"
         
-        fig_act = px.bar(df_act_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F'])
+        fig_act = px.bar(df_act_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_act.update_traces(textposition='outside')
         fig_act.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_act, use_container_width=True)
@@ -1126,7 +1129,7 @@ with tab4:
         df_fam_emp['Texto_Etiqueta'] = df_fam_emp['Total'].astype(str) + " (" + df_fam_emp['Porcentaje'].astype(str) + "%)"
         df_fam_emp['NumPersonasStr'] = df_fam_emp['NumPersonas'].astype(str) + " pers."
 
-        fig_emp = px.bar(df_fam_emp, x='NumPersonasStr', y='Total', text='Texto_Etiqueta', labels={'NumPersonasStr': 'Número de Empleados en Hogar', 'Total': 'Hogares'}, color_discrete_sequence=['#1E62D0'])
+        fig_emp = px.bar(df_fam_emp, x='NumPersonasStr', y='Total', text='Texto_Etiqueta', labels={'NumPersonasStr': 'Número de Empleados en Hogar', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[1]])
         fig_emp.update_traces(textposition='outside')
         fig_emp.update_layout(xaxis_title="Personas Empleadas por Hogar", yaxis_title="Hogares")
         st.plotly_chart(fig_emp, use_container_width=True)
@@ -1141,7 +1144,7 @@ with tab4:
         df_rem_res['Porcentaje'] = (df_rem_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_rem_res['Texto_Etiqueta'] = df_rem_res['Total'].astype(str) + " (" + df_rem_res['Porcentaje'].astype(str) + "%)"
 
-        fig_rem = px.bar(df_rem_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#264653'])
+        fig_rem = px.bar(df_rem_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_rem.update_traces(textposition='outside')
         fig_rem.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_rem, use_container_width=True)
@@ -1153,7 +1156,7 @@ with tab4:
         df_op_res['Porcentaje'] = (df_op_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_op_res['Texto_Etiqueta'] = df_op_res['Total'].astype(str) + " (" + df_op_res['Porcentaje'].astype(str) + "%)"
 
-        fig_op = px.bar(df_op_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#E76F51', '#2A9D8F', '#264653'])
+        fig_op = px.bar(df_op_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_op.update_traces(textposition='outside')
         fig_op.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_op, use_container_width=True)
@@ -1168,7 +1171,7 @@ with tab4:
         df_ing_res['Porcentaje'] = (df_ing_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_ing_res['Texto_Etiqueta'] = df_ing_res['Total'].astype(str) + " (" + df_ing_res['Porcentaje'].astype(str) + "%)"
 
-        fig_ing = px.bar(df_ing_res, x='Total', y='RangoIngreso', orientation='h', text='Texto_Etiqueta', labels={'RangoIngreso': 'Rango de Ingresos', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
+        fig_ing = px.bar(df_ing_res, x='Total', y='RangoIngreso', orientation='h', text='Texto_Etiqueta', labels={'RangoIngreso': 'Rango de Ingresos', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[1]])
         fig_ing.update_traces(textposition='outside')
         fig_ing.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_ing, use_container_width=True)
@@ -1180,7 +1183,7 @@ with tab4:
         df_fin_res['Porcentaje'] = (df_fin_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_fin_res['Texto_Etiqueta'] = df_fin_res['Total'].astype(str) + " (" + df_fin_res['Porcentaje'].astype(str) + "%)"
 
-        fig_fin = px.bar(df_fin_res, x='Situacion', y='Total', text='Texto_Etiqueta', color='Situacion', color_discrete_sequence=['#2A9D8F', '#E76F51', '#457B9D', '#F4A261'])
+        fig_fin = px.bar(df_fin_res, x='Situacion', y='Total', text='Texto_Etiqueta', color='Situacion', color_discrete_sequence=INTEGRAS_COLORS)
         fig_fin.update_traces(textposition='outside')
         fig_fin.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_fin, use_container_width=True)
@@ -1201,7 +1204,7 @@ with tab5:
         fig_fcs = px.bar(
             df_fcs_res, x='CategoriaFCS', y='Total', text='Texto_Etiqueta', color='CategoriaFCS',
             labels={'CategoriaFCS': 'Categoría FCS', 'Total': 'Hogares'},
-            color_discrete_sequence=['#2A9D8F', '#F4A261', '#E76F51']
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_fcs.update_traces(textposition='outside')
         fig_fcs.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
@@ -1216,7 +1219,7 @@ with tab5:
         
         fig_dejado = px.bar(
             df_dejado_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
-            color_discrete_sequence=['#E76F51', '#2A9D8F', '#457B9D']
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_dejado.update_traces(textposition='outside')
         fig_dejado.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
@@ -1234,7 +1237,7 @@ with tab5:
         
         fig_apoyo = px.bar(
             df_apoyo_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
-            color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F']
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_apoyo.update_traces(textposition='outside')
         fig_apoyo.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
@@ -1249,7 +1252,7 @@ with tab5:
         
         fig_solidos = px.bar(
             df_solidos_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
-            color_discrete_sequence=['#E76F51', '#2A9D8F', '#457B9D']
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_solidos.update_traces(textposition='outside')
         fig_solidos.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
@@ -1267,7 +1270,7 @@ with tab5:
         
         fig_dinero = px.bar(
             df_dinero_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
-            color_discrete_sequence=['#2A9D8F', '#E76F51', '#1E62D0']
+            color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_dinero.update_traces(textposition='outside')
         fig_dinero.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
@@ -1299,7 +1302,7 @@ with tab5:
         fig_est = px.bar(
             df_est_res, x='Total', y='Estrategia', orientation='h', text='Texto_Etiqueta',
             labels={'Estrategia': 'Estrategia de Afrontamiento', 'Total': 'Hogares'},
-            color_discrete_sequence=['#F4A261']
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
         )
         fig_est.update_traces(textposition='outside')
         fig_est.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1316,7 +1319,7 @@ with tab5:
         df_nut1['Porcentaje'] = (df_nut1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_nut1['Texto_Etiqueta'] = df_nut1['Total'].astype(str) + " (" + df_nut1['Porcentaje'].astype(str) + "%)"
         
-        fig_n1 = px.bar(df_nut1, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#457B9D'])
+        fig_n1 = px.bar(df_nut1, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_n1.update_traces(textposition='outside')
         fig_n1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_n1, use_container_width=True)
@@ -1328,7 +1331,7 @@ with tab5:
         df_nut2['Porcentaje'] = (df_nut2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_nut2['Texto_Etiqueta'] = df_nut2['Total'].astype(str) + " (" + df_nut2['Porcentaje'].astype(str) + "%)"
         
-        fig_n2 = px.bar(df_nut2, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#0077B6', '#E76F51', '#90E0EF'])
+        fig_n2 = px.bar(df_nut2, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_n2.update_traces(textposition='outside')
         fig_n2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_n2, use_container_width=True)
@@ -1341,7 +1344,7 @@ with tab5:
         df_nut3['Porcentaje'] = (df_nut3['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_nut3['Texto_Etiqueta'] = df_nut3['Total'].astype(str) + " (" + df_nut3['Porcentaje'].astype(str) + "%)"
         
-        fig_n3 = px.bar(df_nut3, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#264653'])
+        fig_n3 = px.bar(df_nut3, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_n3.update_traces(textposition='outside')
         fig_n3.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_n3, use_container_width=True)
@@ -1353,7 +1356,7 @@ with tab5:
         df_nut4['Porcentaje'] = (df_nut4['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_nut4['Texto_Etiqueta'] = df_nut4['Total'].astype(str) + " (" + df_nut4['Porcentaje'].astype(str) + "%)"
         
-        fig_n4 = px.bar(df_nut4, x='Total', y='Programa', orientation='h', text='Texto_Etiqueta', labels={'Programa': 'Estado del Programa', 'Total': 'Hogares'}, color_discrete_sequence=['#1E62D0'])
+        fig_n4 = px.bar(df_nut4, x='Total', y='Programa', orientation='h', text='Texto_Etiqueta', labels={'Programa': 'Estado del Programa', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[1]])
         fig_n4.update_traces(textposition='outside')
         fig_n4.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_n4, use_container_width=True)
@@ -1364,7 +1367,7 @@ with tab5:
     df_nut5['Porcentaje'] = (df_nut5['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
     df_nut5['Texto_Etiqueta'] = df_nut5['Total'].astype(str) + " (" + df_nut5['Porcentaje'].astype(str) + "%)"
     
-    fig_n5 = px.bar(df_nut5, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#E76F51', '#2A9D8F', '#457B9D'])
+    fig_n5 = px.bar(df_nut5, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
     fig_n5.update_traces(textposition='outside')
     fig_n5.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
     st.plotly_chart(fig_n5, use_container_width=True)
@@ -1404,7 +1407,7 @@ with tab6:
             df_top_nec.sort_values(by='Total', ascending=True),
             x='Total', y='Necesidad', orientation='h', text='Texto_Etiqueta',
             labels={'Necesidad': 'Necesidad de la Comunidad', 'Total': 'Hogares'},
-            color_discrete_sequence=['#08327D']
+            color_discrete_sequence=[INTEGRAS_COLORS[0]]
         )
         fig_nec.update_traces(textposition='outside')
         fig_nec.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1445,7 +1448,7 @@ with tab6:
             df_top_inst.sort_values(by='Total', ascending=True),
             x='Total', y='Institucion', orientation='h', text='Texto_Etiqueta',
             labels={'Institucion': 'Institución', 'Total': 'Hogares'},
-            color_discrete_sequence=['#2A9D8F']
+            color_discrete_sequence=[INTEGRAS_COLORS[2]]
         )
         fig_inst.update_traces(textposition='outside')
         fig_inst.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1464,7 +1467,7 @@ with tab6:
         df_doc_res['Porcentaje'] = (df_doc_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_doc_res['Texto_Etiqueta'] = df_doc_res['Total'].astype(str) + " (" + df_doc_res['Porcentaje'].astype(str) + "%)"
         
-        fig_doc1 = px.bar(df_doc_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#1E62D0', '#E76F51', '#2A9D8F'])
+        fig_doc1 = px.bar(df_doc_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_doc1.update_traces(textposition='outside')
         fig_doc1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_doc1, use_container_width=True)
@@ -1476,7 +1479,7 @@ with tab6:
         df_nec_doc_res['Porcentaje'] = (df_nec_doc_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_nec_doc_res['Texto_Etiqueta'] = df_nec_doc_res['Total'].astype(str) + " (" + df_nec_doc_res['Porcentaje'].astype(str) + "%)"
         
-        fig_doc2 = px.bar(df_nec_doc_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=['#E76F51', '#2A9D8F', '#1E62D0'])
+        fig_doc2 = px.bar(df_nec_doc_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_doc2.update_traces(textposition='outside')
         fig_doc2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_doc2, use_container_width=True)
@@ -1513,7 +1516,7 @@ with tab6:
             df_top_tdoc.sort_values(by='Total', ascending=True),
             x='Total', y='Documento', orientation='h', text='Texto_Etiqueta',
             labels={'Documento': 'Tipo de Documento', 'Total': 'Hogares'},
-            color_discrete_sequence=['#F4A261']
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
         )
         fig_tdoc.update_traces(textposition='outside')
         fig_tdoc.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1557,7 +1560,7 @@ with tab7:
             df_top_riesgos.sort_values(by='Total', ascending=True),
             x='Total', y='Riesgo', orientation='h', text='Texto_Etiqueta',
             labels={'Riesgo': 'Riesgo / Peligro', 'Total': 'Hogares'},
-            color_discrete_sequence=['#E76F51']
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
         )
         fig_riesgos.update_traces(textposition='outside')
         fig_riesgos.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1597,7 +1600,7 @@ with tab7:
             df_top_lugares.sort_values(by='Total', ascending=True),
             x='Total', y='Lugar', orientation='h', text='Texto_Etiqueta',
             labels={'Lugar': 'Lugar de Riesgo', 'Total': 'Hogares'},
-            color_discrete_sequence=['#2A9D8F']
+            color_discrete_sequence=[INTEGRAS_COLORS[2]]
         )
         fig_lugares.update_traces(textposition='outside')
         fig_lugares.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1616,7 +1619,7 @@ with tab7:
         df_sep['Porcentaje'] = (df_sep['Total'] / total_hogs * 100).round(1)
         df_sep['Etiqueta'] = df_sep['Total'].astype(str) + " (" + df_sep['Porcentaje'].astype(str) + "%)"
         
-        fig_sep = px.bar(df_sep, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#08327D', '#E76F51', '#2A9D8F'])
+        fig_sep = px.bar(df_sep, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_sep.update_traces(textposition='outside')
         fig_sep.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_sep, use_container_width=True)
@@ -1628,7 +1631,7 @@ with tab7:
         df_ayu['Porcentaje'] = (df_ayu['Total'] / total_hogs * 100).round(1)
         df_ayu['Etiqueta'] = df_ayu['Total'].astype(str) + " (" + df_ayu['Porcentaje'].astype(str) + "%)"
         
-        fig_ayu = px.bar(df_ayu, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#1E62D0'])
+        fig_ayu = px.bar(df_ayu, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_ayu.update_traces(textposition='outside')
         fig_ayu.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_ayu, use_container_width=True)
@@ -1646,7 +1649,7 @@ with tab8:
         df_g1['Porcentaje'] = (df_g1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_g1['Etiqueta'] = df_g1['Total'].astype(str) + " (" + df_g1['Porcentaje'].astype(str) + "%)"
         
-        fig_g1 = px.bar(df_g1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#E76F51', '#2A9D8F', '#08327D'])
+        fig_g1 = px.bar(df_g1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_g1.update_traces(textposition='outside')
         fig_g1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_g1, use_container_width=True)
@@ -1658,21 +1661,22 @@ with tab8:
         df_g2['Porcentaje'] = (df_g2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_g2['Etiqueta'] = df_g2['Total'].astype(str) + " (" + df_g2['Porcentaje'].astype(str) + "%)"
         
-        fig_g2 = px.bar(df_g2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#1E62D0'])
+        fig_g2 = px.bar(df_g2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_g2.update_traces(textposition='outside')
         fig_g2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_g2, use_container_width=True)
 
     st.markdown("---")
 
-    # Pregunta 67.1: Top 5 problemas comunitarios que afectan la integridad física y emocional
+    # Pregunta 67.1: Top 5 problemas comunitarios (Excluyendo policía y no responde)
     st.subheader("67.1. ¿Qué problemas suceden en su comunidad que afecten la integridad física y emocional o la seguridad de las personas? (Top 5)")
     cols_probl_kobo = [c for c in df_raw.columns if '67.1' in str(c) and not '67.1.2' in str(c) and not '67_1_2' in str(c) or ('violencia basada en género' in str(c).lower() and not '67.1.2' in str(c))]
     conteo_probl = {}
     if cols_probl_kobo:
         for c in cols_probl_kobo:
             nombre_probl = c.split('/')[-1].strip().capitalize()
-            if nombre_probl.lower() not in ['ns/nc', 'no sé / no responde', 'no especificado', 'otro']:
+            # Filtro estricto para excluir policía, variaciones y no responde
+            if not any(excl in nombre_probl.lower() for excl in ['policía', 'polícia', 'ns/nc', 'no responde', 'no sé / no responde', 'no especificado', 'otro']):
                 tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
                 if tot > 0:
                     conteo_probl[nombre_probl] = int(tot)
@@ -1695,7 +1699,7 @@ with tab8:
             df_top_probl.sort_values(by='Total', ascending=True),
             x='Total', y='Problema', orientation='h', text='Texto_Etiqueta',
             labels={'Problema': 'Problema Comunitario', 'Total': 'Hogares'},
-            color_discrete_sequence=['#E76F51']
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
         )
         fig_probl.update_traces(textposition='outside')
         fig_probl.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1736,7 +1740,7 @@ with tab8:
             df_top_exp.sort_values(by='Total', ascending=True),
             x='Total', y='PoblacionExpuesta', orientation='h', text='Texto_Etiqueta',
             labels={'PoblacionExpuesta': 'Grupo Poblacional', 'Total': 'Hogares'},
-            color_discrete_sequence=['#1E62D0']
+            color_discrete_sequence=[INTEGRAS_COLORS[1]]
         )
         fig_exp.update_traces(textposition='outside')
         fig_exp.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1777,7 +1781,7 @@ with tab8:
             df_top_donde.sort_values(by='Total', ascending=True),
             x='Total', y='Institucion', orientation='h', text='Texto_Etiqueta',
             labels={'Institucion': 'Institución / Instancia', 'Total': 'Hogares'},
-            color_discrete_sequence=['#08327D']
+            color_discrete_sequence=[INTEGRAS_COLORS[0]]
         )
         fig_donde.update_traces(textposition='outside')
         fig_donde.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1817,7 +1821,7 @@ with tab8:
             df_top_serv.sort_values(by='Total', ascending=True),
             x='Total', y='Servicio', orientation='h', text='Texto_Etiqueta',
             labels={'Servicio': 'Servicio de Atención', 'Total': 'Hogares'},
-            color_discrete_sequence=['#1E62D0']
+            color_discrete_sequence=[INTEGRAS_COLORS[1]]
         )
         fig_serv.update_traces(textposition='outside')
         fig_serv.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1839,7 +1843,7 @@ with tab9:
         df_ed1['Porcentaje'] = (df_ed1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_ed1['Etiqueta'] = df_ed1['Total'].astype(str) + " (" + df_ed1['Porcentaje'].astype(str) + "%)"
         
-        fig_ed1 = px.bar(df_ed1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#2A9D8F', '#E76F51', '#08327D'])
+        fig_ed1 = px.bar(df_ed1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_ed1.update_traces(textposition='outside')
         fig_ed1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_ed1, use_container_width=True)
@@ -1851,7 +1855,7 @@ with tab9:
         df_ed2['Porcentaje'] = (df_ed2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_ed2['Etiqueta'] = df_ed2['Total'].astype(str) + " (" + df_ed2['Porcentaje'].astype(str) + "%)"
         
-        fig_ed2 = px.bar(df_ed2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=['#1E62D0', '#E76F51', '#2A9D8F'])
+        fig_ed2 = px.bar(df_ed2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_ed2.update_traces(textposition='outside')
         fig_ed2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_ed2, use_container_width=True)
@@ -1888,7 +1892,7 @@ with tab9:
             df_top_dif.sort_values(by='Total', ascending=True),
             x='Total', y='Dificultad', orientation='h', text='Texto_Etiqueta',
             labels={'Dificultad': 'Dificultad / Barrera', 'Total': 'Hogares'},
-            color_discrete_sequence=['#F4A261']
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
         )
         fig_dif.update_traces(textposition='outside')
         fig_dif.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
@@ -1905,7 +1909,7 @@ with tab9:
     df_ed4['Porcentaje'] = (df_ed4['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
     df_ed4['Etiqueta'] = df_ed4['Total'].astype(str) + " (" + df_ed4['Porcentaje'].astype(str) + "%)"
     
-    fig_ed4 = px.bar(df_ed4, x='Total', y='EstadoInstalacion', orientation='h', text='Etiqueta', labels={'EstadoInstalacion': 'Estado de Instalaciones', 'Total': 'Hogares'}, color_discrete_sequence=['#0077B6'])
+    fig_ed4 = px.bar(df_ed4, x='Total', y='EstadoInstalacion', orientation='h', text='Etiqueta', labels={'EstadoInstalacion': 'Estado de Instalaciones', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[2]])
     fig_ed4.update_traces(textposition='outside')
     fig_ed4.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
     st.plotly_chart(fig_ed4, use_container_width=True)
@@ -1942,7 +1946,7 @@ with tab9:
             df_top_car.sort_values(by='Total', ascending=True),
             x='Total', y='Carencia', orientation='h', text='Texto_Etiqueta',
             labels={'Carencia': 'Carencia Crítica', 'Total': 'Hogares'},
-            color_discrete_sequence=['#2A9D8F']
+            color_discrete_sequence=[INTEGRAS_COLORS[0]]
         )
         fig_car.update_traces(textposition='outside')
         fig_car.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
