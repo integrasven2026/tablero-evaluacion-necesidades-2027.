@@ -185,41 +185,6 @@ MAPA_FRECUENCIA_AGUA = {
     'cada_15_dias': 'Cada 15 días o más', 'cada_15_dias_o_mas': 'Cada 15 días o más'
 }
 
-MAPA_TRATAMIENTO_AGUA = {
-    'hervido': 'Hervido', 'cloro': 'Cloro / Lavandina', 'cloro_lavandina': 'Cloro / Lavandina',
-    'filtro': 'Filtro (cerámica/carbón/tela)', 'filtro_ceramica_carbon_tela': 'Filtro (cerámica/carbón/tela)',
-    'otro': 'Otro método', 'otro_metodo': 'Otro método'
-}
-
-MAPA_PROBLEMAS_AGUA = {
-    'color': 'Color', 'olor': 'Olor', 'sabor': 'Sabor',
-    'ninguna': 'Ninguna', 'ns_nc': 'No sabe / No responde', 'otro': 'Otro'
-}
-
-MAPA_ALMACENAMIENTO_FORMA = {
-    'recipientes_cubiertos_dentro': 'En recipientes cubiertos dentro de la casa',
-    'recipientes_cubiertos_fuera': 'En recipientes cubiertos fuera de la casa',
-    'recipientes_destapados_dentro': 'En recipientes destapados dentro de la casa',
-    'recipientes_destapados_fuera': 'En recipientes destapados fuera de la casa'
-}
-
-MAPA_ENFERMEDADES_HIDRICAS = {
-    'diarreas': 'Diarreas', 'enfermedades_piel': 'Enfermedades de piel',
-    'vomitos': 'Vómitos', 'ninguno': 'Ninguno', 'ninguna': 'Ninguno'
-}
-
-MAPA_DESECHO_BASURA = {
-    'servicio_aseo': 'Es recogida por el servicio de aseo público', 'calle': 'La deja en la calle',
-    'entierra': 'La entierra', 'quema': 'La quema', 'recicla': 'La recicla',
-    'rio': 'La tira en el rio, laguna, quebrada', 'paga': 'Le paga a alguien para que se la lleve',
-    'ns_nc': 'Ns/nc', 'otra': 'Otra'
-}
-
-MAPA_TIPO_FILTRO = {
-    'gravedad': 'Filtros por gravedad (Ej. Filtros de cerámica de 2 tanques/recipientes, velas filtrantes, etc.)',
-    'sifon': 'Filtros de sifón (Ej. Sifón tipo Tulip u otros sistemas de succión/manguera)'
-}
-
 MAPA_RAZON_MENSTRUAL = {
     'costo_elevado': 'Costo elevado o falta de presupuesto.', 'costo': 'Costo elevado o falta de presupuesto.',
     'no_disponibles': 'No hay disponibles a la venta en las tiendas cercanas, mercados o puntos de abasto locales.',
@@ -229,94 +194,64 @@ MAPA_RAZON_MENSTRUAL = {
 }
 
 # --- BÚSQUEDA EXACTA DE COLUMNAS CLAVE ---
-col_socio = None
-for c in df_raw.columns:
-    if 'seleccione la organización a la que pertenece' in str(c).lower() or ('organización' in str(c).lower() and '2.' in str(c)):
-        col_socio = c
-        break
-if not col_socio:
-    for c in df_raw.columns:
-        if 'socio' in str(c).lower():
-            col_socio = c
-            break
+col_socio = next((c for c in df_raw.columns if 'seleccione la organización a la que pertenece' in str(c).lower() or ('organización' in str(c).lower() and '2.' in str(c)) or 'socio' in str(c).lower()), None)
+col_edu = next((c for c in df_raw.columns if 'nivel educativo' in str(c).lower() or '13.' in str(c)), None)
+col_estado = next((c for c in df_raw.columns if 'estado' in str(c).lower()), None)
+col_municipio = next((c for c in df_raw.columns if 'municipio' in str(c).lower()), None)
+col_parroquia = next((c for c in df_raw.columns if 'parroquia' in str(c).lower()), None)
+col_comunidad = next((c for c in df_raw.columns if 'comunidad' in str(c).lower()), None)
+col_sexo = next((c for c in df_raw.columns if 'sexo' in str(c).lower() or 'biologico' in str(c).lower()), None)
 
-col_edu = None
-for c in df_raw.columns:
-    if 'nivel educativo' in str(c).lower() or '13.' in str(c):
-        col_edu = c
-        break
-
-col_estado = [c for c in df_raw.columns if 'estado' in str(c).lower()][0] if any('estado' in str(c).lower() for c in df_raw.columns) else None
-col_municipio = [c for c in df_raw.columns if 'municipio' in str(c).lower()][0] if any('municipio' in str(c).lower() for c in df_raw.columns) else None
-col_parroquia = [c for c in df_raw.columns if 'parroquia' in str(c).lower()][0] if any('parroquia' in str(c).lower() for c in df_raw.columns) else None
-col_comunidad = [c for c in df_raw.columns if 'comunidad' in str(c).lower()][0] if any('comunidad' in str(c).lower() for c in df_raw.columns) else None
-col_sexo = [c for c in df_raw.columns if 'sexo' in str(c).lower() or 'biologico' in str(c).lower()][0] if any('sexo' in str(c).lower() for c in df_raw.columns) else None
-
-col_nac = [c for c in df_raw.columns if 'nacionalidad' in str(c).lower()][0] if any('nacionalidad' in str(c).lower() for c in df_raw.columns) else None
-col_ind = [c for c in df_raw.columns if 'indígena' in str(c).lower() or 'etnia' in str(c).lower()][0] if any('indígena' in str(c).lower() for c in df_raw.columns) else None
-
-col_disc_hogar = [c for c in df_raw.columns if '16. ¿Alguien de su grupo familiar' in str(c)][0] if any('16. ¿Alguien de su grupo familiar' in str(c) for c in df_raw.columns) else None
+col_nac = next((c for c in df_raw.columns if 'nacionalidad' in str(c).lower()), None)
+col_ind = next((c for c in df_raw.columns if 'indígena' in str(c).lower() or 'etnia' in str(c).lower()), None)
+col_disc_hogar = next((c for c in df_raw.columns if '16. ¿Alguien de su grupo familiar' in str(c)), None)
 
 cols_hombres_etarios = [c for c in df_raw.columns if 'hombres de' in str(c).lower() or 'hombres' in str(c).lower()]
 cols_mujeres_etarios = [c for c in df_raw.columns if 'mujeres de' in str(c).lower() or 'mujeres' in str(c).lower()]
 
-col_gestantes = [c for c in df_raw.columns if '21.1' in str(c) or 'embarazadas' in str(c).lower()][0] if any('21.1' in str(c) for c in df_raw.columns) else None
-col_tenencia = [c for c in df_raw.columns if '22' in str(c) or 'tenencia' in str(c).lower()][0] if any('22' in str(c) for c in df_raw.columns) else None
-col_personas_viv = [c for c in df_raw.columns if '24' in str(c) or 'personas' in str(c).lower()][0] if any('24' in str(c) for c in df_raw.columns) else None
-col_cuartos = [c for c in df_raw.columns if '25' in str(c) or 'cuartos' in str(c).lower()][0] if any('25' in str(c) for c in df_raw.columns) else None
+col_gestantes = next((c for c in df_raw.columns if '21.1' in str(c) or 'embarazadas' in str(c).lower()), None)
+col_tenencia = next((c for c in df_raw.columns if '22' in str(c) or 'tenencia' in str(c).lower()), None)
+col_personas_viv = next((c for c in df_raw.columns if '24' in str(c) or 'personas' in str(c).lower()), None)
+col_cuartos = next((c for c in df_raw.columns if '25' in str(c) or 'cuartos' in str(c).lower()), None)
 
-# Columnas de Empleo y Finanzas
-col_act_laboral = [c for c in df_raw.columns if '39.' in str(c) or 'actividad laboral' in str(c).lower()][0] if any('39.' in str(c) or 'actividad laboral' in str(c).lower() for c in df_raw.columns) else None
-col_cant_empleadas = [c for c in df_raw.columns if '42.' in str(c) or 'empleadas' in str(c).lower()][0] if any('42.' in str(c) or 'empleadas' in str(c).lower() for c in df_raw.columns) else None
-col_remesas = [c for c in df_raw.columns if '43.' in str(c) or 'remesas' in str(c).lower()][0] if any('43.' in str(c) for c in df_raw.columns) else None
-col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunidades de empleo' in str(c).lower()][0] if any('44.' in str(c) for c in df_raw.columns) else None
-col_ingresos = [c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()][0] if any('45.' in str(c) for c in df_raw.columns) else None
-col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()][0] if any('46.' in str(c) for c in df_raw.columns) else None
+col_act_laboral = next((c for c in df_raw.columns if '39.' in str(c) or 'actividad laboral' in str(c).lower()), None)
+col_cant_empleadas = next((c for c in df_raw.columns if '42.' in str(c) or 'empleadas' in str(c).lower()), None)
+col_remesas = next((c for c in df_raw.columns if '43.' in str(c) or 'remesas' in str(c).lower()), None)
+col_oportunidades = next((c for c in df_raw.columns if '44.' in str(c) or 'oportunidades de empleo' in str(c).lower()), None)
+col_ingresos = next((c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()), None)
+col_situacion_fin = next((c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()), None)
 
-# Seguridad Alimentaria y Nutrición
-col_fcs_cat = None
-for c in df_raw.columns:
-    c_low = str(c).lower()
-    if ('fcs' in c_low) or ('consumo' in c_low and 'alimento' in c_low) or ('47' in c_low) or ('score' in c_low):
-        col_fcs_cat = c
-        break
+col_fcs_cat = next((c for c in df_raw.columns if ('fcs' in str(c).lower()) or ('consumo' in str(c).lower() and 'alimento' in str(c).lower()) or ('47' in str(c)) or ('score' in str(c).lower())), None)
+col_dejado_consumir = next((c for c in df_raw.columns if '48.' in str(c) or 'dejado de consumir' in str(c).lower()), None)
+col_apoyo_alim = next((c for c in df_raw.columns if '49.' in str(c) or 'apoyo alimentario' in str(c).lower()), None)
+col_dias_sin_solidos = next((c for c in df_raw.columns if '50.' in str(c) or 'alimentos sólidos' in str(c).lower()), None)
+col_dinero_suf_alim = next((c for c in df_raw.columns if '51.' in str(c) or 'dinero suficiente para adquirir todos los alimentos' in str(c).lower()), None)
 
-col_dejado_consumir = [c for c in df_raw.columns if '48.' in str(c) or 'dejado de consumir' in str(c).lower()][0] if any('48.' in str(c) for c in df_raw.columns) else None
-col_apoyo_alim = [c for c in df_raw.columns if '49.' in str(c) or 'apoyo alimentario' in str(c).lower()][0] if any('49.' in str(c) for c in df_raw.columns) else None
-col_dias_sin_solidos = [c for c in df_raw.columns if '50.' in str(c) or 'alimentos sólidos' in str(c).lower()][0] if any('50.' in str(c) for c in df_raw.columns) else None
-col_dinero_suf_alim = [c for c in df_raw.columns if '51.' in str(c) or 'dinero suficiente para adquirir todos los alimentos' in str(c).lower()][0] if any('51.' in str(c) for c in df_raw.columns) else None
+col_nut_prenatal = next((c for c in df_raw.columns if '54.' in str(c) or 'prenatal' in str(c).lower()), None)
+col_nut_pediatrica = next((c for c in df_raw.columns if '55.' in str(c) or 'pediátricas' in str(c).lower() or 'pediatricas' in str(c).lower()), None)
+col_lactancia = next((c for c in df_raw.columns if '56.' in str(c) or 'lactancia materna' in str(c).lower()), None)
+col_suplementos = next((c for c in df_raw.columns if '57.' in str(c) or 'suplementos nutricionales' in str(c).lower()), None)
+col_malnutricion = next((c for c in df_raw.columns if '58.' in str(c) or 'malnutrición' in str(c).lower() or 'malnutricion' in str(c).lower()), None)
 
-col_nut_prenatal = [c for c in df_raw.columns if '54.' in str(c) or 'prenatal' in str(c).lower()][0] if any('54.' in str(c) for c in df_raw.columns) else None
-col_nut_pediatrica = [c for c in df_raw.columns if '55.' in str(c) or 'pediátricas' in str(c).lower() or 'pediatricas' in str(c).lower()][0] if any('55.' in str(c) for c in df_raw.columns) else None
-col_lactancia = [c for c in df_raw.columns if '56.' in str(c) or 'lactancia materna' in str(c).lower()][0] if any('56.' in str(c) for c in df_raw.columns) else None
-col_suplementos = [c for c in df_raw.columns if '57.' in str(c) or 'suplementos nutricionales' in str(c).lower()][0] if any('57.' in str(c) for c in df_raw.columns) else None
-col_malnutricion = [c for c in df_raw.columns if '58.' in str(c) or 'malnutrición' in str(c).lower() or 'malnutricion' in str(c).lower()][0] if any('58.' in str(c) for c in df_raw.columns) else None
+col_acceso_doc = next((c for c in df_raw.columns if '61.' in str(c) or 'partidas de nacimiento' in str(c).lower()), None)
+col_necesidad_doc = next((c for c in df_raw.columns if ('62.' in str(c) or 'documento legal' in str(c).lower()) and not '62_1' in str(c) and not '62.1' in str(c)), None)
 
-# Derechos y Servicios
-col_acceso_doc = [c for c in df_raw.columns if '61.' in str(c) or 'partidas de nacimiento' in str(c).lower()][0] if any('61.' in str(c) for c in df_raw.columns) else None
-col_necesidad_doc = [c for c in df_raw.columns if '62.' in str(c) and not '62_1' in str(c) and not '62.1' in str(c) or ('documento legal' in str(c).lower() and not '62_1' in str(c))][0] if any(('62.' in str(c) or 'documento legal' in str(c).lower()) and not '62_1' in str(c) and not '62.1' in str(c) for c in df_raw.columns) else None
-
-# Protección NNA
 col_nna_separados = next((c for c in df_raw.columns if '65.' in str(c) or 'separados de sus padres' in str(c).lower()), None)
 col_nna_ayuda = next((c for c in df_raw.columns if '66.' in str(c) or 'abuso o violencia' in str(c).lower()), None)
 
-# GBV y Género
-col_gbv_problemas = next((c for c in df_raw.columns if '67.' in str(c) and not '67.1' in str(c) and not '67_1' in str(c) or ('integridad física y emocional' in str(c).lower() and not '67.1' in str(c))), None)
+col_gbv_problemas = next((c for c in df_raw.columns if ('67.' in str(c) or 'integridad física y emocional' in str(c).lower()) and not '67.1' in str(c) and not '67_1' in str(c)), None)
 col_gbv_acceso = next((c for c in df_raw.columns if '69.' in str(c) or 'acceden al servicio que refiere' in str(c).lower()), None)
 
-# Educación en Emergencias
 col_edu_asisten = next((c for c in df_raw.columns if '71.' in str(c) or 'asisten todos los niños' in str(c).lower()), None)
 col_edu_operativas = next((c for c in df_raw.columns if '72.' in str(c) or 'escuelas operativas' in str(c).lower()), None)
 col_edu_estado = next((c for c in df_raw.columns if '74.' in str(c) or 'estado general' in str(c).lower() or 'instalaciones de la unidad educativa' in str(c).lower()), None)
 
-# Salud y Salud Sexual y Reproductiva (Preguntas 76 - 82)
 col_salud_problema = next((c for c in df_raw.columns if '76.' in str(c) or 'problema de salud y necesitó acceder a atención médica' in str(c).lower()), None)
 col_salud_obtener = next((c for c in df_raw.columns if '76.2' in str(c) or '76_2' in str(c) or 'pudieron obtener atención médica' in str(c).lower()), None)
 
 col_ssr_servicios = next((c for c in df_raw.columns if '80.' in str(c) or 'servicios de salud sexual y reproductiva' in str(c).lower()), None)
 col_ssr_charlas = next((c for c in df_raw.columns if '82.' in str(c) or 'charla o formación sobre temas de salud sexual' in str(c).lower()), None)
 
-# Movilidad Humana y SMAPS
 col_mov_residencia = next((c for c in df_raw.columns if '83.' in str(c) or 'cambiado su lugar de residencia en el último año' in str(c).lower()), None)
 col_mov_pais = next((c for c in df_raw.columns if '84.' in str(c) or 'salido o salió del país con el propósito de vivir' in str(c).lower()), None)
 col_mov_comunidad = next((c for c in df_raw.columns if '85.' in str(c) or 'personas que hayan salido en los últimos tres meses' in str(c).lower()), None)
@@ -332,21 +267,15 @@ for c in df_raw.columns:
         col_agua_frec = c
         break
 
-col_agua_beber = [c for c in df_raw.columns if '28' in str(c) or 'beber' in str(c).lower()][0] if any('28' in str(c) for c in df_raw.columns) else None
-col_agua_suf = [c for c in df_raw.columns if '30' in str(c) or 'suficiente' in str(c).lower()][0] if any('30' in str(c) for c in df_raw.columns) else None
-col_agua_trat = [c for c in df_raw.columns if '31' in str(c) or 'tratamiento' in str(c).lower()][0] if any('31' in str(c) for c in df_raw.columns) else None
-col_almacena = [c for c in df_raw.columns if '33' in str(c) or 'almacena' in str(c).lower()][0] if any('33' in str(c) for c in df_raw.columns) else None
-col_acceso_jabon = [c for c in df_raw.columns if '35' in str(c) or 'jabon' in str(c).lower()][0] if any('35' in str(c) for c in df_raw.columns) else None
+col_agua_beber = next((c for c in df_raw.columns if '28' in str(c) or 'beber' in str(c).lower()), None)
+col_agua_suf = next((c for c in df_raw.columns if '30' in str(c) or 'suficiente' in str(c).lower()), None)
+col_agua_trat = next((c for c in df_raw.columns if '31' in str(c) or 'tratamiento' in str(c).lower()), None)
+col_almacena = next((c for c in df_raw.columns if '33' in str(c) or 'almacena' in str(c).lower()), None)
+col_acceso_jabon = next((c for c in df_raw.columns if '35' in str(c) or 'jabon' in str(c).lower()), None)
 
-col_higiene_menstru = None
-for c in df_raw.columns:
-    c_l = str(c).lower()
-    if '36' in c_l and not '36_1' in c_l and not '36.1' in c_l and not 'jabon' in c_l:
-        col_higiene_menstru = c
-        break
-
-col_razon_menstru = [c for c in df_raw.columns if '36_1' in str(c) or '36.1' in str(c) or 'razón' in str(c).lower()][0] if any('36_1' in str(c) or '36.1' in str(c) for c in df_raw.columns) else None
-col_filtro_agua = [c for c in df_raw.columns if '38' in str(c) or 'filtro' in str(c).lower()][0] if any('38' in str(c) for c in df_raw.columns) else None
+col_higiene_menstru = next((c for c in df_raw.columns if '36' in str(c).lower() and not '36_1' in str(c) and not '36.1' in str(c) and not 'jabon' in str(c).lower()), None)
+col_razon_menstru = next((c for c in df_raw.columns if '36_1' in str(c) or '36.1' in str(c) or 'razón' in str(c).lower()), None)
+col_filtro_agua = next((c for c in df_raw.columns if '38' in str(c) or 'filtro' in str(c).lower()), None)
 
 df_clean = df_raw.copy()
 
@@ -459,7 +388,6 @@ df_clean['edu_clean'] = df_raw[col_edu].apply(limpiar_educacion) if col_edu else
 df_clean['nacionalidad_clean'] = df_raw[col_nac].apply(lambda x: limpiar_codigo(x, MAPA_NACIONALIDAD)) if col_nac else 'No especificado'
 df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codigo(x, MAPA_PUEBLOS_INDIGENAS)) if col_ind else 'No especificado'
 
-# Limpieza Movilidad y SMAPS
 df_clean['mov_residencia_clean'] = df_raw[col_mov_residencia].apply(limpiar_si_no) if col_mov_residencia else 'No especificado'
 df_clean['mov_pais_clean'] = df_raw[col_mov_pais].apply(limpiar_si_no) if col_mov_pais else 'No especificado'
 df_clean['mov_comunidad_clean'] = df_raw[col_mov_comunidad].apply(limpiar_si_no) if col_mov_comunidad else 'No especificado'
@@ -469,11 +397,9 @@ df_clean['phq2_clean'] = limpiar_texto_simple(col_phq2)
 df_clean['gad1_clean'] = limpiar_texto_simple(col_gad1)
 df_clean['gad2_clean'] = limpiar_texto_simple(col_gad2)
 
-# Limpieza SSR Adicionales
 df_clean['ssr_servicios_clean'] = df_raw[col_ssr_servicios].apply(limpiar_si_no) if col_ssr_servicios else 'No especificado'
 df_clean['ssr_charlas_clean'] = df_raw[col_ssr_charlas].apply(limpiar_si_no) if col_ssr_charlas else 'No especificado'
 
-# Limpieza de Empleo y Finanzas
 df_clean['act_laboral_clean'] = df_raw[col_act_laboral].apply(limpiar_si_no) if col_act_laboral else 'No especificado'
 df_clean['cant_empleadas_val'] = pd.to_numeric(df_raw[col_cant_empleadas], errors='coerce').fillna(0) if col_cant_empleadas else 0
 df_clean['remesas_clean'] = df_raw[col_remesas].apply(limpiar_si_no) if col_remesas else 'No especificado'
@@ -481,7 +407,6 @@ df_clean['oportunidades_clean'] = df_raw[col_oportunidades].apply(limpiar_si_no)
 df_clean['ingresos_clean'] = limpiar_texto_simple(col_ingresos)
 df_clean['situacion_fin_clean'] = limpiar_texto_simple(col_situacion_fin)
 
-# Limpieza de Seguridad Alimentaria
 df_clean['fcs_cat_clean'] = df_raw[col_fcs_cat].apply(limpiar_fcs) if col_fcs_cat else 'No especificado'
 df_clean['dejado_consumir_clean'] = df_raw[col_dejado_consumir].apply(limpiar_si_no) if col_dejado_consumir else 'No especificado'
 df_clean['apoyo_alim_clean'] = df_raw[col_apoyo_alim].apply(limpiar_si_no) if col_apoyo_alim else 'No especificado'
@@ -494,11 +419,9 @@ df_clean['lactancia_clean'] = df_raw[col_lactancia].apply(limpiar_si_no) if col_
 df_clean['suplementos_clean'] = limpiar_texto_simple(col_suplementos)
 df_clean['malnutricion_clean'] = df_raw[col_malnutricion].apply(limpiar_si_no) if col_malnutricion else 'No especificado'
 
-# Limpieza de Derechos y Servicios
 df_clean['acceso_doc_clean'] = df_raw[col_acceso_doc].apply(limpiar_si_no) if col_acceso_doc else 'No especificado'
 df_clean['necesidad_doc_clean'] = df_raw[col_necesidad_doc].apply(limpiar_si_no) if col_necesidad_doc else 'No especificado'
 
-# Limpieza Protección NNA, GBV, Educación y Salud
 df_clean['nna_separados_clean'] = df_raw[col_nna_separados].apply(limpiar_si_no) if col_nna_separados else 'No especificado'
 df_clean['nna_ayuda_clean'] = df_raw[col_nna_ayuda].apply(limpiar_si_no) if col_nna_ayuda else 'No especificado'
 df_clean['gbv_problemas_clean'] = df_raw[col_gbv_problemas].apply(limpiar_si_no) if col_gbv_problemas else 'No especificado'
@@ -511,7 +434,6 @@ df_clean['edu_estado_clean'] = limpiar_texto_simple(col_edu_estado)
 df_clean['salud_problema_clean'] = df_raw[col_salud_problema].apply(limpiar_si_no) if col_salud_problema else 'No especificado'
 df_clean['salud_obtener_clean'] = df_raw[col_salud_obtener].apply(limpiar_si_no) if col_salud_obtener else 'No especificado'
 
-# Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
 if cols_hombres_etarios:
     df_clean['hombres_val'] = df_raw[cols_hombres_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
 else:
@@ -530,7 +452,6 @@ else:
 
 df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes in df_raw.columns else 0
 
-# --- VIVIENDA Y CÁLCULO DE HACINAMIENTO INE ---
 s_pers = pd.to_numeric(df_raw[col_personas_viv], errors='coerce') if col_personas_viv in df_raw.columns else pd.Series()
 s_cuart = pd.to_numeric(df_raw[col_cuartos], errors='coerce') if col_cuartos in df_raw.columns else pd.Series()
 
@@ -557,7 +478,7 @@ def evaluar_discapacidad_hogar(row):
             return 'Sí (Con Discapacidad)'
     return 'No'
 
-col_ind_hogar = [c for c in df_raw.columns if '14. ¿Pertenece usted a un pueblo indígena' in str(c)][0] if any('14. ¿Pertenece usted a un pueblo indígena' in str(c) for c in df_raw.columns) else None
+col_ind_hogar = next((c for c in df_raw.columns if '14. ¿Pertenece usted a un pueblo indígena' in str(c)), None)
 
 df_clean['disc_filtro'] = df_clean.apply(evaluar_discapacidad_hogar, axis=1)
 df_clean['indigena_filtro'] = df_raw[col_ind_hogar].apply(lambda x: 'Sí (Pueblo Indígena)' if 'sí' in str(x).strip().lower() or 'si' in str(x).strip().lower() else 'No') if col_ind_hogar else 'No'
@@ -892,7 +813,7 @@ with tab9:
     fig_ed1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
     st.plotly_chart(fig_ed1, use_container_width=True)
 
-# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA (CAPÍTULO COMPLETO Y CORREGIDO DE 76 A 82)
+# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA (76 A 82)
 with tab10:
     st.header("Salud y Salud Sexual y Reproductiva (Preguntas 76 - 82)")
     total_hogs = len(df_filtered)
