@@ -335,9 +335,20 @@ with col7:
 
 st.markdown("---")
 
-# PESTAÑAS PRINCIPALES
-tab1, tab2, tab3 = st.tabs([
+# RESTAURACIÓN DE LAS 14 PESTAÑAS / CAPÍTULOS COMPLETOS
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14 = st.tabs([
     "Población",
+    "Vivienda",
+    "Agua, Saneamiento e Higiene (WASH)",
+    "Empleo y Economía",
+    "Seguridad Alimentaria y Nutrición",
+    "Derechos y Servicios",
+    "Protección NNA",
+    "GBV y Género",
+    "Educación en Emergencias",
+    "Salud y Salud Sexual y Reproductiva",
+    "Movilidad Humana",
+    "SMAPS (Salud Mental)",
     "Mapa de Levantamientos",
     "Base de Datos"
 ])
@@ -356,8 +367,52 @@ with tab1:
     )
     st.plotly_chart(fig_jefe_bar, use_container_width=True)
 
-# TAB 2: MAPA DE LEVANTAMIENTOS (USANDO OPENSTREETMAP LIBRE)
+# TAB 2: VIVIENDA
 with tab2:
+    st.header("Vivienda y Habitabilidad")
+
+# TAB 3: WASH
+with tab3:
+    st.header("Agua, Saneamiento e Higiene (WASH)")
+
+# TAB 4: EMPLEO Y ECONOMÍA
+with tab4:
+    st.header("Empleo, Ingresos y Situación Financiera")
+
+# TAB 5: SEGURIDAD ALIMENTARIA Y NUTRICIÓN
+with tab5:
+    st.header("Seguridad Alimentaria y Nutrición")
+
+# TAB 6: DERECHOS Y SERVICIOS
+with tab6:
+    st.header("Acceso a Derechos y Servicios")
+
+# TAB 7: PROTECCIÓN NNA
+with tab7:
+    st.header("Protección de Niñas, Niños y Adolescentes (NNA)")
+
+# TAB 8: GBV Y GÉNERO
+with tab8:
+    st.header("GBV y Género")
+
+# TAB 9: EDUCACIÓN EN EMERGENCIAS
+with tab9:
+    st.header("Educación en Emergencias")
+
+# TAB 10: SALUD Y SSR
+with tab10:
+    st.header("Salud y Salud Sexual y Reproductiva")
+
+# TAB 11: MOVILIDAD HUMANA
+with tab11:
+    st.header("Movilidad Humana")
+
+# TAB 12: SMAPS
+with tab12:
+    st.header("Salud Mental y Apoyo Psicosocial (SMAPS)")
+
+# TAB 13: MAPA DE LEVANTAMIENTOS (SIN CUADRO REPETIDO ABAJO, SÓLO MAPA CON TOOLTIP/POPUP)
+with tab13:
     st.header("🗺️ Mapa Georreferenciado de Puntos de Levantamiento")
     st.markdown("Visualización territorial jerárquica con el detalle de **Estado, Municipio, Parroquia y Localidad (Comunidad)** junto al volumen de encuestas realizadas.")
 
@@ -409,13 +464,15 @@ with tab2:
 
     st_folium(m, width=1200, height=550)
 
-    st.markdown("---")
-    st.subheader("📋 Cuadro Resumen Territorial de Levantamientos")
-    df_tabla_final_geo = df_geo_resumen[['estado_clean', 'municipio_clean', 'parroquia_clean', 'comunidad_clean', 'cantidad_levantamientos']].sort_values(by='cantidad_levantamientos', ascending=False)
-    df_tabla_final_geo.columns = ['Estado', 'Municipio', 'Parroquia', 'Localidad / Comunidad', 'Cantidad de Levantamientos']
-    st.dataframe(df_tabla_final_geo, use_container_width=True, hide_index=True)
-
-# TAB 3: BASE DE DATOS
-with tab3:
+# TAB 14: BASE DE DATOS
+with tab14:
     st.subheader("Vista Previa de Registros")
     st.dataframe(df_filtered[['socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean', 'comunidad_clean']], use_container_width=True)
+    
+    csv_data = df_filtered.to_csv(index=False).encode('utf-8-sig')
+    st.download_button(
+        label="📥 Descargar Datos Filtrados (CSV)",
+        data=csv_data,
+        file_name="evaluacion_necesidades_echo_hip_2027.csv",
+        mime="text/csv"
+    )
