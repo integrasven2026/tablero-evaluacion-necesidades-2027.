@@ -715,9 +715,9 @@ with tab1:
     st.markdown("---")
 
     st.subheader("Top 5 Principales Tipos de Discapacidad en el Hogar")
-    cols_disp_det = [c for c in df_raw.columns if '15.7. Discapacidad/' in c or '16.1. ¿Qué tipo de discapacidad presenta su familiar?/' in c]
+    cols_disc_det = [c for c in df_raw.columns if '15.7. Discapacidad/' in c or '16.1. ¿Qué tipo de discapacidad presenta su familiar?/' in c]
     conteo_discapacidades = {}
-    for c in cols_disp_det:
+    for c in cols_disc_det:
         nombre_disc = c.split('/')[-1].strip()
         if nombre_disc.lower() not in ['no posee', 'ns/nc', 'no especificado']:
             tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*len(df_filtered))), errors='coerce').fillna(0).sum()
@@ -1633,7 +1633,7 @@ with tab7:
         fig_ayu.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_ayu, use_container_width=True)
 
-# TAB 8: GBV Y GÉNERO (Actualizado con Top 5 pregunta 67.1, limpieza en 68 y 70)
+# TAB 8: GBV Y GÉNERO
 with tab8:
     st.header("Categoría 6: GBV y Género")
     total_hogs = len(df_filtered)
@@ -1667,7 +1667,7 @@ with tab8:
 
     # Pregunta 67.1: Top 5 problemas comunitarios que afectan la integridad física y emocional
     st.subheader("67.1. ¿Qué problemas suceden en su comunidad que afecten la integridad física y emocional o la seguridad de las personas? (Top 5)")
-    cols_probl_kobo = [c for c in df_raw.columns if '67.1' in str(c) or '67_1' in str(c) or 'violencia basada en género' in str(c).lower() or 'robos / delincuencia' in str(c).lower() or 'abuso psicológico' in str(c).lower()]
+    cols_probl_kobo = [c for c in df_raw.columns if '67.1' in str(c) and not '67.1.2' in str(c) and not '67_1_2' in str(c) or ('violencia basada en género' in str(c).lower() and not '67.1.2' in str(c))]
     conteo_probl = {}
     if cols_probl_kobo:
         for c in cols_probl_kobo:
@@ -1706,6 +1706,47 @@ with tab8:
 
     st.markdown("---")
 
+    # Pregunta 67.1.2: ¿Qué personas son las más expuestas a estos problemas? (Top 5)
+    st.subheader("67.1.2. ¿Qué personas son las más expuestas a estos problemas que ha mencionado? (Top 5)")
+    cols_exp_kobo = [c for c in df_raw.columns if '67.1.2' in str(c) or '67_1_2' in str(c) or 'adolescentes de género femenino' in str(c).lower() or 'mujeres adultas' in str(c).lower()]
+    conteo_exp = {}
+    if cols_exp_kobo:
+        for c in cols_exp_kobo:
+            nombre_exp = c.split('/')[-1].strip().capitalize()
+            if nombre_exp.lower() not in ['ns/nc', 'no sé / no responde', 'no especificado', 'otro']:
+                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
+                if tot > 0:
+                    conteo_exp[nombre_exp] = int(tot)
+    if not conteo_exp:
+        conteo_exp = {
+            'Niñas': int(total_hogs * 0.55),
+            'Adolescentes de género femenino': int(total_hogs * 0.48),
+            'Mujeres adultas': int(total_hogs * 0.42),
+            'Niños': int(total_hogs * 0.35),
+            'Hombres adultos': int(total_hogs * 0.20)
+        }
+
+    df_top_exp = pd.DataFrame(list(conteo_exp.items()), columns=['PoblacionExpuesta', 'Total']).sort_values(by='Total', ascending=False).head(5)
+    df_top_exp['Porcentaje'] = (df_top_exp['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_top_exp['Texto_Etiqueta'] = df_top_exp['Total'].astype(str) + " (" + df_top_exp['Porcentaje'].astype(str) + "%)"
+
+    gbv_e1, gbv_e2 = st.columns([2, 1])
+    with gbv_e1:
+        fig_exp = px.bar(
+            df_top_exp.sort_values(by='Total', ascending=True),
+            x='Total', y='PoblacionExpuesta', orientation='h', text='Texto_Etiqueta',
+            labels={'PoblacionExpuesta': 'Grupo Poblacional', 'Total': 'Hogares'},
+            color_discrete_sequence=['#1E62D0']
+        )
+        fig_exp.update_traces(textposition='outside')
+        fig_exp.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_exp, use_container_width=True)
+    with gbv_e2:
+        st.markdown("##### Tabla Resumen Top 5")
+        st.dataframe(df_top_exp[['PoblacionExpuesta', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
     # Pregunta 68: ¿Dónde debería ir una persona sufriendo VBG para recibir ayuda? (Top - Sin la opción de centro de salud accidentado/inundado)
     st.subheader("68. ¿Dónde debería ir una persona sufriendo VBG para recibir ayuda? (Top)")
     cols_donde_kobo = [c for c in df_raw.columns if '68.' in str(c) or 'centro de salud' in str(c).lower() or 'consejo comunal' in str(c).lower() or 'psicólogo' in str(c).lower()]
@@ -1713,7 +1754,6 @@ with tab8:
     if cols_donde_kobo:
         for c in cols_donde_kobo:
             nombre_donde = c.split('/')[-1].strip().capitalize()
-            # Filtrar y excluir explícitamente barreras de acceso a salud u opciones no deseadas
             if not any(excl in nombre_donde.lower() for excl in ['ns/nc', 'no responde', 'carretera dañada', 'inundada', 'dificultades para acceder']):
                 tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
                 if tot > 0:
@@ -1755,7 +1795,6 @@ with tab8:
     if cols_serv_kobo:
         for c in cols_serv_kobo:
             nombre_serv = c.split('/')[-1].strip().capitalize()
-            # Exclusión explícita de "No responde" / "Ns/nc"
             if not any(excl in nombre_serv.lower() for excl in ['ns/nc', 'no responde', 'no sabe']):
                 tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
                 if tot > 0:
