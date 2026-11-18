@@ -1009,23 +1009,29 @@ with tab3:
     w7, w8 = st.columns(2)
     with w7:
         st.subheader("32. Problemas con el agua en últimos 30 días")
-        cols_prob_kobo = [c for c in df_raw.columns if '32' in str(c) or 'problema' in str(c).lower()]
+        cols_prob_map = {
+            'Color': [c for c in df_raw.columns if '32.' in str(c) and '/Color' in str(c)],
+            'Olor': [c for c in df_raw.columns if '32.' in str(c) and '/Olor' in str(c)],
+            'Sabor': [c for c in df_raw.columns if '32.' in str(c) and '/Sabor' in str(c)],
+            'Otro': [c for c in df_raw.columns if '32.' in str(c) and '/Otro' in str(c)]
+        }
+
         conteo_prob = {}
-        if cols_prob_kobo:
-            for k, label_oficial in MAPA_PROBLEMAS_AGUA.items():
-                match_col = [c for c in cols_prob_kobo if k in str(c).lower()]
-                if match_col:
-                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
-                    if tot > 0:
-                        conteo_prob[label_oficial] = int(tot)
-        if not conteo_prob:
-            conteo_prob = {'Color': int(total_hogs * 0.45), 'Olor': int(total_hogs * 0.30), 'Sabor': int(total_hogs * 0.25), 'Ninguna': int(total_hogs * 0.35)}
+        for label_oficial, cols in cols_prob_map.items():
+            if cols:
+                tot = pd.to_numeric(df_filtered[cols[0]], errors='coerce').fillna(0).sum()
+                if tot > 0:
+                    conteo_prob[label_oficial] = int(tot)
 
         df_prob_res = pd.DataFrame(list(conteo_prob.items()), columns=['Problema', 'Total']).sort_values(by='Total', ascending=True)
         df_prob_res['Porcentaje'] = (df_prob_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_prob_res['Texto_Etiqueta'] = df_prob_res['Total'].astype(str) + " (" + df_prob_res['Porcentaje'].astype(str) + "%)"
         
-        fig_prob = px.bar(df_prob_res, x='Total', y='Problema', orientation='h', text='Texto_Etiqueta', labels={'Problema': 'Tipo de Problema', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[3]])
+        fig_prob = px.bar(
+            df_prob_res, x='Total', y='Problema', orientation='h', text='Texto_Etiqueta',
+            labels={'Problema': 'Tipo de Problema', 'Total': 'Hogares'},
+            color_discrete_sequence=[INTEGRAS_COLORS[3]]
+        )
         fig_prob.update_traces(textposition='outside')
         fig_prob.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_prob, use_container_width=True)
