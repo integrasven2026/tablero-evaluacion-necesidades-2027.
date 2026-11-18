@@ -914,7 +914,7 @@ with tab3:
         conteo_fuentes = {}
         for label, cols in cols_fuentes_map.items():
             if cols:
-                tot = sum(pd.to_numeric(df_filtered[cols[0]], errors='coerce').fillna(0).sum())
+                tot = pd.to_numeric(df_filtered[cols[0]], errors='coerce').fillna(0).sum()
                 if tot > 0:
                     conteo_fuentes[label] = int(tot)
 
