@@ -617,10 +617,16 @@ df_temp = df_clean[df_clean['socio_clean'].isin(sel_socios) & df_clean['estado_c
 municipios_disp = sorted(df_temp['municipio_clean'].unique())
 sel_municipios = st.sidebar.multiselect("Municipio", municipios_disp, default=municipios_disp)
 
+df_temp2 = df_temp[df_temp['municipio_clean'].isin(sel_municipios)]
+sexos_disp = sorted([s for s in df_temp2['sexo_clean'].unique() if s != 'No especificado'])
+sel_sexo = st.sidebar.selectbox("Sexo del Jefe/a de Hogar", ["Todos"] + sexos_disp)
+
 sel_disc = st.sidebar.selectbox("Enfoque Discapacidad", ["Todos", "Sí (Con Discapacidad)", "No"])
 sel_ind = st.sidebar.selectbox("Población Indígena", ["Todos", "Sí (Pueblo Indígena)", "No"])
 
-df_filtered = df_temp[df_temp['municipio_clean'].isin(sel_municipios)].copy()
+df_filtered = df_temp2.copy()
+if sel_sexo != "Todos":
+    df_filtered = df_filtered[df_filtered['sexo_clean'] == sel_sexo]
 if sel_disc != "Todos":
     df_filtered = df_filtered[df_filtered['disc_filtro'] == sel_disc]
 if sel_ind != "Todos":
@@ -1999,7 +2005,7 @@ with tab9:
         st.markdown("##### Tabla Resumen")
         st.dataframe(df_top_car[['Carencia', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
 
-# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA (DISEÑO VERTICAL CORREGIDO)
+# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA
 with tab10:
     st.header("Salud y Salud Sexual y Reproductiva (Preguntas 76 - 82)")
     total_hogs = len(df_filtered)
