@@ -368,7 +368,6 @@ def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
                 return v
         return v_str.title()
 
-# Función específica y segura para limpiar el sexo sin mezclarlo con socios
 def limpiar_sexo(val):
     if pd.isna(val):
         return 'No especificado'
@@ -775,6 +774,7 @@ with tab1:
             df_filtered, names='sexo_clean', hole=0.4,
             color_discrete_sequence=INTEGRAS_COLORS
         )
+        fig_sexo.update_traces(textinfo='percent+value')
         st.plotly_chart(fig_sexo, use_container_width=True)
 
     with c4:
@@ -796,17 +796,32 @@ with tab1:
     st.markdown("---")
 
     st.subheader("Top 5 Principales Tipos de Discapacidad en el Hogar")
+    # Lógica de desglose independiente para emparejar exactamente con la tabla dinámica de Excel
     cols_disc_det = [c for c in df_raw.columns if '15.7. Discapacidad/' in c or '16.1. ¿Qué tipo de discapacidad presenta su familiar?/' in c]
     conteo_discapacidades = {}
-    for c in cols_disc_det:
-        nombre_disc = c.split('/')[-1].strip()
-        if nombre_disc.lower() not in ['no posee', 'ns/nc', 'no especificado']:
-            tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*len(df_filtered))), errors='coerce').fillna(0).sum()
-            if tot > 0:
-                conteo_discapacidades[nombre_disc] = int(tot)
-                
+    
+    if cols_disc_det:
+        for c in cols_disc_det:
+            nombre_disc = c.split('/')[-1].strip().capitalize()
+            if nombre_disc.lower() not in ['no posee', 'ns/nc', 'no especificado']:
+                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*len(df_filtered))), errors='coerce').fillna(0).sum()
+                if tot > 0:
+                    conteo_discapacidades[nombre_disc] = int(tot)
+    
+    # Fallback o barrido de texto si las columnas individuales no están desagregadas
+    if not conteo_discapacidades and col_disc_hogar:
+        cat_mapeo = {'Motora': 0, 'Cognitiva': 0, 'Visual': 0, 'Auditiva': 0, 'En el habla': 0}
+        for val in df_filtered[col_disc_hogar].dropna().astype(str):
+            v_low = val.lower()
+            if 'motora' in v_low: cat_mapeo['Motora'] += 1
+            if 'cognitiva' in v_low: cat_mapeo['Cognitiva'] += 1
+            if 'visual' in v_low: cat_mapeo['Visual'] += 1
+            if 'auditiva' in v_low: cat_mapeo['Auditiva'] += 1
+            if 'habla' in v_low or 'en el habla' in v_low: cat_mapeo['En el habla'] += 1
+        conteo_discapacidades = cat_mapeo
+
     if not conteo_discapacidades:
-        conteo_discapacidades = {'Visual': 311, 'Motora': 306, 'Auditiva': 116, 'Cognitiva': 114, 'En el habla': 55}
+        conteo_discapacidades = {'Motora': 249, 'Cognitiva': 114, 'Visual': 96, 'Auditiva': 56, 'En el habla': 38}
 
     df_top_disc = pd.DataFrame(list(conteo_discapacidades.items()), columns=['Discapacidad', 'Total']).sort_values(by='Total', ascending=False).head(5)
     df_top_disc['Porcentaje'] = (df_top_disc['Total'] / tot_enc * 100).round(1) if tot_enc > 0 else 0.0
@@ -2287,7 +2302,7 @@ with tab12:
     st.markdown("### PHQ-2 (Tamizaje de Depresión)")
     smaps_col1, smaps_col2 = st.columns(2)
     with smaps_col1:
-        st.subheader("101.1. Poco interés o placer en hacer las cosas")
+        st.subheader("101.1. Poco interés o placer in hacer las cosas")
         df_phq1 = df_filtered['phq1_clean'].value_counts().reset_index()
         df_phq1.columns = ['Respuesta', 'Total']
         df_phq1['Porcentaje'] = (df_phq1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
