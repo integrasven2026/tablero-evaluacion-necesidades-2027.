@@ -850,7 +850,7 @@ with tab1:
 with tab2:
     st.header("Vivienda y Habitabilidad")
     promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 4.32
-    indice_hacinamento_prom = (df_filtered['personas_viv_val'] / df_filtered['cuartos_val'].replace(0, 1)).mean() if len(df_filtered) > 0 else 1.45
+    indice_hacinamento_prom = (df_filtered['personas_viv_val'].sum() / df_filtered['cuartos_val'].sum()) if df_filtered['cuartos_val'].sum() > 0 else 0.0
     
     col_v_kpi1, col_v_kpi2, col_v_kpi3 = st.columns(3)
     with col_v_kpi1:
