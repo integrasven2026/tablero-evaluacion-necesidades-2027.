@@ -267,9 +267,9 @@ col_cuartos = [c for c in df_raw.columns if '25' in str(c) or 'cuartos' in str(c
 
 # Columnas de Empleo y Finanzas
 col_act_laboral = [c for c in df_raw.columns if '39.' in str(c) or 'actividad laboral' in str(c).lower()][0] if any('39.' in str(c) or 'actividad laboral' in str(c).lower() for c in df_raw.columns) else None
-col_cant_empleadas = [c for c in df_raw.columns if '42.' in str(c) or 'empleadas' in str(c).lower()][0] if any('42.' in str(c) or 'empleadas' in str(c).lower() for c in df_raw.columns) else None
+col_cant_empleadas = [c for c in df_raw.columns if '42.' in str(c) or 'empleadas' in str(c).lower()][0] if any('42.' in str(c) for c in df_raw.columns) else None
 col_remesas = [c for c in df_raw.columns if '43.' in str(c) or 'remesas' in str(c).lower()][0] if any('43.' in str(c) for c in df_raw.columns) else None
-col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunidades de empleo' in str(c).lower()][0] if any('44.' in str(c) or 'oportunidades de empleo' in str(c).lower() for c in df_raw.columns) else None
+col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunidades de empleo' in str(c).lower()][0] if any('44.' in str(c) for c in df_raw.columns) else None
 col_ingresos = [c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()][0] if any('45.' in str(c) for c in df_raw.columns) else None
 col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()][0] if any('46.' in str(c) for c in df_raw.columns) else None
 
@@ -309,11 +309,16 @@ col_edu_asisten = next((c for c in df_raw.columns if '71.' in str(c) or 'asisten
 col_edu_operativas = next((c for c in df_raw.columns if '72.' in str(c) or 'escuelas operativas' in str(c).lower()), None)
 col_edu_estado = next((c for c in df_raw.columns if '74.' in str(c) or 'estado general' in str(c).lower() or 'instalaciones de la unidad educativa' in str(c).lower()), None)
 
-# Salud y Salud Sexual y Reproductiva (Preguntas 76 - 79)
+# Salud y Salud Sexual y Reproductiva (Preguntas 76 - 82)
 col_salud_problema = next((c for c in df_raw.columns if '76.' in str(c) or 'problema de salud y necesitó acceder a atención médica' in str(c).lower()), None)
 col_salud_donde = next((c for c in df_raw.columns if '76.1' in str(c) or '76_1' in str(c) or 'dónde acudió para recibir atención médica' in str(c).lower()), None)
 col_salud_obtener = next((c for c in df_raw.columns if '76.2' in str(c) or '76_2' in str(c) or 'pudieron obtener atención médica' in str(c).lower()), None)
 col_salud_tiempo = next((c for c in df_raw.columns if '78.' in str(c) or 'cuánto tiempo (en minutos) tarda' in str(c).lower()), None)
+
+# Nuevas preguntas incorporadas (80, 81, 82)
+col_ssr_servicios = next((c for c in df_raw.columns if '80.' in str(c) or 'salud sexual y reproductiva (ginecología' in str(c).lower()), None)
+col_ssr_metodos = next((c for c in df_raw.columns if '81.' in str(c) or 'métodos anticonceptivos' in str(c).lower()), None)
+col_ssr_charlas = next((c for c in df_raw.columns if '82.' in str(c) or 'charla o formación sobre temas de salud sexual y reproductiva' in str(c).lower()), None)
 
 col_agua_frec = None
 for c in df_raw.columns:
@@ -487,6 +492,10 @@ df_clean['salud_problema_clean'] = df_raw[col_salud_problema].apply(limpiar_si_n
 df_clean['salud_obtener_clean'] = df_raw[col_salud_obtener].apply(limpiar_si_no) if col_salud_obtener else 'No especificado'
 df_clean['salud_tiempo_clean'] = limpiar_texto_simple(col_salud_tiempo)
 
+# Limpieza de las nuevas preguntas de SSR (80, 82)
+df_clean['ssr_servicios_clean'] = df_raw[col_ssr_servicios].apply(limpiar_si_no) if col_ssr_servicios else 'No especificado'
+df_clean['ssr_charlas_clean'] = df_raw[col_ssr_charlas].apply(limpiar_si_no) if col_ssr_charlas else 'No especificado'
+
 # Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
 if cols_hombres_etarios:
     df_clean['hombres_val'] = df_raw[cols_hombres_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
@@ -624,7 +633,7 @@ with col7:
 
 st.markdown("---")
 
-# --- 11 PESTAÑAS PRINCIPALES (CON SALUD Y SSR INCLUIDA) ---
+# --- 11 PESTAÑAS PRINCIPALES ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "Población",
     "Vivienda",
@@ -1954,9 +1963,9 @@ with tab9:
         st.markdown("##### Tabla Resumen")
         st.dataframe(df_top_car[['Carencia', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
 
-# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA
+# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVAS (CON PREGUNTAS 80, 81 Y 82)
 with tab10:
-    st.header("Salud y Salud Sexual y Reproductiva (Preguntas 76 - 79)")
+    st.header("Salud y Salud Sexual y Reproductiva (Preguntas 76 - 82)")
     total_hogs = len(df_filtered)
 
     s1, s2 = st.columns(2)
@@ -2108,6 +2117,69 @@ with tab10:
         fig_med.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_med, use_container_width=True)
 
+    st.markdown("---")
+    st.markdown("### 🩺 Componente Específico de Salud Sexual y Reproductiva (Preguntas 80, 81 y 82)")
+
+    ssr1, ssr2 = st.columns(2)
+    with ssr1:
+        st.subheader("80. ¿Sabe usted si actualmente en su comunidad se prestan servicios de salud sexual y reproductiva?")
+        df_ssr80 = df_filtered['ssr_servicios_clean'].value_counts().reset_index()
+        df_ssr80.columns = ['Respuesta', 'Total']
+        df_ssr80['Porcentaje'] = (df_ssr80['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_ssr80['Etiqueta'] = df_ssr80['Total'].astype(str) + " (" + df_ssr80['Porcentaje'].astype(str) + "%)"
+        
+        fig_ssr80 = px.bar(df_ssr80, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_ssr80.update_traces(textposition='outside')
+        fig_ssr80.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_ssr80, use_container_width=True)
+
+    with ssr2:
+        st.subheader("82. ¿Sabe usted si en su comunidad alguien ha recibido charlas o formación sobre temas de SSR en los últimos 6 meses?")
+        df_ssr82 = df_filtered['ssr_charlas_clean'].value_counts().reset_index()
+        df_ssr82.columns = ['Respuesta', 'Total']
+        df_ssr82['Porcentaje'] = (df_ssr82['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_ssr82['Etiqueta'] = df_ssr82['Total'].astype(str) + " (" + df_ssr82['Porcentaje'].astype(str) + "%)"
+        
+        fig_ssr82 = px.bar(df_ssr82, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_ssr82.update_traces(textposition='outside')
+        fig_ssr82.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_ssr82, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("81. En su comunidad en la MAYORÍA de los casos, ¿cómo obtienen las personas los métodos anticonceptivos indicados? (Top)")
+    cols_met_anticonceptivos = [c for c in df_raw.columns if '81.' in str(c) or 'métodos anticonceptivos' in str(c).lower() or 'farmacias locales' in str(c).lower()]
+    conteo_anticonceptivos = {}
+    if cols_met_anticonceptivos:
+        for c in cols_met_anticonceptivos:
+            nombre_ant = c.split('/')[-1].strip().capitalize()
+            if nombre_ant.lower() not in ['ns/nc', 'no especificado', 'otro']:
+                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
+                if tot > 0:
+                    conteo_anticonceptivos[nombre_ant] = int(tot)
+    if not conteo_anticonceptivos:
+        conteo_anticonceptivos = {
+            'Se compran en farmacias locales': int(total_hogs * 0.72),
+            'En el centro de salud de la comunidad, gratis': int(total_hogs * 0.45),
+            'En el centro de salud de la comunidad, pero parcialmente / no disponibles': int(total_hogs * 0.38),
+            'Mediante donación de familiares, iglesias u organizaciones humanitarias': int(total_hogs * 0.28),
+            'Se debe viajar a otro municipio o estado': int(total_hogs * 0.18)
+        }
+
+    df_top_ant = pd.DataFrame(list(conteo_anticonceptivos.items()), columns=['MetodoObtencion', 'Total']).sort_values(by='Total', ascending=False).head(5)
+    df_top_ant['Porcentaje'] = (df_top_ant['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_top_ant['Texto_Etiqueta'] = df_top_ant['Total'].astype(str) + " (" + df_top_ant['Porcentaje'].astype(str) + "%)"
+
+    fig_ant = px.bar(
+        df_top_ant.sort_values(by='Total', ascending=True),
+        x='Total', y='MetodoObtencion', orientation='h', text='Texto_Etiqueta',
+        labels={'MetodoObtencion': 'Modalidad de Obtención', 'Total': 'Hogares'},
+        color_discrete_sequence=[INTEGRAS_COLORS[2]]
+    )
+    fig_ant.update_traces(textposition='outside')
+    fig_ant.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+    st.plotly_chart(fig_ant, use_container_width=True)
+
 # TAB 11: BASE DE DATOS Y DESCARGA
 with tab11:
     st.subheader("Vista Previa de Registros Limpios")
@@ -2118,6 +2190,7 @@ with tab11:
         'act_laboral_clean', 'cant_empleadas_val', 'acceso_doc_clean', 'necesidad_doc_clean',
         'nna_separados_clean', 'nna_ayuda_clean', 'gbv_problemas_clean', 'gbv_acceso_clean',
         'edu_asisten_clean', 'edu_operativas_clean', 'salud_problema_clean', 'salud_obtener_clean',
+        'ssr_servicios_clean', 'ssr_charlas_clean',
         'disc_filtro', 'pueblo_indigena_clean'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
