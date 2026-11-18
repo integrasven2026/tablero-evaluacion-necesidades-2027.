@@ -492,7 +492,7 @@ df_clean['ingresos_clean'] = limpiar_texto_simple(col_ingresos)
 df_clean['situacion_fin_clean'] = limpiar_texto_simple(col_situacion_fin)
 
 # Limpieza de Seguridad Alimentaria
-df_clean['fcs_cat_clean'] = df_raw[col_fcs_cat].apply(limpiar_fcs) if col_fcs_cat else 'No especificado'
+df_clean['fcs_cat_clean'] = df_raw['Resultado del FCS'].apply(limpiar_fcs) if 'Resultado del FCS' in df_raw.columns else 'No especificado'
 df_clean['dejado_consumir_clean'] = df_raw[col_dejado_consumir].apply(limpiar_si_no) if col_dejado_consumir else 'No especificado'
 df_clean['apoyo_alim_clean'] = df_raw[col_apoyo_alim].apply(limpiar_si_no) if col_apoyo_alim else 'No especificado'
 df_clean['dias_sin_solidos_clean'] = df_raw[col_dias_sin_solidos].apply(limpiar_si_no) if col_dias_sin_solidos else 'No especificado'
