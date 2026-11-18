@@ -52,7 +52,9 @@ EXCEL_FILE = "BBDD_ECHO_HIP_2027_Estandarizada.xlsx"
 @st.cache_data(ttl=300)
 def load_excel_data():
     try:
-        df = pd.read_excel(EXCEL_FILE)
+        xls = pd.ExcelFile(EXCEL_FILE)
+        sheet_name = 'Sheet1' if 'Sheet1' in xls.sheet_names else xls.sheet_names[0]
+        df = pd.read_excel(EXCEL_FILE, sheet_name=sheet_name)
         return df
     except Exception as e:
         st.error(f"Error al cargar el archivo Excel '{EXCEL_FILE}': {e}")
@@ -257,8 +259,12 @@ col_ind = [c for c in df_raw.columns if 'indígena' in str(c).lower() or 'etnia'
 
 col_disc_hogar = [c for c in df_raw.columns if '16. ¿Alguien de su grupo familiar' in str(c)][0] if any('16. ¿Alguien de su grupo familiar' in str(c) for c in df_raw.columns) else None
 
-cols_hombres_etarios = [c for c in df_raw.columns if 'hombres de' in str(c).lower() or 'hombres' in str(c).lower()]
-cols_mujeres_etarios = [c for c in df_raw.columns if 'mujeres de' in str(c).lower() or 'mujeres' in str(c).lower()]
+# --- VARIABLES EXACTAS DE CÁLCULO DE GRUPO FAMILIAR ---
+col_calc_hombres = 'calculate_grupofamiliar_hombres'
+col_calc_mujeres = 'calculate_grupofamiliar_mujeres'
+col_calc_otro = 'calculate_grupofamiliar_otro'
+
+cols_ninos_etarios = [c for c in df_raw.columns if ('0 a 17' in str(c).lower() or '0_17' in str(c).lower() or 'de 0 a' in str(c).lower())]
 
 col_gestantes = [c for c in df_raw.columns if '21.1' in str(c) or 'embarazadas' in str(c).lower()][0] if any('21.1' in str(c) for c in df_raw.columns) else None
 col_tenencia = [c for c in df_raw.columns if '22' in str(c) or 'tenencia' in str(c).lower()][0] if any('22' in str(c) for c in df_raw.columns) else None
@@ -545,18 +551,11 @@ df_clean['phq2_clean'] = df_raw[col_phq2].apply(limpiar_smaps_escala) if col_phq
 df_clean['gad1_clean'] = df_raw[col_gad1].apply(limpiar_smaps_escala) if col_gad1 else 'No especificado'
 df_clean['gad2_clean'] = df_raw[col_gad2].apply(limpiar_smaps_escala) if col_gad2 else 'No especificado'
 
-# Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
-if cols_hombres_etarios:
-    df_clean['hombres_val'] = df_raw[cols_hombres_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
-else:
-    df_clean['hombres_val'] = 0
+# --- ASIGNACIÓN DE VARIABLES CALCULADAS OFICIALES KOBO ---
+df_clean['hombres_val'] = pd.to_numeric(df_raw[col_calc_hombres], errors='coerce').fillna(0)
+df_clean['mujeres_val'] = pd.to_numeric(df_raw[col_calc_mujeres], errors='coerce').fillna(0)
+df_clean['otro_val'] = pd.to_numeric(df_raw[col_calc_otro], errors='coerce').fillna(0)
 
-if cols_mujeres_etarios:
-    df_clean['mujeres_val'] = df_raw[cols_mujeres_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
-else:
-    df_clean['mujeres_val'] = 0
-
-cols_ninos_etarios = [c for c in df_raw.columns if ('0 a 17' in str(c).lower() or '0_17' in str(c).lower() or 'de 0 a' in str(c).lower())]
 if cols_ninos_etarios:
     df_clean['ninos_val'] = df_raw[cols_ninos_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
 else:
@@ -655,12 +654,13 @@ if df_filtered.empty:
 tot_encuestas = len(df_filtered)
 tot_hombres = int(df_filtered['hombres_val'].sum())
 tot_mujeres = int(df_filtered['mujeres_val'].sum())
+tot_otro = int(df_filtered['otro_val'].sum())
 tot_ninos = int(df_filtered['ninos_val'].sum())
 tot_gestantes = int(df_filtered['gestantes_val'].sum())
 tot_disc_hogares = int((df_filtered['disc_filtro'] == 'Sí (Con Discapacidad)').sum())
 tot_indigenas = int((df_filtered['indigena_filtro'] == 'Sí (Pueblo Indígena)').sum())
 
-pob_total_general = tot_hombres + tot_mujeres
+pob_total_general = tot_hombres + tot_mujeres + tot_otro
 
 pct_hombres = (tot_hombres / pob_total_general * 100) if pob_total_general > 0 else 0.0
 pct_mujeres = (tot_mujeres / pob_total_general * 100) if pob_total_general > 0 else 0.0
@@ -688,7 +688,7 @@ with col7:
 
 st.markdown("---")
 
-# --- 13 PESTAÑAS PRINCIPALES (INCLUYENDO SMAPS) ---
+# --- 13 PESTAÑAS PRINCIPALES ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
     "Población",
     "Vivienda",
@@ -770,8 +770,13 @@ with tab1:
     c3, c4 = st.columns(2)
     with c3:
         st.subheader("Distribución por Sexo Biológico (General)")
+        # Gráfico dinámico basado en las variables sumadas de grupo familiar
+        df_pob_sexo = pd.DataFrame({
+            'Sexo': ['Hombres', 'Mujeres', 'Otro'],
+            'Total': [tot_hombres, tot_mujeres, tot_otro]
+        })
         fig_sexo = px.pie(
-            df_filtered, names='sexo_clean', hole=0.4,
+            df_pob_sexo, names='Sexo', values='Total', hole=0.4,
             color_discrete_sequence=INTEGRAS_COLORS
         )
         fig_sexo.update_traces(textinfo='percent+value')
