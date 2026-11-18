@@ -273,7 +273,7 @@ col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunida
 col_ingresos = [c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()][0] if any('45.' in str(c) or 'ingreso de su hogar' in str(c).lower() for c in df_raw.columns) else None
 col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()][0] if any('46.' in str(c) or 'situación financiera' in str(c).lower() for c in df_raw.columns) else None
 
-# --- BÚSQUEDA ROBUSTA DE LA COLUMNA FCS (Pregunta 47) ---
+# Seguridad Alimentaria y Nutrición
 col_fcs_cat = None
 for c in df_raw.columns:
     c_low = str(c).lower()
@@ -292,28 +292,37 @@ col_lactancia = [c for c in df_raw.columns if '56.' in str(c) or 'lactancia mate
 col_suplementos = [c for c in df_raw.columns if '57.' in str(c) or 'suplementos nutricionales' in str(c).lower()][0] if any('57.' in str(c) for c in df_raw.columns) else None
 col_malnutricion = [c for c in df_raw.columns if '58.' in str(c) or 'malnutrición' in str(c).lower() or 'malnutricion' in str(c).lower()][0] if any('58.' in str(c) for c in df_raw.columns) else None
 
-# Columnas de Acceso a Derechos y Servicios (Preguntas 61 y 62)
+# Derechos y Servicios
 col_acceso_doc = [c for c in df_raw.columns if '61.' in str(c) or 'partidas de nacimiento' in str(c).lower()][0] if any('61.' in str(c) for c in df_raw.columns) else None
 col_necesidad_doc = [c for c in df_raw.columns if '62.' in str(c) and not '62_1' in str(c) and not '62.1' in str(c) or ('documento legal' in str(c).lower() and not '62_1' in str(c))][0] if any(('62.' in str(c) or 'documento legal' in str(c).lower()) and not '62_1' in str(c) and not '62.1' in str(c) for c in df_raw.columns) else None
 
-# Protección NNA (Preguntas 65 y 66)
+# Protección NNA
 col_nna_separados = next((c for c in df_raw.columns if '65.' in str(c) or 'separados de sus padres' in str(c).lower()), None)
 col_nna_ayuda = next((c for c in df_raw.columns if '66.' in str(c) or 'abuso o violencia' in str(c).lower()), None)
 
-# GBV y Género (Preguntas 67 y 69)
+# GBV y Género
 col_gbv_problemas = next((c for c in df_raw.columns if '67.' in str(c) and not '67.1' in str(c) and not '67_1' in str(c) or ('integridad física y emocional' in str(c).lower() and not '67.1' in str(c))), None)
 col_gbv_acceso = next((c for c in df_raw.columns if '69.' in str(c) or 'acceden al servicio que refiere' in str(c).lower()), None)
 
-# Educación en Emergencias (Preguntas 71, 72 y 74)
+# Educación en Emergencias
 col_edu_asisten = next((c for c in df_raw.columns if '71.' in str(c) or 'asisten todos los niños' in str(c).lower()), None)
 col_edu_operativas = next((c for c in df_raw.columns if '72.' in str(c) or 'escuelas operativas' in str(c).lower()), None)
 col_edu_estado = next((c for c in df_raw.columns if '74.' in str(c) or 'estado general' in str(c).lower() or 'instalaciones de la unidad educativa' in str(c).lower()), None)
 
-# Salud y Salud Sexual y Reproductiva (Preguntas 76 - 79)
+# Salud y Salud Sexual y Reproductiva
 col_salud_problema = next((c for c in df_raw.columns if '76.' in str(c) or 'problema de salud y necesitó acceder a atención médica' in str(c).lower()), None)
-col_salud_donde = next((c for c in df_raw.columns if '76.1' in str(c) or '76_1' in str(c) or 'dónde acudió para recibir atención médica' in str(c).lower()), None)
 col_salud_obtener = next((c for c in df_raw.columns if '76.2' in str(c) or '76_2' in str(c) or 'pudieron obtener atención médica' in str(c).lower()), None)
-col_salud_tiempo = next((c for c in df_raw.columns if '78.' in str(c) or 'cuánto tiempo (en minutos) tarda' in str(c).lower()), None)
+
+# --- NUEVAS COLUMNAS: MOVILIDAD HUMANA Y SMAPS ---
+col_mov_residencia = next((c for c in df_raw.columns if '83.' in str(c) or 'cambiado su lugar de residencia en el último año' in str(c).lower()), None)
+col_mov_pais = next((c for c in df_raw.columns if '84.' in str(c) or 'salido o salió del país con el propósito de vivir' in str(c).lower()), None)
+col_mov_comunidad = next((c for c in df_raw.columns if '85.' in str(c) or 'personas que hayan salido en los últimos tres meses' in str(c).lower()), None)
+
+# SMAPS - Tests PHQ-2 y GAD-2 (Preguntas 101.1, 101.2, 101.3, 101.4)
+col_phq1 = next((c for c in df_raw.columns if '101.1' in str(c) or 'poco interés o placer' in str(c).lower()), None)
+col_phq2 = next((c for c in df_raw.columns if '101.2' in str(c) or 'sentirse deprimido o desesperado' in str(c).lower()), None)
+col_gad1 = next((c for c in df_raw.columns if '101.3' in str(c) or 'sentirte nervioso' in str(c).lower() or 'ansioso' in str(c).lower()), None)
+col_gad2 = next((c for c in df_raw.columns if '101.4' in str(c) or 'no ser capaz de parar o controlar' in str(c).lower()), None)
 
 col_agua_frec = None
 for c in df_raw.columns:
@@ -448,6 +457,16 @@ df_clean['edu_clean'] = df_raw[col_edu].apply(limpiar_educacion) if col_edu else
 df_clean['nacionalidad_clean'] = df_raw[col_nac].apply(lambda x: limpiar_codigo(x, MAPA_NACIONALIDAD)) if col_nac else 'No especificado'
 df_clean['pueblo_indigena_clean'] = df_raw[col_ind].apply(lambda x: limpiar_codigo(x, MAPA_PUEBLOS_INDIGENAS)) if col_ind else 'No especificado'
 
+# Limpieza Movilidad Humana y SMAPS
+df_clean['mov_residencia_clean'] = df_raw[col_mov_residencia].apply(limpiar_si_no) if col_mov_residencia else 'No especificado'
+df_clean['mov_pais_clean'] = df_raw[col_mov_pais].apply(limpiar_si_no) if col_mov_pais else 'No especificado'
+df_clean['mov_comunidad_clean'] = df_raw[col_mov_comunidad].apply(limpiar_si_no) if col_mov_comunidad else 'No especificado'
+
+df_clean['phq1_clean'] = limpiar_texto_simple(col_phq1)
+df_clean['phq2_clean'] = limpiar_texto_simple(col_phq2)
+df_clean['gad1_clean'] = limpiar_texto_simple(col_gad1)
+df_clean['gad2_clean'] = limpiar_texto_simple(col_gad2)
+
 # Limpieza de Empleo y Finanzas
 df_clean['act_laboral_clean'] = df_raw[col_act_laboral].apply(limpiar_si_no) if col_act_laboral else 'No especificado'
 df_clean['cant_empleadas_val'] = pd.to_numeric(df_raw[col_cant_empleadas], errors='coerce').fillna(0) if col_cant_empleadas else 0
@@ -485,7 +504,6 @@ df_clean['edu_estado_clean'] = limpiar_texto_simple(col_edu_estado)
 
 df_clean['salud_problema_clean'] = df_raw[col_salud_problema].apply(limpiar_si_no) if col_salud_problema else 'No especificado'
 df_clean['salud_obtener_clean'] = df_raw[col_salud_obtener].apply(limpiar_si_no) if col_salud_obtener else 'No especificado'
-df_clean['salud_tiempo_clean'] = limpiar_texto_simple(col_salud_tiempo)
 
 # Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
 if cols_hombres_etarios:
@@ -624,8 +642,8 @@ with col7:
 
 st.markdown("---")
 
-# --- 11 PESTAÑAS PRINCIPALES (CON SALUD Y SSR INCLUIDA) ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+# --- 13 PESTAÑAS PRINCIPALES (CON MOVILIDAD Y SMAPS INCLUIDAS) ---
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
     "Población",
     "Vivienda",
     "Agua, Saneamiento e Higiene (WASH)",
@@ -635,7 +653,9 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "Protección NNA",
     "GBV y Género",
     "Educación en Emergencias",
-    "Salud y Salud Sexual y Reproductiva",
+    "Salud y SSR",
+    "Movilidad Humana",
+    "SMAPS",
     "Base de Datos"
 ])
 
@@ -1672,165 +1692,6 @@ with tab8:
         fig_g2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_g2, use_container_width=True)
 
-    st.markdown("---")
-
-    st.subheader("67.1. ¿Qué problemas suceden en su comunidad que afecten la integridad física y emocional o la seguridad de las personas? (Top 5)")
-    cols_probl_kobo = [c for c in df_raw.columns if '67.1' in str(c) and not '67.1.2' in str(c) and not '67_1_2' in str(c) or ('violencia basada en género' in str(c).lower() and not '67.1.2' in str(c))]
-    conteo_probl = {}
-    if cols_probl_kobo:
-        for c in cols_probl_kobo:
-            nombre_probl = c.split('/')[-1].strip().capitalize()
-            if not any(excl in nombre_probl.lower() for excl in ['policía', 'polícia', 'ns/nc', 'no responde', 'no sé / no responde', 'no especificado', 'otro']):
-                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                if tot > 0:
-                    conteo_probl[nombre_probl] = int(tot)
-    if not conteo_probl:
-        conteo_probl = {
-            'Robos / Delincuencia común': int(total_hogs * 0.75),
-            'Violencia basada en género (VBG)': int(total_hogs * 0.58),
-            'Abuso psicológico o emocional': int(total_hogs * 0.45),
-            'Abuso / Negligencia infantil': int(total_hogs * 0.35),
-            'Presencia de Grupos Armados No Estatales / Delincuencia organizada': int(total_hogs * 0.28)
-        }
-
-    df_top_probl = pd.DataFrame(list(conteo_probl.items()), columns=['Problema', 'Total']).sort_values(by='Total', ascending=False).head(5)
-    df_top_probl['Porcentaje'] = (df_top_probl['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_top_probl['Texto_Etiqueta'] = df_top_probl['Total'].astype(str) + " (" + df_top_probl['Porcentaje'].astype(str) + "%)"
-
-    gbv_p1, gbv_p2 = st.columns([2, 1])
-    with gbv_p1:
-        fig_probl = px.bar(
-            df_top_probl.sort_values(by='Total', ascending=True),
-            x='Total', y='Problema', orientation='h', text='Texto_Etiqueta',
-            labels={'Problema': 'Problema Comunitario', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[3]]
-        )
-        fig_probl.update_traces(textposition='outside')
-        fig_probl.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_probl, use_container_width=True)
-    with gbv_p2:
-        st.markdown("##### Tabla Resumen Top 5")
-        st.dataframe(df_top_probl[['Problema', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    st.subheader("67.1.2. ¿Qué personas son las más expuestas a estos problemas que ha mencionado? (Top 5)")
-    cols_exp_kobo = [c for c in df_raw.columns if '67.1.2' in str(c) or '67_1_2' in str(c) or 'adolescentes de género femenino' in str(c).lower() or 'mujeres adultas' in str(c).lower()]
-    conteo_exp = {}
-    if cols_exp_kobo:
-        for c in cols_exp_kobo:
-            nombre_exp = c.split('/')[-1].strip().capitalize()
-            if nombre_exp.lower() not in ['ns/nc', 'no sé / no responde', 'no especificado', 'otro']:
-                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                if tot > 0:
-                    conteo_exp[nombre_exp] = int(tot)
-    if not conteo_exp:
-        conteo_exp = {
-            'Niñas': int(total_hogs * 0.55),
-            'Adolescentes de género femenino': int(total_hogs * 0.48),
-            'Mujeres adultas': int(total_hogs * 0.42),
-            'Niños': int(total_hogs * 0.35),
-            'Hombres adultos': int(total_hogs * 0.20)
-        }
-
-    df_top_exp = pd.DataFrame(list(conteo_exp.items()), columns=['PoblacionExpuesta', 'Total']).sort_values(by='Total', ascending=False).head(5)
-    df_top_exp['Porcentaje'] = (df_top_exp['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_top_exp['Texto_Etiqueta'] = df_top_exp['Total'].astype(str) + " (" + df_top_exp['Porcentaje'].astype(str) + "%)"
-
-    gbv_e1, gbv_e2 = st.columns([2, 1])
-    with gbv_e1:
-        fig_exp = px.bar(
-            df_top_exp.sort_values(by='Total', ascending=True),
-            x='Total', y='PoblacionExpuesta', orientation='h', text='Texto_Etiqueta',
-            labels={'PoblacionExpuesta': 'Grupo Poblacional', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[1]]
-        )
-        fig_exp.update_traces(textposition='outside')
-        fig_exp.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_exp, use_container_width=True)
-    with gbv_e2:
-        st.markdown("##### Tabla Resumen Top 5")
-        st.dataframe(df_top_exp[['PoblacionExpuesta', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    st.subheader("68. ¿Dónde debería ir una persona sufriendo VBG para recibir ayuda? (Top)")
-    cols_donde_kobo = [c for c in df_raw.columns if '68.' in str(c) or 'centro de salud' in str(c).lower() or 'consejo comunal' in str(c).lower() or 'psicólogo' in str(c).lower()]
-    conteo_donde = {}
-    if cols_donde_kobo:
-        for c in cols_donde_kobo:
-            nombre_donde = c.split('/')[-1].strip().capitalize()
-            if not any(excl in nombre_donde.lower() for excl in ['ns/nc', 'no responde', 'carretera dañada', 'inundada', 'dificultades para acceder']):
-                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                if tot > 0:
-                    conteo_donde[nombre_donde] = int(tot)
-    if not conteo_donde:
-        conteo_donde = {
-            'Centro de salud': int(total_hogs * 0.75),
-            'Psicólogo': int(total_hogs * 0.62),
-            'ONG': int(total_hogs * 0.48),
-            'Consejo comunal': int(total_hogs * 0.35),
-            'Policía': int(total_hogs * 0.28)
-        }
-
-    df_top_donde = pd.DataFrame(list(conteo_donde.items()), columns=['Institucion', 'Total']).sort_values(by='Total', ascending=False).head(5)
-    df_top_donde['Porcentaje'] = (df_top_donde['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_top_donde['Texto_Etiqueta'] = df_top_donde['Total'].astype(str) + " (" + df_top_donde['Porcentaje'].astype(str) + "%)"
-
-    gbv_c1, gbv_c2 = st.columns([2, 1])
-    with gbv_c1:
-        fig_donde = px.bar(
-            df_top_donde.sort_values(by='Total', ascending=True),
-            x='Total', y='Institucion', orientation='h', text='Texto_Etiqueta',
-            labels={'Institucion': 'Institución / Instancia', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[0]]
-        )
-        fig_donde.update_traces(textposition='outside')
-        fig_donde.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_donde, use_container_width=True)
-    with gbv_c2:
-        st.markdown("##### Tabla Resumen Top")
-        st.dataframe(df_top_donde[['Institucion', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    st.subheader("70. ¿Actualmente la población tiene acceso a los siguientes servicios de atención a VBG?")
-    cols_serv_kobo = [c for c in df_raw.columns if '70.' in str(c) or 'apoyo psicosocial' in str(c).lower() or 'alojamiento temporal' in str(c).lower() or 'gestión de casos' in str(c).lower()]
-    conteo_serv = {}
-    if cols_serv_kobo:
-        for c in cols_serv_kobo:
-            nombre_serv = c.split('/')[-1].strip().capitalize()
-            if not any(excl in nombre_serv.lower() for excl in ['ns/nc', 'no responde', 'no sabe']):
-                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                if tot > 0:
-                    conteo_serv[nombre_serv] = int(tot)
-    if not conteo_serv:
-        conteo_serv = {
-            'Acceso a servicios de apoyo psicosocial': int(total_hogs * 0.58),
-            'Protección para víctimas / sobrevivientes de violencia de género': int(total_hogs * 0.45),
-            'Gestión de casos de protección': int(total_hogs * 0.38),
-            'Alojamiento temporal seguro o casa de abrigo': int(total_hogs * 0.22)
-        }
-
-    df_top_serv = pd.DataFrame(list(conteo_serv.items()), columns=['Servicio', 'Total']).sort_values(by='Total', ascending=False)
-    df_top_serv['Porcentaje'] = (df_top_serv['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_top_serv['Texto_Etiqueta'] = df_top_serv['Total'].astype(str) + " (" + df_top_serv['Porcentaje'].astype(str) + "%)"
-
-    gbv_c3, gbv_c4 = st.columns([2, 1])
-    with gbv_c3:
-        fig_serv = px.bar(
-            df_top_serv.sort_values(by='Total', ascending=True),
-            x='Total', y='Servicio', orientation='h', text='Texto_Etiqueta',
-            labels={'Servicio': 'Servicio de Atención', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[1]]
-        )
-        fig_serv.update_traces(textposition='outside')
-        fig_serv.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_serv, use_container_width=True)
-    with gbv_c4:
-        st.markdown("##### Tabla Resumen")
-        st.dataframe(df_top_serv[['Servicio', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
-
 # TAB 9: EDUCACIÓN EN EMERGENCIAS
 with tab9:
     st.header("Categoría 7: Educación en Emergencias")
@@ -1861,100 +1722,7 @@ with tab9:
         fig_ed2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_ed2, use_container_width=True)
 
-    st.markdown("---")
-
-    st.subheader("73. ¿Han enfrentado alguna de estas dificultades para llevar a cabo sus estudios? (Top)")
-    cols_dif_kobo = [c for c in df_raw.columns if '73.' in str(c) or 'razones económicas' in str(c).lower() or 'transporte' in str(c).lower() or 'falta de docentes' in str(c).lower()]
-    conteo_dif = {}
-    if cols_dif_kobo:
-        for c in cols_dif_kobo:
-            nombre_dif = c.split('/')[-1].strip().capitalize()
-            if nombre_dif.lower() not in ['ns/nc', 'otra dificultad', 'no especificado']:
-                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                if tot > 0:
-                    conteo_dif[nombre_dif] = int(tot)
-    if not conteo_dif:
-        conteo_dif = {
-            'Razones económicas / Costos de útiles o uniformes': int(total_hogs * 0.78),
-            'Falta de servicios en la escuela (agua, luz, comedor)': int(total_hogs * 0.65),
-            'Falta de transporte / Distancia': int(total_hogs * 0.52),
-            'Necesidad de trabajar / Apoyo en el hogar': int(total_hogs * 0.40),
-            'Falta de docentes': int(total_hogs * 0.28)
-        }
-
-    df_top_dif = pd.DataFrame(list(conteo_dif.items()), columns=['Dificultad', 'Total']).sort_values(by='Total', ascending=False).head(5)
-    df_top_dif['Porcentaje'] = (df_top_dif['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_top_dif['Texto_Etiqueta'] = df_top_dif['Total'].astype(str) + " (" + df_top_dif['Porcentaje'].astype(str) + "%)"
-
-    edu_c1, edu_c2 = st.columns([2, 1])
-    with edu_c1:
-        fig_dif = px.bar(
-            df_top_dif.sort_values(by='Total', ascending=True),
-            x='Total', y='Dificultad', orientation='h', text='Texto_Etiqueta',
-            labels={'Dificultad': 'Dificultad / Barrera', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[3]]
-        )
-        fig_dif.update_traces(textposition='outside')
-        fig_dif.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_dif, use_container_width=True)
-    with edu_c2:
-        st.markdown("##### Tabla Resumen Top")
-        st.dataframe(df_top_dif[['Dificultad', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    st.subheader("74. A juicio del hogar, ¿qué estado general presentan las instalaciones de la unidad educativa?")
-    df_ed4 = df_filtered['edu_estado_clean'].value_counts().reset_index()
-    df_ed4.columns = ['EstadoInstalacion', 'Total']
-    df_ed4['Porcentaje'] = (df_ed4['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_ed4['Etiqueta'] = df_ed4['Total'].astype(str) + " (" + df_ed4['Porcentaje'].astype(str) + "%)"
-    
-    fig_ed4 = px.bar(df_ed4, x='Total', y='EstadoInstalacion', orientation='h', text='Etiqueta', labels={'EstadoInstalacion': 'Estado de Instalaciones', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[2]])
-    fig_ed4.update_traces(textposition='outside')
-    fig_ed4.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-    st.plotly_chart(fig_ed4, use_container_width=True)
-
-    st.markdown("---")
-
-    st.subheader("75. ¿Cuáles son las mayores carencias o problemas críticos que presenta la escuela?")
-    cols_car_kobo = [c for c in df_raw.columns if '75.' in str(c) or 'agua potable y baños' in str(c).lower() or 'daños estructurales' in str(c).lower() or 'mobiliario' in str(c).lower()]
-    conteo_car = {}
-    if cols_car_kobo:
-        for c in cols_car_kobo:
-            nombre_car = c.split('/')[-1].strip().capitalize()
-            if nombre_car.lower() not in ['ns/nc', 'otra carencia', 'no especificado']:
-                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                if tot > 0:
-                    conteo_car[nombre_car] = int(tot)
-    if not conteo_car:
-        conteo_car = {
-            'Falta de agua potable y baños funcionales': int(total_hogs * 0.82),
-            'Daños estructurales (techos, paredes, pisos)': int(total_hogs * 0.70),
-            'Falta de pupitres, mesas y mobiliario': int(total_hogs * 0.58),
-            'Falta de servicio eléctrico': int(total_hogs * 0.45),
-            'Falta de Programa de Alimentación Escolar (PAE) / Comedor': int(total_hogs * 0.35)
-        }
-
-    df_top_car = pd.DataFrame(list(conteo_car.items()), columns=['Carencia', 'Total']).sort_values(by='Total', ascending=False)
-    df_top_car['Porcentaje'] = (df_top_car['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_top_car['Texto_Etiqueta'] = df_top_car['Total'].astype(str) + " (" + df_top_car['Porcentaje'].astype(str) + "%)"
-
-    edu_c3, edu_c4 = st.columns([2, 1])
-    with edu_c3:
-        fig_car = px.bar(
-            df_top_car.sort_values(by='Total', ascending=True),
-            x='Total', y='Carencia', orientation='h', text='Texto_Etiqueta',
-            labels={'Carencia': 'Carencia Crítica', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[0]]
-        )
-        fig_car.update_traces(textposition='outside')
-        fig_car.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_car, use_container_width=True)
-    with edu_c4:
-        st.markdown("##### Tabla Resumen")
-        st.dataframe(df_top_car[['Carencia', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
-
-# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA
+# TAB 10: SALUD Y SSR
 with tab10:
     st.header("Salud y Salud Sexual y Reproductiva (Preguntas 76 - 79)")
     total_hogs = len(df_filtered)
@@ -1973,7 +1741,7 @@ with tab10:
         st.plotly_chart(fig_s76, use_container_width=True)
 
     with s2:
-        st.subheader("76.2. ¿Todas las veces que se acercaron al centro médico pudieron obtener atención médica cuando consideraron que la necesitaban?")
+        st.subheader("76.2. ¿Pudieron obtener atención médica cuando la necesitaron?")
         df_s76_2 = df_filtered['salud_obtener_clean'].value_counts().reset_index()
         df_s76_2.columns = ['Respuesta', 'Total']
         df_s76_2['Porcentaje'] = (df_s76_2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
@@ -1984,132 +1752,110 @@ with tab10:
         fig_s76_2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_s76_2, use_container_width=True)
 
-    st.markdown("---")
-
-    s3, s4 = st.columns(2)
-    with s3:
-        st.subheader("76.1. ¿Dónde acudió para recibir atención médica? (Top)")
-        cols_donde_salud = [c for c in df_raw.columns if '76.1' in str(c) or '76_1' in str(c) or 'ambulatorios' in str(c).lower() or 'clínicas' in str(c).lower() or 'cdi' in str(c).lower()]
-        conteo_donde_salud = {}
-        if cols_donde_salud:
-            for c in cols_donde_salud:
-                nombre_ds = c.split('/')[-1].strip().capitalize()
-                if nombre_ds.lower() not in ['ns/nc', 'no especificado', 'otro']:
-                    tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                    if tot > 0:
-                        conteo_donde_salud[nombre_ds] = int(tot)
-        if not conteo_donde_salud:
-            conteo_donde_salud = {
-                'Ambulatorios / Consultorios populares / CDI (Misión cubana)': int(total_hogs * 0.72),
-                'Hospital': int(total_hogs * 0.55),
-                'Consultas privadas / pagadas en clínicas': int(total_hogs * 0.40),
-                'Farmacia': int(total_hogs * 0.32),
-                'Ninguno (Se automedica)': int(total_hogs * 0.25)
-            }
-
-        df_top_ds = pd.DataFrame(list(conteo_donde_salud.items()), columns=['LugarAtencion', 'Total']).sort_values(by='Total', ascending=False).head(5)
-        df_top_ds['Porcentaje'] = (df_top_ds['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_top_ds['Texto_Etiqueta'] = df_top_ds['Total'].astype(str) + " (" + df_top_ds['Porcentaje'].astype(str) + "%)"
-
-        fig_ds = px.bar(
-            df_top_ds.sort_values(by='Total', ascending=True),
-            x='Total', y='LugarAtencion', orientation='h', text='Texto_Etiqueta',
-            labels={'LugarAtencion': 'Lugar de Atención', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[0]]
-        )
-        fig_ds.update_traces(textposition='outside')
-        fig_ds.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_ds, use_container_width=True)
-
-    with s4:
-        st.subheader("77. ¿Ha experimentado su hogar alguna de las siguientes barreras al acceder a la atención sanitaria?")
-        cols_barreras_salud = [c for c in df_raw.columns if '77.' in str(c) or 'centros de salud cerrados' in str(c).lower() or 'dificultades para acceder al centro' in str(c).lower()]
-        conteo_barreras = {}
-        if cols_barreras_salud:
-            for c in cols_barreras_salud:
-                nombre_bs = c.split('/')[-1].strip().capitalize()
-                if nombre_bs.lower() not in ['ns/nc', 'no especificado', 'otro']:
-                    tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                    if tot > 0:
-                        conteo_barreras[nombre_bs] = int(tot)
-        if not conteo_barreras:
-            conteo_barreras = {
-                'Centros de salud cerrados o sin personal': int(total_hogs * 0.68),
-                'Falta de medicamentos o insumos médicos': int(total_hogs * 0.62),
-                'Costos elevados de consultas o tratamientos privados': int(total_hogs * 0.55),
-                'Dificultades para acceder (carretera dañada, inundada, falta de transporte)': int(total_hogs * 0.42),
-                'Largas listas de espera': int(total_hogs * 0.35)
-            }
-
-        df_top_bs = pd.DataFrame(list(conteo_barreras.items()), columns=['Barrera', 'Total']).sort_values(by='Total', ascending=False).head(5)
-        df_top_bs['Porcentaje'] = (df_top_bs['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_top_bs['Texto_Etiqueta'] = df_top_bs['Total'].astype(str) + " (" + df_top_bs['Porcentaje'].astype(str) + "%)"
-
-        fig_bs = px.bar(
-            df_top_bs.sort_values(by='Total', ascending=True),
-            x='Total', y='Barrera', orientation='h', text='Texto_Etiqueta',
-            labels={'Barrera': 'Barrera Sanitaria', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[3]]
-        )
-        fig_bs.update_traces(textposition='outside')
-        fig_bs.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_bs, use_container_width=True)
-
-    st.markdown("---")
-
-    s5, s6 = st.columns(2)
-    with s5:
-        st.subheader("78. ¿Cuánto tiempo (en minutos) tarda en llegar al centro de salud más cercano y operativo?")
-        df_s78 = df_filtered['salud_tiempo_clean'].value_counts().reset_index()
-        df_s78.columns = ['Tiempo', 'Total']
-        df_s78['Porcentaje'] = (df_s78['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_s78['Etiqueta'] = df_s78['Total'].astype(str) + " (" + df_s78['Porcentaje'].astype(str) + "%)"
-        
-        fig_s78 = px.bar(
-            df_s78, x='Total', y='Tiempo', orientation='h', text='Etiqueta',
-            labels={'Tiempo': 'Tiempo de Traslado', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[2]]
-        )
-        fig_s78.update_traces(textposition='outside')
-        fig_s78.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_s78, use_container_width=True)
-
-    with s6:
-        st.subheader("79. ¿Cómo obtienen las personas los medicamentos indicados por profesionales de la salud? (Top)")
-        cols_med_salud = [c for c in df_raw.columns if '79.' in str(c) or 'compran en farmacias locales' in str(c).lower() or 'centro de salud' in str(c).lower() or 'donación' in str(c).lower()]
-        conteo_med = {}
-        if cols_med_salud:
-            for c in cols_med_salud:
-                nombre_med = c.split('/')[-1].strip().capitalize()
-                if nombre_med.lower() not in ['ns/nc', 'no especificado', 'otro']:
-                    tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                    if tot > 0:
-                        conteo_med[nombre_med] = int(tot)
-        if not conteo_med:
-            conteo_med = {
-                'Se compran en farmacias locales': int(total_hogs * 0.78),
-                'En el centro de salud de la comunidad, pero las medicinas se entregan parcialmente o no están disponibles': int(total_hogs * 0.65),
-                'Mediante donación de familiares, iglesias u organizaciones humanitarias': int(total_hogs * 0.45),
-                'Se debe viajar a otro municipio o estado para comprar las medicinas': int(total_hogs * 0.35),
-                'En el centro de salud de la comunidad, gratis': int(total_hogs * 0.18)
-            }
-
-        df_top_med = pd.DataFrame(list(conteo_med.items()), columns=['FormaMedicamento', 'Total']).sort_values(by='Total', ascending=False).head(5)
-        df_top_med['Porcentaje'] = (df_top_med['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_top_med['Texto_Etiqueta'] = df_top_med['Total'].astype(str) + " (" + df_top_med['Porcentaje'].astype(str) + "%)"
-
-        fig_med = px.bar(
-            df_top_med.sort_values(by='Total', ascending=True),
-            x='Total', y='FormaMedicamento', orientation='h', text='Texto_Etiqueta',
-            labels={'FormaMedicamento': 'Modalidad de Obtención', 'Total': 'Hogares'},
-            color_discrete_sequence=[INTEGRAS_COLORS[1]]
-        )
-        fig_med.update_traces(textposition='outside')
-        fig_med.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_med, use_container_width=True)
-
-# TAB 11: BASE DE DATOS Y DESCARGA
+# TAB 11: MOVILIDAD HUMANA
 with tab11:
+    st.header("Categoría 9: Movilidad Humana (Preguntas 83 - 85)")
+    total_hogs = len(df_filtered)
+
+    m1, m2 = st.columns(2)
+    with m1:
+        st.subheader("83. ¿Ha cambiado su lugar de residencia en el último año dentro de Venezuela?")
+        df_m1 = df_filtered['mov_residencia_clean'].value_counts().reset_index()
+        df_m1.columns = ['Respuesta', 'Total']
+        df_m1['Porcentaje'] = (df_m1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_m1['Etiqueta'] = df_m1['Total'].astype(str) + " (" + df_m1['Porcentaje'].astype(str) + "%)"
+        
+        fig_m1 = px.bar(df_m1, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_m1.update_traces(textposition='outside')
+        fig_m1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_m1, use_container_width=True)
+
+    with m2:
+        st.subheader("84. ¿Usted ha salido o salió del país con el propósito de vivir en otro país?")
+        df_m2 = df_filtered['mov_pais_clean'].value_counts().reset_index()
+        df_m2.columns = ['Respuesta', 'Total']
+        df_m2['Porcentaje'] = (df_m2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_m2['Etiqueta'] = df_m2['Total'].astype(str) + " (" + df_m2['Porcentaje'].astype(str) + "%)"
+        
+        fig_m2 = px.bar(df_m2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_m2.update_traces(textposition='outside')
+        fig_m2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_m2, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("85. ¿Conoce personas que hayan salido en los últimos tres meses de su comunidad a otra comunidad o fuera del país?")
+    df_m3 = df_filtered['mov_comunidad_clean'].value_counts().reset_index()
+    df_m3.columns = ['Respuesta', 'Total']
+    df_m3['Porcentaje'] = (df_m3['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_m3['Etiqueta'] = df_m3['Total'].astype(str) + " (" + df_m3['Porcentaje'].astype(str) + "%)"
+    
+    fig_m3 = px.bar(df_m3, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+    fig_m3.update_traces(textposition='outside')
+    fig_m3.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+    st.plotly_chart(fig_m3, use_container_width=True)
+
+# TAB 12: SALUD MENTAL Y APOYO PSICOSOCIAL (SMAPS)
+with tab12:
+    st.header("Capítulo 12: Salud Mental y Apoyo Psicosocial (SMAPS)")
+    total_hogs = len(df_filtered)
+
+    st.subheader("101.1 & 101.2: Tamizaje PHQ-2 (Depresión - Últimas 2 semanas)")
+    sm1, sm2 = st.columns(2)
+    with sm1:
+        st.markdown("##### 101.1: Poco interés o placer en hacer las cosas")
+        df_phq1 = df_filtered['phq1_clean'].value_counts().reset_index()
+        df_phq1.columns = ['Frecuencia', 'Total']
+        df_phq1['Porcentaje'] = (df_phq1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_phq1['Etiqueta'] = df_phq1['Total'].astype(str) + " (" + df_phq1['Porcentaje'].astype(str) + "%)"
+        
+        fig_p1 = px.bar(df_phq1, x='Total', y='Frecuencia', orientation='h', text='Etiqueta', color_discrete_sequence=[INTEGRAS_COLORS[0]])
+        fig_p1.update_traces(textposition='outside')
+        fig_p1.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_p1, use_container_width=True)
+
+    with sm2:
+        st.markdown("##### 101.2: Sentirse deprimido o desesperado")
+        df_phq2 = df_filtered['phq2_clean'].value_counts().reset_index()
+        df_phq2.columns = ['Frecuencia', 'Total']
+        df_phq2['Porcentaje'] = (df_phq2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_phq2['Etiqueta'] = df_phq2['Total'].astype(str) + " (" + df_phq2['Porcentaje'].astype(str) + "%)"
+        
+        fig_p2 = px.bar(df_phq2, x='Total', y='Frecuencia', orientation='h', text='Etiqueta', color_discrete_sequence=[INTEGRAS_COLORS[1]])
+        fig_p2.update_traces(textposition='outside')
+        fig_p2.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_p2, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("101.3 & 101.4: Tamizaje GAD-2 (Ansiedad - Últimas 2 semanas)")
+    sm3, sm4 = st.columns(2)
+    with sm3:
+        st.markdown("##### 101.3: Sentirse nervioso(a), ansioso(a) o al borde")
+        df_gad1 = df_filtered['gad1_clean'].value_counts().reset_index()
+        df_gad1.columns = ['Frecuencia', 'Total']
+        df_gad1['Porcentaje'] = (df_gad1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_gad1['Etiqueta'] = df_gad1['Total'].astype(str) + " (" + df_gad1['Porcentaje'].astype(str) + "%)"
+        
+        fig_g1 = px.bar(df_gad1, x='Total', y='Frecuencia', orientation='h', text='Etiqueta', color_discrete_sequence=[INTEGRAS_COLORS[2]])
+        fig_g1.update_traces(textposition='outside')
+        fig_g1.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_g1, use_container_width=True)
+
+    with sm4:
+        st.markdown("##### 101.4: No ser capaz de parar o controlar la preocupación")
+        df_gad2 = df_filtered['gad2_clean'].value_counts().reset_index()
+        df_gad2.columns = ['Frecuencia', 'Total']
+        df_gad2['Porcentaje'] = (df_gad2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_gad2['Etiqueta'] = df_gad2['Total'].astype(str) + " (" + df_gad2['Porcentaje'].astype(str) + "%)"
+        
+        fig_g2 = px.bar(df_gad2, x='Total', y='Frecuencia', orientation='h', text='Etiqueta', color_discrete_sequence=[INTEGRAS_COLORS[3]])
+        fig_g2.update_traces(textposition='outside')
+        fig_g2.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        st.plotly_chart(fig_g2, use_container_width=True)
+
+# TAB 13: BASE DE DATOS Y DESCARGA
+with tab13:
     st.subheader("Vista Previa de Registros Limpios")
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
@@ -2118,6 +1864,8 @@ with tab11:
         'act_laboral_clean', 'cant_empleadas_val', 'acceso_doc_clean', 'necesidad_doc_clean',
         'nna_separados_clean', 'nna_ayuda_clean', 'gbv_problemas_clean', 'gbv_acceso_clean',
         'edu_asisten_clean', 'edu_operativas_clean', 'salud_problema_clean', 'salud_obtener_clean',
+        'mov_residencia_clean', 'mov_pais_clean', 'mov_comunidad_clean',
+        'phq1_clean', 'phq2_clean', 'gad1_clean', 'gad2_clean',
         'disc_filtro', 'pueblo_indigena_clean'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
