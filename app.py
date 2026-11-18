@@ -311,14 +311,16 @@ col_edu_estado = next((c for c in df_raw.columns if '74.' in str(c) or 'estado g
 
 # Salud y Salud Sexual y Reproductiva (Preguntas 76 - 82)
 col_salud_problema = next((c for c in df_raw.columns if '76.' in str(c) or 'problema de salud y necesitó acceder a atención médica' in str(c).lower()), None)
-col_salud_donde = next((c for c in df_raw.columns if '76.1' in str(c) or '76_1' in str(c) or 'dónde acudió para recibir atención médica' in str(c).lower()), None)
 col_salud_obtener = next((c for c in df_raw.columns if '76.2' in str(c) or '76_2' in str(c) or 'pudieron obtener atención médica' in str(c).lower()), None)
 col_salud_tiempo = next((c for c in df_raw.columns if '78.' in str(c) or 'cuánto tiempo (en minutos) tarda' in str(c).lower()), None)
 
-# Nuevas preguntas incorporadas (80, 81, 82)
 col_ssr_servicios = next((c for c in df_raw.columns if '80.' in str(c) or 'salud sexual y reproductiva (ginecología' in str(c).lower()), None)
-col_ssr_metodos = next((c for c in df_raw.columns if '81.' in str(c) or 'métodos anticonceptivos' in str(c).lower()), None)
 col_ssr_charlas = next((c for c in df_raw.columns if '82.' in str(c) or 'charla o formación sobre temas de salud sexual y reproductiva' in str(c).lower()), None)
+
+# Movilidad Humana (Preguntas 83, 84, 85)
+col_mov_residencia = next((c for c in df_raw.columns if '83.' in str(c) or 'cambiado su lugar de residencia' in str(c).lower()), None)
+col_mov_pais = next((c for c in df_raw.columns if '84.' in str(c) or 'salido o salió del país con el propósito' in str(c).lower()), None)
+col_mov_comunidad = next((c for c in df_raw.columns if '85.' in str(c) or 'conoce personas que hayan salido en los últimos tres meses' in str(c).lower()), None)
 
 col_agua_frec = None
 for c in df_raw.columns:
@@ -492,9 +494,13 @@ df_clean['salud_problema_clean'] = df_raw[col_salud_problema].apply(limpiar_si_n
 df_clean['salud_obtener_clean'] = df_raw[col_salud_obtener].apply(limpiar_si_no) if col_salud_obtener else 'No especificado'
 df_clean['salud_tiempo_clean'] = limpiar_texto_simple(col_salud_tiempo)
 
-# Limpieza de las nuevas preguntas de SSR (80, 82)
 df_clean['ssr_servicios_clean'] = df_raw[col_ssr_servicios].apply(limpiar_si_no) if col_ssr_servicios else 'No especificado'
 df_clean['ssr_charlas_clean'] = df_raw[col_ssr_charlas].apply(limpiar_si_no) if col_ssr_charlas else 'No especificado'
+
+# Limpieza de Movilidad Humana (Preguntas 83, 84, 85)
+df_clean['mov_residencia_clean'] = df_raw[col_mov_residencia].apply(limpiar_si_no) if col_mov_residencia else 'No especificado'
+df_clean['mov_pais_clean'] = df_raw[col_mov_pais].apply(limpiar_si_no) if col_mov_pais else 'No especificado'
+df_clean['mov_comunidad_clean'] = df_raw[col_mov_comunidad].apply(limpiar_si_no) if col_mov_comunidad else 'No especificado'
 
 # Suma precisa de Hombres y Mujeres de los rangos etarios del Excel
 if cols_hombres_etarios:
@@ -633,8 +639,8 @@ with col7:
 
 st.markdown("---")
 
-# --- 11 PESTAÑAS PRINCIPALES ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+# --- 12 PESTAÑAS PRINCIPALES (INCLUYENDO MOVILIDAD HUMANA) ---
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs([
     "Población",
     "Vivienda",
     "Agua, Saneamiento e Higiene (WASH)",
@@ -645,6 +651,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "GBV y Género",
     "Educación en Emergencias",
     "Salud y Salud Sexual y Reproductiva",
+    "Movilidad Humana",
     "Base de Datos"
 ])
 
@@ -1963,35 +1970,34 @@ with tab9:
         st.markdown("##### Tabla Resumen")
         st.dataframe(df_top_car[['Carencia', 'Total', 'Porcentaje']], use_container_width=True, hide_index=True)
 
-# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVAS (CON PREGUNTAS 80, 81 Y 82)
+# TAB 10: SALUD Y SALUD SEXUAL Y REPRODUCTIVA (DISEÑO VERTICAL CORREGIDO)
 with tab10:
     st.header("Salud y Salud Sexual y Reproductiva (Preguntas 76 - 82)")
     total_hogs = len(df_filtered)
 
-    s1, s2 = st.columns(2)
-    with s1:
-        st.subheader("76. Durante los últimos 6 meses, ¿alguien en su hogar tuvo algún problema de salud y necesitó acceder a atención médica?")
-        df_s76 = df_filtered['salud_problema_clean'].value_counts().reset_index()
-        df_s76.columns = ['Respuesta', 'Total']
-        df_s76['Porcentaje'] = (df_s76['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_s76['Etiqueta'] = df_s76['Total'].astype(str) + " (" + df_s76['Porcentaje'].astype(str) + "%)"
-        
-        fig_s76 = px.bar(df_s76, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
-        fig_s76.update_traces(textposition='outside')
-        fig_s76.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-        st.plotly_chart(fig_s76, use_container_width=True)
+    st.subheader("76. Durante los últimos 6 meses, ¿alguien en su hogar tuvo algún problema de salud y necesitó acceder a atención médica?")
+    df_s76 = df_filtered['salud_problema_clean'].value_counts().reset_index()
+    df_s76.columns = ['Respuesta', 'Total']
+    df_s76['Porcentaje'] = (df_s76['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_s76['Etiqueta'] = df_s76['Total'].astype(str) + " (" + df_s76['Porcentaje'].astype(str) + "%)"
+    
+    fig_s76 = px.bar(df_s76, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+    fig_s76.update_traces(textposition='outside')
+    fig_s76.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+    st.plotly_chart(fig_s76, use_container_width=True)
 
-    with s2:
-        st.subheader("76.2. ¿Todas las veces que se acercaron al centro médico pudieron obtener atención médica cuando consideraron que la necesitaban?")
-        df_s76_2 = df_filtered['salud_obtener_clean'].value_counts().reset_index()
-        df_s76_2.columns = ['Respuesta', 'Total']
-        df_s76_2['Porcentaje'] = (df_s76_2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_s76_2['Etiqueta'] = df_s76_2['Total'].astype(str) + " (" + df_s76_2['Porcentaje'].astype(str) + "%)"
-        
-        fig_s76_2 = px.bar(df_s76_2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
-        fig_s76_2.update_traces(textposition='outside')
-        fig_s76_2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-        st.plotly_chart(fig_s76_2, use_container_width=True)
+    st.markdown("---")
+
+    st.subheader("76.2. ¿Todas las veces que se acercaron al centro médico pudieron obtener atención médica cuando consideraron que la necesitaban?")
+    df_s76_2 = df_filtered['salud_obtener_clean'].value_counts().reset_index()
+    df_s76_2.columns = ['Respuesta', 'Total']
+    df_s76_2['Porcentaje'] = (df_s76_2['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_s76_2['Etiqueta'] = df_s76_2['Total'].astype(str) + " (" + df_s76_2['Porcentaje'].astype(str) + "%)"
+    
+    fig_s76_2 = px.bar(df_s76_2, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+    fig_s76_2.update_traces(textposition='outside')
+    fig_s76_2.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+    st.plotly_chart(fig_s76_2, use_container_width=True)
 
     st.markdown("---")
 
@@ -2120,30 +2126,16 @@ with tab10:
     st.markdown("---")
     st.markdown("### 🩺 Componente Específico de Salud Sexual y Reproductiva (Preguntas 80, 81 y 82)")
 
-    ssr1, ssr2 = st.columns(2)
-    with ssr1:
-        st.subheader("80. ¿Sabe usted si actualmente en su comunidad se prestan servicios de salud sexual y reproductiva?")
-        df_ssr80 = df_filtered['ssr_servicios_clean'].value_counts().reset_index()
-        df_ssr80.columns = ['Respuesta', 'Total']
-        df_ssr80['Porcentaje'] = (df_ssr80['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_ssr80['Etiqueta'] = df_ssr80['Total'].astype(str) + " (" + df_ssr80['Porcentaje'].astype(str) + "%)"
-        
-        fig_ssr80 = px.bar(df_ssr80, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
-        fig_ssr80.update_traces(textposition='outside')
-        fig_ssr80.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-        st.plotly_chart(fig_ssr80, use_container_width=True)
-
-    with ssr2:
-        st.subheader("82. ¿Sabe usted si en su comunidad alguien ha recibido charlas o formación sobre temas de SSR en los últimos 6 meses?")
-        df_ssr82 = df_filtered['ssr_charlas_clean'].value_counts().reset_index()
-        df_ssr82.columns = ['Respuesta', 'Total']
-        df_ssr82['Porcentaje'] = (df_ssr82['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_ssr82['Etiqueta'] = df_ssr82['Total'].astype(str) + " (" + df_ssr82['Porcentaje'].astype(str) + "%)"
-        
-        fig_ssr82 = px.bar(df_ssr82, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
-        fig_ssr82.update_traces(textposition='outside')
-        fig_ssr82.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-        st.plotly_chart(fig_ssr82, use_container_width=True)
+    st.subheader("80. ¿Sabe usted si actualmente en su comunidad se prestan servicios de salud sexual y reproductiva?")
+    df_ssr80 = df_filtered['ssr_servicios_clean'].value_counts().reset_index()
+    df_ssr80.columns = ['Respuesta', 'Total']
+    df_ssr80['Porcentaje'] = (df_ssr80['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_ssr80['Etiqueta'] = df_ssr80['Total'].astype(str) + " (" + df_ssr80['Porcentaje'].astype(str) + "%)"
+    
+    fig_ssr80 = px.bar(df_ssr80, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+    fig_ssr80.update_traces(textposition='outside')
+    fig_ssr80.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+    st.plotly_chart(fig_ssr80, use_container_width=True)
 
     st.markdown("---")
 
@@ -2180,8 +2172,64 @@ with tab10:
     fig_ant.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
     st.plotly_chart(fig_ant, use_container_width=True)
 
-# TAB 11: BASE DE DATOS Y DESCARGA
+    st.markdown("---")
+
+    st.subheader("82. ¿Sabe usted si en su comunidad alguien ha recibido charlas o formación sobre temas de SSR en los últimos 6 meses?")
+    df_ssr82 = df_filtered['ssr_charlas_clean'].value_counts().reset_index()
+    df_ssr82.columns = ['Respuesta', 'Total']
+    df_ssr82['Porcentaje'] = (df_ssr82['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_ssr82['Etiqueta'] = df_ssr82['Total'].astype(str) + " (" + df_ssr82['Porcentaje'].astype(str) + "%)"
+    
+    fig_ssr82 = px.bar(df_ssr82, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+    fig_ssr82.update_traces(textposition='outside')
+    fig_ssr82.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+    st.plotly_chart(fig_ssr82, use_container_width=True)
+
+# TAB 11: MOVILIDAD HUMANA (NUEVO CAPÍTULO)
 with tab11:
+    st.header("Categoría 9: Movilidad Humana (Preguntas 83, 84 y 85)")
+    total_hogs = len(df_filtered)
+
+    m1, m2 = st.columns(2)
+    with m1:
+        st.subheader("83. ¿Ha cambiado su lugar de residencia en el último año dentro de Venezuela?")
+        df_m83 = df_filtered['mov_residencia_clean'].value_counts().reset_index()
+        df_m83.columns = ['Respuesta', 'Total']
+        df_m83['Porcentaje'] = (df_m83['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_m83['Etiqueta'] = df_m83['Total'].astype(str) + " (" + df_m83['Porcentaje'].astype(str) + "%)"
+        
+        fig_m83 = px.bar(df_m83, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_m83.update_traces(textposition='outside')
+        fig_m83.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_m83, use_container_width=True)
+
+    with m2:
+        st.subheader("84. Usted ha salido o salió del país con el propósito de vivir en otro país?")
+        df_m84 = df_filtered['mov_pais_clean'].value_counts().reset_index()
+        df_m84.columns = ['Respuesta', 'Total']
+        df_m84['Porcentaje'] = (df_m84['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_m84['Etiqueta'] = df_m84['Total'].astype(str) + " (" + df_m84['Porcentaje'].astype(str) + "%)"
+        
+        fig_m84 = px.bar(df_m84, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_m84.update_traces(textposition='outside')
+        fig_m84.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_m84, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("85. ¿Conoce personas que hayan salido en los últimos tres meses de su comunidad a otra comunidad o fuera del país?")
+    df_m85 = df_filtered['mov_comunidad_clean'].value_counts().reset_index()
+    df_m85.columns = ['Respuesta', 'Total']
+    df_m85['Porcentaje'] = (df_m85['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_m85['Etiqueta'] = df_m85['Total'].astype(str) + " (" + df_m85['Porcentaje'].astype(str) + "%)"
+    
+    fig_m85 = px.bar(df_m85, x='Respuesta', y='Total', text='Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+    fig_m85.update_traces(textposition='outside')
+    fig_m85.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+    st.plotly_chart(fig_m85, use_container_width=True)
+
+# TAB 12: BASE DE DATOS Y DESCARGA
+with tab12:
     st.subheader("Vista Previa de Registros Limpios")
     cols_mostrar = [
         'socio_clean', 'estado_clean', 'municipio_clean', 'parroquia_clean',
@@ -2191,6 +2239,7 @@ with tab11:
         'nna_separados_clean', 'nna_ayuda_clean', 'gbv_problemas_clean', 'gbv_acceso_clean',
         'edu_asisten_clean', 'edu_operativas_clean', 'salud_problema_clean', 'salud_obtener_clean',
         'ssr_servicios_clean', 'ssr_charlas_clean',
+        'mov_residencia_clean', 'mov_pais_clean', 'mov_comunidad_clean',
         'disc_filtro', 'pueblo_indigena_clean'
     ]
     st.dataframe(df_filtered[cols_mostrar], use_container_width=True)
