@@ -268,8 +268,8 @@ cols_ninos_etarios = [c for c in df_raw.columns if ('0 a 17' in str(c).lower() o
 
 col_gestantes = [c for c in df_raw.columns if '21.1' in str(c) or 'embarazadas' in str(c).lower()][0] if any('21.1' in str(c) for c in df_raw.columns) else None
 col_tenencia = [c for c in df_raw.columns if '22' in str(c) or 'tenencia' in str(c).lower()][0] if any('22' in str(c) for c in df_raw.columns) else None
-col_personas_viv = [c for c in df_raw.columns if '24' in str(c) or 'personas' in str(c).lower()][0] if any('24' in str(c) for c in df_raw.columns) else None
-col_cuartos = [c for c in df_raw.columns if '25' in str(c) or 'cuartos' in str(c).lower()][0] if any('25' in str(c) for c in df_raw.columns) else None
+col_personas_viv = [c for c in df_raw.columns if '24.' in str(c)][0] if any('24.' in str(c) for c in df_raw.columns) else None
+col_cuartos = [c for c in df_raw.columns if '25.' in str(c)][0] if any('25.' in str(c) for c in df_raw.columns) else None
 
 # Columnas de Empleo y Finanzas
 col_act_laboral = [c for c in df_raw.columns if '39.' in str(c) or 'actividad laboral' in str(c).lower()][0] if any('39.' in str(c) or 'actividad laboral' in str(c).lower() for c in df_raw.columns) else None
