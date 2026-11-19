@@ -2282,27 +2282,28 @@ with tab10:
         fig_s78.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_s78, use_container_width=True)
 
-    with s6:
+    with s6 
         st.subheader("79. ¿Cómo obtienen las personas los medicamentos indicados por profesionales de la salud? (Top)")
-        cols_med_salud = [c for c in df_raw.columns if '79.' in str(c) or 'compran en farmacias locales' in str(c).lower() or 'centro de salud' in str(c).lower() or 'donación' in str(c).lower()]
+        cols_med_salud = [
+            c for c in df_raw.columns
+            if ('79.' in str(c) or '79_' in str(c)) and '/' in str(c)
+        ]
         conteo_med = {}
+        excluir_79 = {'ns/nc', 'no especificado', 'otro', 'no sabe / no responde', 'no responde'}
+
         if cols_med_salud:
             for c in cols_med_salud:
-                nombre_med = c.split('/')[-1].strip().capitalize()
-                if nombre_med.lower() not in ['ns/nc', 'no especificado', 'otro']:
-                    tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
+                nombre_med = c.split('/')[-1].strip()
+                if nombre_med.lower() not in excluir_79:
+                    tot = pd.to_numeric(df_filtered.get(c, pd.Series([0] * total_hogs)), errors='coerce').fillna(0).sum()
                     if tot > 0:
                         conteo_med[nombre_med] = int(tot)
-        if not conteo_med:
-            conteo_med = {
-                'Se compran en farmacias locales': int(total_hogs * 0.78),
-                'En el centro de salud de la comunidad, pero las medicinas se entregan parcialmente o no están disponibles': int(total_hogs * 0.65),
-                'Mediante donación de familiares, iglesias u organizaciones humanitarias': int(total_hogs * 0.45),
-                'Se debe viajar a otro municipio o estado para comprar las medicinas': int(total_hogs * 0.35),
-                'En el centro de salud de la comunidad, gratis': int(total_hogs * 0.18)
-            }
 
-        df_top_med = pd.DataFrame(list(conteo_med.items()), columns=['FormaMedicamento', 'Total']).sort_values(by='Total', ascending=False).head(5)
+        df_top_med = (
+            pd.DataFrame(list(conteo_med.items()), columns=['FormaMedicamento', 'Total'])
+            .sort_values(by='Total', ascending=False)
+            .head(5)
+        )
         df_top_med['Porcentaje'] = (df_top_med['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_top_med['Texto_Etiqueta'] = df_top_med['Total'].astype(str) + " (" + df_top_med['Porcentaje'].astype(str) + "%)"
 
@@ -2312,10 +2313,15 @@ with tab10:
             labels={'FormaMedicamento': 'Modalidad de Obtención', 'Total': 'Hogares'},
             color_discrete_sequence=[INTEGRAS_COLORS[1]]
         )
-        fig_med.update_traces(textposition='outside')
-        fig_med.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-        st.plotly_chart(fig_med, use_container_width=True)
-
+        max_val_79 = df_top_med['Total'].max() if not df_top_med.empty else 0
+        fig_med.update_traces(textposition='outside', cliponaxis=False)
+        fig_med.update_layout(
+            yaxis={'categoryorder': 'total ascending'},
+            yaxis_title="",
+            xaxis_title="Hogares",
+            xaxis_range=[0, max_val_79 * 1.25] if max_val_79 > 0 else None
+        )
+        st.plotly_chart(fig_med, use_container_width=True)    
     st.markdown("---")
     st.markdown("### 🩺 Componente Específico de Salud Sexual y Reproductiva (Preguntas 80, 81 y 82)")
 
