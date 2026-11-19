@@ -1681,28 +1681,38 @@ with tab6:
     st.markdown("---")
 
     st.subheader("62.1. ¿Cuál documento legal o de identidad no ha podido obtener? (Top 5)")
-    cols_tdoc_kobo = [c for c in df_raw.columns if '62_1' in str(c) or '62.1' in str(c) or 'cédula de identidad para nna' in str(c).lower() or 'partida de nacimiento' in str(c).lower() or 'pasaporte' in str(c).lower()]
+    cols_tdoc_kobo = [
+        c for c in df_raw.columns
+        if ('62_1' in str(c) or '62.1' in str(c))
+        and 'partida de nacimiento' not in str(c).lower()
+    ]
     conteo_tdoc = {}
     if cols_tdoc_kobo:
         for c in cols_tdoc_kobo:
             nombre_tdoc = c.split('/')[-1].strip().capitalize()
-            if nombre_tdoc.lower() not in ['ns/nc', 'otro', 'no especificado']:
-                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
+            if nombre_tdoc.lower() not in ['ns/nc', 'otro', 'no especificado', '']:
+                tot = pd.to_numeric(df_filtered.get(c, pd.Series([0] * total_hogs)), errors='coerce').fillna(0).sum()
                 if tot > 0:
                     conteo_tdoc[nombre_tdoc] = int(tot)
-    if not conteo_tdoc:
-        conteo_tdoc = {
-            'Cédula de identidad para NNA': int(total_hogs * 0.45),
-            'Cédula para adultos': int(total_hogs * 0.38),
-            'Partida de nacimiento para NNA': int(total_hogs * 0.30),
-            'Pasaporte': int(total_hogs * 0.22),
-            'Actas de matrimonio': int(total_hogs * 0.12)
-        }
+
+    col_adultos = next(
+        (c for c in df_filtered.columns if '62.1' in str(c) and 'partida de nacimiento para adultos' in str(c).lower()),
+        None
+    )
+    col_nna = next(
+        (c for c in df_filtered.columns if '62.1' in str(c) and 'partida de nacimiento para nna' in str(c).lower()),
+        None
+    )
+    m_adultos = pd.to_numeric(df_filtered[col_adultos], errors='coerce').fillna(0).eq(1) if col_adultos else pd.Series(False, index=df_filtered.index)
+    m_nna = pd.to_numeric(df_filtered[col_nna], errors='coerce').fillna(0).eq(1) if col_nna else pd.Series(False, index=df_filtered.index)
+
+    total_partida_union = int((m_adultos | m_nna).sum())
+    if total_partida_union > 0:
+        conteo_tdoc['Partida de nacimiento'] = total_partida_union
 
     df_top_tdoc = pd.DataFrame(list(conteo_tdoc.items()), columns=['Documento', 'Total']).sort_values(by='Total', ascending=False).head(5)
     df_top_tdoc['Porcentaje'] = (df_top_tdoc['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
     df_top_tdoc['Texto_Etiqueta'] = df_top_tdoc['Total'].astype(str) + " (" + df_top_tdoc['Porcentaje'].astype(str) + "%)"
-
     ds7, ds8 = st.columns([2, 1])
     with ds7:
         fig_tdoc = px.bar(
