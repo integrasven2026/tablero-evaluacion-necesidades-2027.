@@ -526,7 +526,7 @@ df_clean['filtro_agua_clean'] = df_raw[col_filtro_agua].apply(limpiar_filtro_agu
 
 # Limpieza de Tipo de Filtro (Pregunta 38.1)
 col_tipo_filtro = next((c for c in df_raw.columns if '38.1' in str(c) or 'tipo de filtro' in str(c).lower()), None)
-df_clean['tipo_filtro_clean'] = df_raw[col_tipo_filtro].fillna('No especificado').astype(str).str.strip() if col_tipo_filtro else 'No especifica
+df_clean['tipo_filtro_clean'] = df_raw[col_tipo_filtro].fillna('No especificado').astype(str).str.strip() if col_tipo_filtro else 'No especificado'
 # Limpieza de Disposición de Basura (Pregunta 37)
 col_basura = next((c for c in df_raw.columns if '37.' in str(c) and 'basura' in str(c).lower()), None)
 df_clean['basura_clean'] = df_raw[col_basura].fillna('No especificado').astype(str).str.strip() if col_basura else 'No especificado'
