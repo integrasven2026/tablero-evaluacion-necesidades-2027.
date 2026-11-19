@@ -2182,26 +2182,35 @@ with tab10:
 
     s3, s4 = st.columns(2)
     with s3:
-        st.subheader("76.1. ¿Dónde acudió para recibir atención médica? (Top)")
-        cols_donde_salud = [c for c in df_raw.columns if '76.1' in str(c) or '76_1' in str(c) or 'ambulatorios' in str(c).lower() or 'clínicas' in str(c).lower() or 'cdi' in str(c).lower()]
-        conteo_donde_salud = {}
-        if cols_donde_salud:
-            for c in cols_donde_salud:
-                nombre_ds = c.split('/')[-1].strip().capitalize()
-                if nombre_ds.lower() not in ['ns/nc', 'no especificado', 'otro']:
-                    tot = pd.to_numeric(df_filtered.get(c, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum()
-                    if tot > 0:
-                        conteo_donde_salud[nombre_ds] = int(tot)
-        if not conteo_donde_salud:
-            conteo_donde_salud = {
-                'Ambulatorios / Consultorios populares / CDI (Misión cubana)': int(total_hogs * 0.72),
-                'Hospital': int(total_hogs * 0.55),
-                'Consultas privadas / pagadas en clínicas': int(total_hogs * 0.40),
-                'Farmacia': int(total_hogs * 0.32),
-                'Ninguno (Se automedica)': int(total_hogs * 0.25)
-            }
 
-        df_top_ds = pd.DataFrame(list(conteo_donde_salud.items()), columns=['LugarAtencion', 'Total']).sort_values(by='Total', ascending=False).head(5)
+        st.subheader("76.1. ¿Dónde acudió para recibir atención médica? (Top)")
+        col_76_1 = next(
+            (c for c in df_raw.columns if '76.1' in str(c) or '76_1' in str(c) or 'dónde acudió' in str(c).lower()),
+            None
+        )
+
+        if col_76_1 and col_76_1 in df_filtered.columns:
+            serie_76_1 = (
+                df_filtered[col_76_1]
+                .fillna('No especificado')
+                .astype(str)
+                .str.strip()
+            )
+            # Excluir categorías residuales / no especificadas para el Top 5
+            excluir_76_1 = {
+                'no especificado', 'no sé / no responde', 'ns/nc',
+                'no sabe / no responde', 'nan', 'none', ''
+            }
+            df_top_ds = (
+                serie_76_1[~serie_76_1.str.lower().isin(excluir_76_1)]
+                .value_counts()
+                .head(5)
+                .reset_index()
+            )
+            df_top_ds.columns = ['LugarAtencion', 'Total']
+        else:
+            df_top_ds = pd.DataFrame(columns=['LugarAtencion', 'Total'])
+
         df_top_ds['Porcentaje'] = (df_top_ds['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_top_ds['Texto_Etiqueta'] = df_top_ds['Total'].astype(str) + " (" + df_top_ds['Porcentaje'].astype(str) + "%)"
 
@@ -2211,10 +2220,15 @@ with tab10:
             labels={'LugarAtencion': 'Lugar de Atención', 'Total': 'Hogares'},
             color_discrete_sequence=[INTEGRAS_COLORS[0]]
         )
-        fig_ds.update_traces(textposition='outside')
-        fig_ds.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+        max_val_76_1 = df_top_ds['Total'].max() if not df_top_ds.empty else 0
+        fig_ds.update_traces(textposition='outside', cliponaxis=False)
+        fig_ds.update_layout(
+            yaxis={'categoryorder': 'total ascending'},
+            yaxis_title="",
+            xaxis_title="Hogares",
+            xaxis_range=[0, max_val_76_1 * 1.22] if max_val_76_1 > 0 else None
+        )
         st.plotly_chart(fig_ds, use_container_width=True)
-
     with s4:
         st.subheader("77. ¿Ha experimentado su hogar alguna de las siguientes barreras al acceder a la atención sanitaria?")
         cols_barreras_salud = [c for c in df_raw.columns if '77.' in str(c) or 'centros de salud cerrados' in str(c).lower() or 'dificultades para acceder al centro' in str(c).lower()]
