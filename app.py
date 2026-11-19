@@ -527,27 +527,7 @@ df_clean['filtro_agua_clean'] = df_raw[col_filtro_agua].apply(limpiar_filtro_agu
 # Limpieza de Tipo de Filtro (Pregunta 38.1)
 col_tipo_filtro = next((c for c in df_raw.columns if '38.1' in str(c) or 'tipo de filtro' in str(c).lower()), None)
 df_clean['tipo_filtro_clean'] = df_raw[col_tipo_filtro].fillna('No especificado').astype(str).str.strip() if col_tipo_filtro else 'No especificado'
-# Limpieza de Disposición de Basura (Pregunta 37)
-col_basura = next((c for c in df_raw.columns if '37.' in str(c) and 'basura' in str(c).lower()), None)
-df_clean['basura_clean'] = df_raw[col_basura].fillna('No especificado').astype(str).str.strip() if col_basura else 'No especificado'
 
-# Limpieza de Presencia de Filtro de Agua (Pregunta 38)
-col_filtro_agua = next((c for c in df_raw.columns if '38.' in str(c) and 'filtro de agua' in str(c).lower()), None)
-def limpiar_filtro_agua(val):
-    if pd.isna(val):
-        return 'No especificado'
-    s = str(val).strip().lower()
-    if s in ['1', '1.0', 'sí', 'si']:
-        return 'Sí'
-    elif s in ['0', '0.0', 'no']:
-        return 'No'
-    return str(val).strip()
-
-df_clean['filtro_agua_clean'] = df_raw[col_filtro_agua].apply(limpiar_filtro_agua) if col_filtro_agua else 'No especificado'
-
-# Limpieza de Tipo de Filtro (Pregunta 38.1)
-col_tipo_filtro = next((c for c in df_raw.columns if '38.1' in str(c) or 'tipo de filtro' in str(c).lower()), None)
-df_clean['tipo_filtro_clean'] = df_raw[col_tipo_filtro].fillna('No especificado').astype(str).str.strip() if col_tipo_filtro else 'No especificado'
     # Limpieza de Empleo y Finanza
 df_clean['act_laboral_clean'] = df_raw[col_act_laboral].apply(limpiar_si_no) if col_act_laboral else 'No especificado'
 df_clean['cant_empleadas_val'] = pd.to_numeric(df_raw[col_cant_empleadas], errors='coerce').fillna(0) if col_cant_empleadas else 0
@@ -1246,26 +1226,60 @@ with tab3:
     w13, w14 = st.columns(2)
     with w13:
         st.subheader("37. ¿Cómo se desecha la basura?")
-        cols_basura_kobo = [c for c in df_raw.columns if '37' in str(c) or 'basura' in str(c).lower() or 'desecha' in str(c).lower()]
-        conteo_basura = {}
-        if cols_basura_kobo:
-            for k, label_oficial in MAPA_DESECHO_BASURA.items():
-                match_col = [c for c in cols_basura_kobo if k in str(c).lower()]
-                if match_col:
-                    tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
-                    if tot > 0:
-                        conteo_basura[label_oficial] = int(tot)
-        if not conteo_basura:
-            conteo_basura = {'Es recogida por el servicio de aseo público': int(total_hogs * 0.60), 'La deja en la calle': int(total_hogs * 0.15), 'La quema': int(total_hogs * 0.12), 'La entierra': int(total_hogs * 0.08), 'Otra': int(total_hogs * 0.05)}
-
-        df_basura_res = pd.DataFrame(list(conteo_basura.items()), columns=['Método', 'Total']).sort_values(by='Total', ascending=True)
+        df_basura_res = df_filtered['basura_clean'].value_counts().reset_index()
+        df_basura_res.columns = ['Metodo', 'Total']
+        df_basura_res = df_basura_res[~df_basura_res['Metodo'].isin(['No especificado', 'No Especificado', 'Ns/nc'])]
+        
         df_basura_res['Porcentaje'] = (df_basura_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_basura_res['Texto_Etiqueta'] = df_basura_res['Total'].astype(str) + " (" + df_basura_res['Porcentaje'].astype(str) + "%)"
         
-        fig_basura = px.bar(df_basura_res, x='Total', y='Método', orientation='h', text='Texto_Etiqueta', labels={'Método': 'Disposición de Basura', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[2]])
-        fig_basura.update_traces(textposition='outside')
+        fig_basura = px.bar(
+            df_basura_res.sort_values(by='Total', ascending=True),
+            x='Total', y='Metodo', orientation='h', text='Texto_Etiqueta',
+            labels={'Metodo': 'Disposición de Basura', 'Total': 'Hogares'},
+            color_discrete_sequence=[INTEGRAS_COLORS[2]]
+        )
+        fig_basura.update_traces(textposition='outside', cliponaxis=False)
         fig_basura.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_basura, use_container_width=True)
+
+    with w14:
+        st.subheader("38. ¿En su hogar hay filtro de agua?")
+        df_filtro_res = df_filtered['filtro_agua_clean'].value_counts().reset_index()
+        df_filtro_res.columns = ['Respuesta', 'Total']
+        df_filtro_res = df_filtro_res[~df_filtro_res['Respuesta'].isin(['No especificado', 'No Especificado'])]
+        
+        df_filtro_res['Porcentaje'] = (df_filtro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+        df_filtro_res['Texto_Etiqueta'] = df_filtro_res['Total'].astype(str) + " (" + df_filtro_res['Porcentaje'].astype(str) + "%)"
+        
+        fig_filtro = px.bar(
+            df_filtro_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
+            color_discrete_sequence=INTEGRAS_COLORS
+        )
+        fig_filtro.update_traces(textposition='outside')
+        fig_filtro.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
+        st.plotly_chart(fig_filtro, use_container_width=True)
+
+    st.markdown("---")
+
+    # Gráfico 38.1: ¿Qué tipo de filtro?
+    st.subheader("38.1. ¿Qué tipo de filtro?")
+    df_tfiltro_res = df_filtered['tipo_filtro_clean'].value_counts().reset_index()
+    df_tfiltro_res.columns = ['TipoFiltro', 'Total']
+    df_tfiltro_res = df_tfiltro_res[~df_tfiltro_res['TipoFiltro'].isin(['No especificado', 'No Especificado'])]
+    
+    df_tfiltro_res['Porcentaje'] = (df_tfiltro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
+    df_tfiltro_res['Texto_Etiqueta'] = df_tfiltro_res['Total'].astype(str) + " (" + df_tfiltro_res['Porcentaje'].astype(str) + "%)"
+    
+    fig_tfiltro = px.bar(
+        df_tfiltro_res.sort_values(by='Total', ascending=True),
+        x='Total', y='TipoFiltro', orientation='h', text='Texto_Etiqueta',
+        labels={'TipoFiltro': 'Tipo de Filtro', 'Total': 'Hogares'},
+        color_discrete_sequence=[INTEGRAS_COLORS[1]]
+    )
+    fig_tfiltro.update_traces(textposition='outside', cliponaxis=False)
+    fig_tfiltro.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+    st.plotly_chart(fig_tfiltro, use_container_width=True)
 
     with w14:
         st.subheader("38. ¿En su hogar hay filtro de agua?")
