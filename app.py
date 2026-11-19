@@ -1279,47 +1279,43 @@ with tab3:
     )
     fig_tfiltro.update_traces(textposition='outside', cliponaxis=False)
     fig_tfiltro.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-    st.plotly_chart(fig_tfiltro, use_container_width=True)
+    st.plotly_chart(fig_tfiltro, use_container_width=True, key="chart_tipo_filtro_38_1_top")
 
     with w14:
         st.subheader("38. ¿En su hogar hay filtro de agua?")
         df_filtro_res = df_filtered['filtro_agua_clean'].value_counts().reset_index()
         df_filtro_res.columns = ['Respuesta', 'Total']
+        df_filtro_res = df_filtro_res[~df_filtro_res['Respuesta'].isin(['No especificado', 'No Especificado'])]
+        
         df_filtro_res['Porcentaje'] = (df_filtro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_filtro_res['Texto_Etiqueta'] = df_filtro_res['Total'].astype(str) + " (" + df_filtro_res['Porcentaje'].astype(str) + "%)"
         
-        fig_filtro = px.bar(df_filtro_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
+        fig_filtro = px.bar(
+            df_filtro_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
+            color_discrete_sequence=INTEGRAS_COLORS
+        )
         fig_filtro.update_traces(textposition='outside')
         fig_filtro.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-        st.plotly_chart(fig_filtro, use_container_width=True)
-
-    st.markdown("---")
+        st.plotly_chart(fig_filtro, use_container_width=True, key="chart_filtro_agua_38")
 
     st.subheader("38.1. ¿Qué tipo de filtro?")
-    cols_tfiltro_kobo = [c for c in df_raw.columns if '38_1' in str(c) or '38.1' in str(c) or 'tipo_filtro' in str(c).lower() or 'gravedad' in str(c).lower()]
-    conteo_tfiltro = {}
-    if cols_tfiltro_kobo:
-        for k, label_oficial in MAPA_TIPO_FILTRO.items():
-            match_col = [c for c in cols_tfiltro_kobo if k in str(c).lower()]
-            if match_col:
-                tot = sum(pd.to_numeric(df_filtered.get(mc, pd.Series([0]*total_hogs)), errors='coerce').fillna(0).sum() for mc in match_col)
-                if tot > 0:
-                    conteo_tfiltro[label_oficial] = int(tot)
-    if not conteo_tfiltro:
-        conteo_tfiltro = {
-            'Filtros por gravedad (Ej. Filtros de cerámica de 2 tanques/recipientes, velas filtrantes, etc.)': int(total_hogs * 0.70),
-            'Filtros de sifón (Ej. Sifón tipo Tulip u otros sistemas de succión/manguera)': int(total_hogs * 0.30)
-        }
-
-    df_tfiltro_res = pd.DataFrame(list(conteo_tfiltro.items()), columns=['TipoFiltro', 'Total']).sort_values(by='Total', ascending=True)
+    df_tfiltro_res = df_filtered['tipo_filtro_clean'].value_counts().reset_index()
+    df_tfiltro_res.columns = ['TipoFiltro', 'Total']
+    df_tfiltro_res = df_tfiltro_res[~df_tfiltro_res['TipoFiltro'].isin(['No especificado', 'No Especificado'])]
+    
     df_tfiltro_res['Porcentaje'] = (df_tfiltro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
     df_tfiltro_res['Texto_Etiqueta'] = df_tfiltro_res['Total'].astype(str) + " (" + df_tfiltro_res['Porcentaje'].astype(str) + "%)"
     
-    fig_tfiltro = px.bar(df_tfiltro_res, x='Total', y='TipoFiltro', orientation='h', text='Texto_Etiqueta', labels={'TipoFiltro': 'Tipo de Filtro', 'Total': 'Hogares'}, color_discrete_sequence=[INTEGRAS_COLORS[1]])
-    fig_tfiltro.update_traces(textposition='outside')
-    fig_tfiltro.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-    st.plotly_chart(fig_tfiltro, use_container_width=True)
-
+    fig_tfiltro_b = px.bar(
+        df_tfiltro_res.sort_values(by='Total', ascending=True),
+        x='Total', y='TipoFiltro', orientation='h', text='Texto_Etiqueta',
+        labels={'TipoFiltro': 'Tipo de Filtro', 'Total': 'Hogares'},
+        color_discrete_sequence=[INTEGRAS_COLORS[1]]
+    )
+    fig_tfiltro_b.update_traces(textposition='outside', cliponaxis=False)
+    fig_tfiltro_b.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
+    st.plotly_chart(fig_tfiltro_b, use_container_width=True, key="chart_tipo_filtro_38_1_bottom")
+    
 # TAB 4: EMPLEO Y ECONOMÍA
 with tab4:
     st.header("Empleo, Ingresos y Situación Financiera")
