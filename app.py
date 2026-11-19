@@ -548,7 +548,25 @@ df_clean['nut_pediatrica_clean'] = df_raw[col_nut_pediatrica].apply(limpiar_si_n
 df_clean['lactancia_clean'] = df_raw[col_lactancia].apply(limpiar_si_no) if col_lactancia else 'No especificado'
 df_clean['suplementos_clean'] = limpiar_texto_simple(col_suplementos)
 df_clean['malnutricion_clean'] = df_raw[col_malnutricion].apply(limpiar_si_no) if col_malnutricion else 'No especificado'
+# Limpieza Pregunta 54: Asistencia a consulta prenatal y postnatal
+col_p54_prenatal = next((c for c in df_raw.columns if '54.' in str(c) and 'prenatal' in str(c).lower()), None)
 
+def limpiar_p54_prenatal(val):
+    if pd.isna(val):
+        return 'No especificado'
+    s = str(val).strip()
+    s_low = s.lower()
+    if s_low in ['sí', 'si', '1', '1.0']:
+        return 'Sí'
+    if s_low in ['no', '0', '0.0']:
+        return 'No'
+    if 'no sabe' in s_low or 'ns/nr' in s_low:
+        return 'No sabe / No responde'
+    if 'no especificado' in s_low or s == '':
+        return 'No especificado'
+    return s
+
+df_clean['p54_prenatal_clean'] = df_raw[col_p54_prenatal].apply(limpiar_p54_prenatal) if col_p54_prenatal else 'No especificado'
 # Limpieza de Derechos y Servicios
 df_clean['acceso_doc_clean'] = df_raw[col_acceso_doc].apply(limpiar_si_no) if col_acceso_doc else 'No especificado'
 df_clean['necesidad_doc_clean'] = df_raw[col_necesidad_doc].apply(limpiar_si_no) if col_necesidad_doc else 'No especificado'
@@ -1490,15 +1508,17 @@ with tab5:
     nut1, nut2 = st.columns(2)
     with nut1:
         st.subheader("54. Asistencia a consulta prenatal y postnatal")
-        df_nut1 = df_filtered['nut_prenatal_clean'].value_counts().reset_index()
+        df_nut1 = df_filtered['p54_prenatal_clean'].value_counts().reset_index()
         df_nut1.columns = ['Respuesta', 'Total']
+        df_nut1 = df_nut1[~df_nut1['Respuesta'].isin(['No especificado', 'No Especificado'])]
+        
         df_nut1['Porcentaje'] = (df_nut1['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
         df_nut1['Texto_Etiqueta'] = df_nut1['Total'].astype(str) + " (" + df_nut1['Porcentaje'].astype(str) + "%)"
         
         fig_n1 = px.bar(df_nut1, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta', color_discrete_sequence=INTEGRAS_COLORS)
         fig_n1.update_traces(textposition='outside')
         fig_n1.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-        st.plotly_chart(fig_n1, use_container_width=True)
+        st.plotly_chart(fig_n1, use_container_width=True, key="chart_p54_prenatal")
 
     with nut2:
         st.subheader("55. Asistencia de madres con niños a consultas pediátricas")
