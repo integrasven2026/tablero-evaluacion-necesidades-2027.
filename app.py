@@ -2282,7 +2282,7 @@ with tab10:
         fig_s78.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
         st.plotly_chart(fig_s78, use_container_width=True)
 
-    with s6 
+    with s6:
         st.subheader("79. ¿Cómo obtienen las personas los medicamentos indicados por profesionales de la salud? (Top)")
         cols_med_salud = [
             c for c in df_raw.columns
