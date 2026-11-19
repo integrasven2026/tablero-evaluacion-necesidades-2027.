@@ -1260,44 +1260,6 @@ with tab3:
         fig_filtro.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
         st.plotly_chart(fig_filtro, use_container_width=True)
 
-    st.markdown("---")
-
-    # Gráfico 38.1: ¿Qué tipo de filtro?
-    st.subheader("38.1. ¿Qué tipo de filtro?")
-    df_tfiltro_res = df_filtered['tipo_filtro_clean'].value_counts().reset_index()
-    df_tfiltro_res.columns = ['TipoFiltro', 'Total']
-    df_tfiltro_res = df_tfiltro_res[~df_tfiltro_res['TipoFiltro'].isin(['No especificado', 'No Especificado'])]
-    
-    df_tfiltro_res['Porcentaje'] = (df_tfiltro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-    df_tfiltro_res['Texto_Etiqueta'] = df_tfiltro_res['Total'].astype(str) + " (" + df_tfiltro_res['Porcentaje'].astype(str) + "%)"
-    
-    fig_tfiltro = px.bar(
-        df_tfiltro_res.sort_values(by='Total', ascending=True),
-        x='Total', y='TipoFiltro', orientation='h', text='Texto_Etiqueta',
-        labels={'TipoFiltro': 'Tipo de Filtro', 'Total': 'Hogares'},
-        color_discrete_sequence=[INTEGRAS_COLORS[1]]
-    )
-    fig_tfiltro.update_traces(textposition='outside', cliponaxis=False)
-    fig_tfiltro.update_layout(yaxis={'categoryorder': 'total ascending'}, yaxis_title="", xaxis_title="Hogares")
-    st.plotly_chart(fig_tfiltro, use_container_width=True, key="chart_tipo_filtro_38_1_top")
-
-    with w14:
-        st.subheader("38. ¿En su hogar hay filtro de agua?")
-        df_filtro_res = df_filtered['filtro_agua_clean'].value_counts().reset_index()
-        df_filtro_res.columns = ['Respuesta', 'Total']
-        df_filtro_res = df_filtro_res[~df_filtro_res['Respuesta'].isin(['No especificado', 'No Especificado'])]
-        
-        df_filtro_res['Porcentaje'] = (df_filtro_res['Total'] / total_hogs * 100).round(1) if total_hogs > 0 else 0.0
-        df_filtro_res['Texto_Etiqueta'] = df_filtro_res['Total'].astype(str) + " (" + df_filtro_res['Porcentaje'].astype(str) + "%)"
-        
-        fig_filtro = px.bar(
-            df_filtro_res, x='Respuesta', y='Total', text='Texto_Etiqueta', color='Respuesta',
-            color_discrete_sequence=INTEGRAS_COLORS
-        )
-        fig_filtro.update_traces(textposition='outside')
-        fig_filtro.update_layout(xaxis_title="", yaxis_title="Hogares", showlegend=False)
-        st.plotly_chart(fig_filtro, use_container_width=True, key="chart_filtro_agua_38")
-
     st.subheader("38.1. ¿Qué tipo de filtro?")
     df_tfiltro_res = df_filtered['tipo_filtro_clean'].value_counts().reset_index()
     df_tfiltro_res.columns = ['TipoFiltro', 'Total']
