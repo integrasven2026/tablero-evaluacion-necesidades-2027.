@@ -292,7 +292,6 @@ col_dejado_consumir = [c for c in df_raw.columns if '48.' in str(c) or 'dejado d
 col_apoyo_alim = [c for c in df_raw.columns if '49.' in str(c) or 'apoyo alimentario' in str(c).lower()][0] if any('49.' in str(c) for c in df_raw.columns) else None
 col_dias_sin_solidos = [c for c in df_raw.columns if '50.' in str(c) or 'alimentos sólidos' in str(c).lower()][0] if any('50.' in str(c) for c in df_raw.columns) else None
 col_dinero_suf_alim = [c for c in df_raw.columns if '51.' in str(c) or 'dinero suficiente para adquirir todos los alimentos' in str(c).lower()][0] if any('51.' in str(c) for c in df_raw.columns) else None
-
 col_nut_prenatal = [c for c in df_raw.columns if '54.' in str(c) or 'prenatal' in str(c).lower()][0] if any('54.' in str(c) for c in df_raw.columns) else None
 col_nut_pediatrica = [c for c in df_raw.columns if '55.' in str(c) or 'pediátricas' in str(c).lower() or 'pediatricas' in str(c).lower()][0] if any('55.' in str(c) for c in df_raw.columns) else None
 col_lactancia = [c for c in df_raw.columns if '56.' in str(c) or 'lactancia materna' in str(c).lower()][0] if any('56.' in str(c) for c in df_raw.columns) else None
@@ -374,69 +373,21 @@ def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
             if k in v_str:
                 return v
         return v_str.title()
-
-def _clasificar_edad(edad):
-    if pd.isna(edad):
-        return None
-    try:
-        e = float(edad)
-    except (ValueError, TypeError):
-        return None
-    if e <= 17:
-        return '0 a 17'
-    elif 18 <= e <= 40:
-        return '18 a 40'
-    elif e > 50:
-        return 'Más de 50'
-    return '41 a 50'
-
-def construir_edad_por_sexo(df, serie_sexo_jefe):
-    cols_0_17 = [c for c in df.columns if re.search(r'(^|[^0-9])0\s*(a|_|-)\s*17([^0-9]|$)', str(c).lower())]
-    cols_18_40 = [c for c in df.columns if re.search(r'(^|[^0-9])18\s*(a|_|-)\s*40([^0-9]|$)', str(c).lower())]
-    cols_mas_50 = [
-        c for c in df.columns
-        if any(k in str(c).lower() for k in ['50 o más', '50 y más', 'más de 50', 'mas de 50', '51 a', '51_'])
-        or re.search(r'(>\s*50|50\s*\+)', str(c).lower())
-    ]
-
-    if cols_0_17 or cols_18_40 or cols_mas_50:
-        s_0_17 = df[cols_0_17].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_0_17 else pd.Series(0, index=df.index)
-        s_18_40 = df[cols_18_40].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_18_40 else pd.Series(0, index=df.index)
-        s_50_plus = df[cols_mas_50].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_mas_50 else pd.Series(0, index=df.index)
-
-        edades = []
-        for idx in df.index:
-            conteos = {'0 a 17': s_0_17.loc[idx], '18 a 40': s_18_40.loc[idx], 'Más de 50': s_50_plus.loc[idx]}
-            mejor = max(conteos, key=conteos.get)
-            edades.append(mejor if conteos[mejor] > 0 else 'No especificado')
-        serie_edad = pd.Series(edades, index=df.index)
-    else:
-        col_edad = next(
-            (c for c in df.columns if 'edad' in str(c).lower() and not any(x in str(c).lower() for x in ['grupo', 'rango', 'promedio'])),
-            None
-        )
-        if col_edad:
-            serie_edad = pd.to_numeric(df[col_edad], errors='coerce').apply(_clasificar_edad).fillna('No especificado')
-        else:
-            serie_edad = pd.Series(['No especificado'] * len(df), index=df.index)
-
-    sexo_norm = serie_sexo_jefe.fillna('Otro').astype(str).str.strip().str.lower().map(
-        lambda s: 'Hombre' if s in ['masculino', 'hombre', 'm'] else ('Mujer' if s in ['femenino', 'mujer', 'f'] else 'Otro')
-    )
-    return serie_edad + " - " + sexo_norm   
+def limpiar_sexo(val):
     if pd.isna(val):
-        return 'Otro'
+        return 'No especificado'
     s = str(val).strip().lower()
     if s in ['', 'nan', 'none', 'nat']:
-        return 'Otro'
+        return 'No especificado'
     if s in ['masculino', 'hombre', 'm']:
         return 'Hombre'
     elif s in ['femenino', 'mujer', 'f']:
         return 'Mujer'
-    else:
+    elif s in ['otro', 'otra', 'prefiero no decir', 'intersexual', 'non_binary', 'no_binario']:
         return 'Otro'
-
-def clasificar_edad_numerica(edad):
+    else:
+        return s.replace('_', ' ').capitalize()        
+def _clasificar_edad_valor(edad):
     if pd.isna(edad):
         return 'No especificado'
     try:
@@ -452,7 +403,7 @@ def clasificar_edad_numerica(edad):
     else:
         return '41 a 50'
 
-def construir_edad_por_sexo(df, serie_sexo_jefe):
+def construir_edad_agrupada(df):
     cols_0_17 = [c for c in df.columns if re.search(r'(^|[^0-9])0\s*(a|_|-)\s*17([^0-9]|$)', str(c).lower())]
     cols_18_40 = [c for c in df.columns if re.search(r'(^|[^0-9])18\s*(a|_|-)\s*40([^0-9]|$)', str(c).lower())]
     cols_mas_50 = [
@@ -466,29 +417,21 @@ def construir_edad_por_sexo(df, serie_sexo_jefe):
         s_18_40 = df[cols_18_40].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_18_40 else pd.Series(0, index=df.index)
         s_50_plus = df[cols_mas_50].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_mas_50 else pd.Series(0, index=df.index)
 
-        edades = []
+        grupos = []
         for idx in df.index:
             conteos = {'0 a 17': s_0_17.loc[idx], '18 a 40': s_18_40.loc[idx], 'Más de 50': s_50_plus.loc[idx]}
             mejor = max(conteos, key=conteos.get)
-            edades.append(mejor if conteos[mejor] > 0 else 'No especificado')
-        serie_edad = pd.Series(edades, index=df.index)
-    else:
-        col_edad = next(
-            (c for c in df.columns if 'edad' in str(c).lower() and not any(x in str(c).lower() for x in ['grupo', 'rango', 'promedio'])),
-            None
-        )
-        if col_edad:
-            serie_edad = pd.to_numeric(df[col_edad], errors='coerce').apply(clasificar_edad_numerica).fillna('No especificado')
-        else:
-            serie_edad = pd.Series(['No especificado'] * len(df), index=df.index)
+            grupos.append(mejor if conteos[mejor] > 0 else 'No especificado')
+        return pd.Series(grupos, index=df.index)
 
-    sexo_norm = serie_sexo_jefe.fillna('Otro').astype(str).str.strip().str.lower().map(
-        lambda s: 'Hombre' if s in ['masculino', 'hombre', 'm'] else ('Mujer' if s in ['femenino', 'mujer', 'f'] else 'Otro')
+    col_edad = next(
+        (c for c in df.columns if 'edad' in str(c).lower() and not any(x in str(c).lower() for x in ['grupo', 'rango', 'promedio'])),
+        None
     )
-    return serie_edad + " - " + sexo_norm
+    if col_edad:
+        return pd.to_numeric(df[col_edad], errors='coerce').apply(_clasificar_edad_valor)
 
-    return pd.Series(['No especificado'] * len(df), index=df.index)  
-
+    return pd.Series(['No especificado'] * len(df), index=df.index)
 def limpiar_educacion(val):
     if pd.isna(val):
         return 'No especificado'
