@@ -2,6 +2,7 @@ import os
 import re
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 # Configuración inicial de la página
@@ -83,7 +84,7 @@ with col_head2:
 st.markdown("---")
 
 if df_raw.empty:
-    st.error(f"⚠️ No se pudieron cargar datos desde el archivo '{EXCEL_FILE}'. Verifica que esté subido correctamente al repositorio.")
+    st.error(f"No se pudieron cargar datos desde el archivo '{EXCEL_FILE}'. Verifica que esté subido correctamente al repositorio.")
     st.stop()
 
 # --- DICCIONARIOS DE TRADUCCIÓN Y MAPEO OFICIALES ---
@@ -274,11 +275,11 @@ col_cuartos = [c for c in df_raw.columns if '25.' in str(c)][0] if any('25.' in 
 
 # Columnas de Empleo y Finanzas
 col_act_laboral = [c for c in df_raw.columns if '39.' in str(c) or 'actividad laboral' in str(c).lower()][0] if any('39.' in str(c) or 'actividad laboral' in str(c).lower() for c in df_raw.columns) else None
-col_cant_empleadas = [c for c in df_raw.columns if '42.' in str(c) or 'empleadas' in str(c).lower()][0] if any('42.' in str(c) for c in df_raw.columns) else None
-col_remesas = [c for c in df_raw.columns if '43.' in str(c) or 'remesas' in str(c).lower()][0] if any('43.' in str(c) for c in df_raw.columns) else None
-col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunidades de empleo' in str(c).lower()][0] if any('44.' in str(c) for c in df_raw.columns) else None
-col_ingresos = [c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()][0] if any('45.' in str(c) for c in df_raw.columns) else None
-col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()][0] if any('46.' in str(c) for c in df_raw.columns) else None
+col_cant_empleadas = [c for c in df_raw.columns if '42.' in str(c) or 'empleadas' in str(c).lower()][0] if any('42.' in str(c) or 'empleadas' in str(c).lower() for c in df_raw.columns) else None
+col_remesas = [c for c in df_raw.columns if '43.' in str(c) or 'remesas' in str(c).lower()][0] if any('43.' in str(c) or 'remesas' in str(c).lower() for c in df_raw.columns) else None
+col_oportunidades = [c for c in df_raw.columns if '44.' in str(c) or 'oportunidades de empleo' in str(c).lower()][0] if any('44.' in str(c) or 'oportunidades de empleo' in str(c).lower() for c in df_raw.columns) else None
+col_ingresos = [c for c in df_raw.columns if '45.' in str(c) or 'ingreso de su hogar' in str(c).lower()][0] if any('45.' in str(c) or 'ingreso de su hogar' in str(c).lower() for c in df_raw.columns) else None
+col_situacion_fin = [c for c in df_raw.columns if '46.' in str(c) or 'situación financiera' in str(c).lower()][0] if any('46.' in str(c) or 'situación financiera' in str(c).lower() for c in df_raw.columns) else None
 
 # Búsqueda robusta de la columna FCS (Pregunta 47)
 col_fcs_cat = None
@@ -442,6 +443,84 @@ def construir_edad_por_sexo(df, serie_sexo):
         [f"{e} - {s}" for e, s in zip(edades_grp, sexos_grp)],
         index=df.index
     )
+
+def construir_piramide_poblacional(df_sub):
+    orden_grupos = ["0 a 17", "18 a 40", "41 a 50", "Más de 50", "No especificado"]
+    base_total = len(df_sub)
+    filas = []
+
+    for grp in orden_grupos:
+        h_cnt = int((df_sub['edad_sexo_filtro'] == f"{grp} - Hombre").sum())
+        m_cnt = int((df_sub['edad_sexo_filtro'] == f"{grp} - Mujer").sum())
+        if grp == "No especificado" and h_cnt == 0 and m_cnt == 0:
+            continue
+        h_pct = round((h_cnt / base_total * 100), 1) if base_total > 0 else 0.0
+        m_pct = round((m_cnt / base_total * 100), 1) if base_total > 0 else 0.0
+        filas.append({
+            "GrupoEdad": grp,
+            "Hombres": h_cnt,
+            "Mujeres": m_cnt,
+            "Hombres_Neg": -h_cnt,
+            "Hombres_Pct": h_pct,
+            "Mujeres_Pct": m_pct,
+            "Hombres_Lbl": f"{h_cnt} ({h_pct}%)",
+            "Mujeres_Lbl": f"{m_cnt} ({m_pct}%)"
+        })
+
+    df_pir = pd.DataFrame(filas)
+    if df_pir.empty:
+        return go.Figure(), df_pir
+
+    max_val = max(df_pir["Hombres"].max(), df_pir["Mujeres"].max(), 1)
+    rango_x = [-max_val * 1.35, max_val * 1.35]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=df_pir["GrupoEdad"],
+        x=df_pir["Hombres_Neg"],
+        name="Hombre",
+        orientation="h",
+        marker=dict(color=INTEGRAS_COLORS[0]),
+        text=df_pir["Hombres_Lbl"],
+        textposition="outside",
+        cliponaxis=False,
+        customdata=df_pir[["Hombres", "Hombres_Pct"]],
+        hovertemplate="<b>%{y}</b><br>Hombre: %{customdata[0]} (%{customdata[1]}%)<extra></extra>"
+    ))
+    fig.add_trace(go.Bar(
+        y=df_pir["GrupoEdad"],
+        x=df_pir["Mujeres"],
+        name="Mujer",
+        orientation="h",
+        marker=dict(color=INTEGRAS_COLORS[2]),
+        text=df_pir["Mujeres_Lbl"],
+        textposition="outside",
+        cliponaxis=False,
+        customdata=df_pir[["Mujeres", "Mujeres_Pct"]],
+        hovertemplate="<b>%{y}</b><br>Mujer: %{customdata[0]} (%{customdata[1]}%)<extra></extra>"
+    ))
+
+    tick_vals = [-max_val, -max_val / 2, 0, max_val / 2, max_val]
+    tick_text = [str(int(abs(v))) for v in tick_vals]
+
+    fig.update_layout(
+        barmode="overlay",
+        bargap=0.22,
+        xaxis=dict(
+            range=rango_x,
+            tickvals=tick_vals,
+            ticktext=tick_text,
+            title="Registros (n)"
+        ),
+        yaxis=dict(
+            title="Grupo de Edad Agrupada",
+            categoryorder="array",
+            categoryarray=df_pir["GrupoEdad"].tolist()
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+        margin=dict(l=10, r=10, t=40, b=10)
+    )
+    return fig, df_pir
 
 def _extraer_edad_numerica(val):
     if pd.isna(val):
@@ -784,7 +863,7 @@ df_clean['filtro_agua_clean'] = df_raw[col_filtro_agua].apply(limpiar_si_no) if 
 
 # --- BARRA LATERAL DE FILTROS ---
 st.sidebar.header("Filtros del Tablero")
-if st.sidebar.button("🔄 Recargar datos del Excel"):
+if st.sidebar.button("Recargar datos del Excel"):
     st.cache_data.clear()
     st.rerun()
 
@@ -841,7 +920,7 @@ if sel_ind != "Todos":
     df_filtered = df_filtered[df_filtered['indigena_filtro'] == sel_ind]
 
 if df_filtered.empty:
-    st.warning("⚠️ No hay registros que coincidan con los filtros seleccionados.")
+    st.warning("No hay registros que coincidan con los filtros seleccionados.")
     st.stop()
 
 # --- CÁLCULO DE TOTALES PARA PORCENTAJES EN KPIS ---
@@ -933,6 +1012,23 @@ with tab1:
         fig_estado.update_traces(textposition='outside')
         fig_estado.update_layout(yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig_estado, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("Pirámide Poblacional por Edad Agrupada y Sexo")
+    pir_col1, pir_col2 = st.columns([2, 1])
+    fig_pir, df_pir = construir_piramide_poblacional(df_filtered)
+    with pir_col1:
+        if not df_pir.empty:
+            st.plotly_chart(fig_pir, use_container_width=True)
+        else:
+            st.info("No hay datos suficientes para generar la pirámide poblacional.")
+    with pir_col2:
+        st.markdown("##### Cuadro Resumen por Grupo Etario")
+        if not df_pir.empty:
+            df_pir_tabla = df_pir[["GrupoEdad", "Hombres", "Hombres_Pct", "Mujeres", "Mujeres_Pct"]].copy()
+            df_pir_tabla.columns = ["Grupo Edad", "Hombres", "% Hombres", "Mujeres", "% Mujeres"]
+            st.dataframe(df_pir_tabla, use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
@@ -2442,7 +2538,7 @@ with tab10:
         st.plotly_chart(fig_med, use_container_width=True)
 
     st.markdown("---")
-    st.markdown("### 🩺 Componente Específico de Salud Sexual y Reproductiva (Preguntas 80, 81 y 82)")
+    st.markdown("### Componente Específico de Salud Sexual y Reproductiva (Preguntas 80, 81 y 82)")
 
     st.subheader("80. ¿Sabe usted si actualmente en su comunidad se prestan servicios de salud sexual y reproductiva?")
     df_ssr80 = df_filtered['ssr_servicios_clean'].value_counts().reset_index()
@@ -2606,7 +2702,7 @@ with tab12:
         st.plotly_chart(fig_g2, use_container_width=True)
 
     st.markdown("---")
-    st.info("ℹ️ **Nota SMAPS:** La puntuación total de cada test (PHQ-2 y GAD-2) se evalúa agregando los valores numéricos entre 0 y 3 por cada pregunta para determinar niveles de riesgo clínico psicosocial.")
+    st.info("Nota SMAPS: La puntuación total de cada test (PHQ-2 y GAD-2) se evalúa agregando los valores numéricos entre 0 y 3 por cada pregunta para determinar niveles de riesgo clínico psicosocial.")
 
 # TAB 13: BASE DE DATOS Y DESCARGA
 with tab13:
@@ -2628,7 +2724,7 @@ with tab13:
 
     csv_data = df_filtered[cols_mostrar].to_csv(index=False).encode('utf-8-sig')
     st.download_button(
-        label="📥 Descargar Datos Filtrados (CSV)",
+        label="Descargar Datos Filtrados (CSV)",
         data=csv_data,
         file_name="evaluacion_necesidades_echo_hip_2027.csv",
         mime="text/csv"
