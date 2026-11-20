@@ -55,7 +55,9 @@ EXCEL_FILE = "BBDD_ECHO_HIP_2027_Estandarizada.xlsx"
 def load_excel_data():
     try:
         xls = pd.ExcelFile(EXCEL_FILE)
-        sheet_name = 'Sheet1' if 'Sheet1' in xls.sheet_names else xls.sheet_names[0]
+        sheet_name = 'base de datos ' if 'base de datos ' in xls.sheet_names else (
+            'Sheet1' if 'Sheet1' in xls.sheet_names else xls.sheet_names[0]
+        )
         df = pd.read_excel(EXCEL_FILE, sheet_name=sheet_name)
         return df
     except Exception as e:
@@ -261,12 +263,23 @@ col_ind = [c for c in df_raw.columns if 'indígena' in str(c).lower() or 'etnia'
 
 col_disc_hogar = [c for c in df_raw.columns if '16. ¿Alguien de su grupo familiar' in str(c)][0] if any('16. ¿Alguien de su grupo familiar' in str(c) for c in df_raw.columns) else None
 
-# --- VARIABLES EXACTAS DE CÁLCULO DE GRUPO FAMILIAR ---
-col_calc_hombres = 'calculate_grupofamiliar_hombres'
+# --- VARIABLES EXACTAS DE EDAD AGRUPADA Y CÁLCULO DE GRUPO FAMILIAR ---
+COL_M_0_17 = 'MUJERES DE 0 A 17 AÑOS'
+COL_M_18_49 = 'MUJERES DE 18 A 49 AÑOS'
+COL_M_50_MAS = 'MUJERES DE 50+ AÑOS'
 col_calc_mujeres = 'calculate_grupofamiliar_mujeres'
+
+COL_H_0_17 = 'HOMBRES DE 0 A 17 AÑOS'
+COL_H_18_49 = 'HOMBRES DE 18 A 49 AÑOS'
+COL_H_50_MAS = 'HOMBRES DE 50+ AÑOS'
+col_calc_hombres = 'calculate_grupofamiliar_hombres'
+
+COL_O_0_17 = 'OTRO SEXO DE 0 A 17 AÑOS'
+COL_O_18_49 = 'OTRO SEXO DE 18 A 49 AÑOS'
+COL_O_50_MAS = 'OTRO SEXO DE 50+ AÑOS'
 col_calc_otro = 'calculate_grupofamiliar_otro'
 
-cols_ninos_etarios = [c for c in df_raw.columns if ('0 a 17' in str(c).lower() or '0_17' in str(c).lower() or 'de 0 a' in str(c).lower())]
+cols_ninos_etarios = [c for c in [COL_M_0_17, COL_H_0_17] if c in df_raw.columns]
 
 col_gestantes = [c for c in df_raw.columns if '21.1' in str(c) or 'embarazadas' in str(c).lower()][0] if any('21.1' in str(c) for c in df_raw.columns) else None
 col_tenencia = [c for c in df_raw.columns if '22' in str(c) or 'tenencia' in str(c).lower()][0] if any('22' in str(c) for c in df_raw.columns) else None
@@ -390,50 +403,25 @@ def limpiar_sexo(val):
     else:
         return s.replace('_', ' ').capitalize()
 
-def _clasificar_edad_valor(edad):
-    if pd.isna(edad):
-        return 'No especificado'
-    try:
-        e = float(edad)
-    except (ValueError, TypeError):
-        return 'No especificado'
-    if e <= 17:
-        return '0 a 17'
-    elif 18 <= e <= 40:
-        return '18 a 40'
-    elif e > 50:
-        return 'Más de 50'
-    else:
-        return '41 a 50'
-
 def construir_edad_agrupada(df):
-    cols_0_17 = [c for c in df.columns if re.search(r'(^|[^0-9])0\s*(a|_|-)\s*17([^0-9]|$)', str(c).lower())]
-    cols_18_40 = [c for c in df.columns if re.search(r'(^|[^0-9])18\s*(a|_|-)\s*40([^0-9]|$)', str(c).lower())]
-    cols_mas_50 = [
-        c for c in df.columns
-        if any(k in str(c).lower() for k in ['50 o más', '50 y más', 'más de 50', 'mas de 50', '51 a', '51_'])
-        or re.search(r'(>\s*50|50\s*\+)', str(c).lower())
-    ]
-
-    if cols_0_17 or cols_18_40 or cols_mas_50:
-        s_0_17 = df[cols_0_17].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_0_17 else pd.Series(0, index=df.index)
-        s_18_40 = df[cols_18_40].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_18_40 else pd.Series(0, index=df.index)
-        s_50_plus = df[cols_mas_50].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_mas_50 else pd.Series(0, index=df.index)
-
+    """Clasifica el hogar según el tramo etario dominante en las variables de edad agrupada del grupo familiar."""
+    tramos_cols = {
+        '0 a 17 años': [c for c in [COL_H_0_17, COL_M_0_17, COL_O_0_17] if c in df.columns],
+        '18 a 49 años': [c for c in [COL_H_18_49, COL_M_18_49, COL_O_18_49] if c in df.columns],
+        '50+ años': [c for c in [COL_H_50_MAS, COL_M_50_MAS, COL_O_50_MAS] if c in df.columns],
+    }
+    if any(tramos_cols.values()):
+        series_tramos = {
+            etq: df[cols].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
+            if cols else pd.Series(0, index=df.index)
+            for etq, cols in tramos_cols.items()
+        }
         grupos = []
         for idx in df.index:
-            conteos = {'0 a 17': s_0_17.loc[idx], '18 a 40': s_18_40.loc[idx], 'Más de 50': s_50_plus.loc[idx]}
+            conteos = {etq: s.loc[idx] for etq, s in series_tramos.items()}
             mejor = max(conteos, key=conteos.get)
             grupos.append(mejor if conteos[mejor] > 0 else 'No especificado')
         return pd.Series(grupos, index=df.index)
-
-    col_edad = next(
-        (c for c in df.columns if 'edad' in str(c).lower() and not any(x in str(c).lower() for x in ['grupo', 'rango', 'promedio'])),
-        None
-    )
-    if col_edad:
-        return pd.to_numeric(df[col_edad], errors='coerce').apply(_clasificar_edad_valor)
-
     return pd.Series(['No especificado'] * len(df), index=df.index)
 
 def construir_edad_por_sexo(df, serie_sexo):
@@ -444,129 +432,40 @@ def construir_edad_por_sexo(df, serie_sexo):
         index=df.index
     )
 
-def detectar_columnas_grupo_familiar_por_edad_sexo(df):
-    """
-    Detecta automáticamente en la hoja Excel las columnas de miembros del hogar
-    desagregadas por sexo y rango etario (que alimentan calculate_grupofamiliar_mujeres
-    y calculate_grupofamiliar_hombres).
-    """
-    cols_list = list(df.columns)
-    idx_muj = cols_list.index('calculate_grupofamiliar_mujeres') if 'calculate_grupofamiliar_mujeres' in cols_list else -1
-    idx_hom = cols_list.index('calculate_grupofamiliar_hombres') if 'calculate_grupofamiliar_hombres' in cols_list else -1
-
-    # Ventana de columnas previas a las variables calculate_grupofamiliar_*
-    if idx_muj > 0 and idx_hom > idx_muj:
-        candidatas_m = cols_list[max(0, idx_muj - 10):idx_muj]
-        candidatas_h = cols_list[idx_muj + 1:idx_hom]
-    else:
-        candidatas_m = [c for c in cols_list if 'mujer' in str(c).lower() and 'calculate_grupofamiliar' not in str(c).lower()]
-        candidatas_h = [c for c in cols_list if 'hombre' in str(c).lower() and 'calculate_grupofamiliar' not in str(c).lower()]
-
-    def _filtrar_numericas(candidatas, excluir_palabra):
-        validas = []
-        for c in candidatas:
-            c_low = str(c).lower()
-            if 'calculate_grupofamiliar' in c_low or excluir_palabra in c_low:
-                continue
-            s_num = pd.to_numeric(df[c], errors='coerce')
-            if s_num.notna().sum() > 0:
-                validas.append(c)
-        return validas
-
-    cols_m = _filtrar_numericas(candidatas_m, 'hombre')
-    cols_h = _filtrar_numericas(candidatas_h, 'mujer')
-
-    # Fallback global por nombre si en la ventana inmediata no aparecen todas las columnas
-    if not cols_m:
-        cols_m = [
-            c for c in cols_list
-            if any(k in str(c).lower() for k in ['mujer', 'niña', 'nina', 'femenin'])
-            and 'calculate_grupofamiliar' not in str(c).lower()
-            and pd.to_numeric(df[c], errors='coerce').notna().sum() > 0
-        ]
-    if not cols_h:
-        cols_h = [
-            c for c in cols_list
-            if any(k in str(c).lower() for k in ['hombre', 'niño', 'nino', 'masculin'])
-            and 'calculate_grupofamiliar' not in str(c).lower()
-            and pd.to_numeric(df[c], errors='coerce').notna().sum() > 0
-        ]
-
-    def _clasificar_rango(nombre_col):
-        c_low = str(nombre_col).lower()
-        if re.search(r'(0\s*(a|_|-)\s*17|0\s*(a|_|-)\s*5|6\s*(a|_|-)\s*11|12\s*(a|_|-)\s*17|niñ|nin|infan|adolesc|menor)', c_low):
-            return "0 a 17 años"
-        elif re.search(r'(18\s*(a|_|-)\s*40|18\s*(a|_|-)\s*39|18\s*(a|_|-)\s*29|30\s*(a|_|-)\s*40|joven|jóven)', c_low):
-            return "18 a 40 años"
-        elif re.search(r'(41\s*(a|_|-)\s*50|40\s*(a|_|-)\s*50|41\s*(a|_|-)\s*59|18\s*(a|_|-)\s*59|18\s*(a|_|-)\s*50|adult)', c_low):
-            return "41 a 50 años"
-        elif re.search(r'(50\s*(o|\+|y)\s*m|m[aá]s\s*de\s*50|51\s*(a|_|-)|60\s*(o|\+|y)\s*m|mayor)', c_low):
-            return "Más de 50 años"
-        return str(nombre_col).strip()
-
-    mapeo_etarios = {}
-    for c in cols_m:
-        etq = _clasificar_rango(c)
-        mapeo_etarios.setdefault(etq, {"Hombres": [], "Mujeres": []})["Mujeres"].append(c)
-    for c in cols_h:
-        etq = _clasificar_rango(c)
-        mapeo_etarios.setdefault(etq, {"Hombres": [], "Mujeres": []})["Hombres"].append(c)
-
-    return mapeo_etarios
-
 def construir_piramide_poblacional(df_sub):
-    tot_h_oficial = int(df_sub['hombres_val'].sum())
-    tot_m_oficial = int(df_sub['mujeres_val'].sum())
-    tot_o_oficial = int(df_sub['otro_val'].sum())
-    pob_total = tot_h_oficial + tot_m_oficial + tot_o_oficial
+    """
+    Construye la pirámide poblacional usando únicamente las variables de edad agrupada
+    por sexo y las variables oficiales calculate_grupofamiliar_hombres,
+    calculate_grupofamiliar_mujeres y calculate_grupofamiliar_otro.
+    """
+    tot_h_calc = int(df_sub['hombres_val'].sum())
+    tot_m_calc = int(df_sub['mujeres_val'].sum())
+    tot_o_calc = int(df_sub['otro_val'].sum())
+    pob_total = tot_h_calc + tot_m_calc + tot_o_calc
     if pob_total == 0:
         pob_total = 1
 
-    mapeo_etarios = detectar_columnas_grupo_familiar_por_edad_sexo(df_sub)
-    orden_preferido = ["0 a 17 años", "18 a 40 años", "41 a 50 años", "Más de 50 años"]
-    claves_ordenadas = [k for k in orden_preferido if k in mapeo_etarios] + [k for k in mapeo_etarios if k not in orden_preferido]
+    tramos_definidos = [
+        ("0 a 17 años", COL_H_0_17, COL_M_0_17),
+        ("18 a 49 años", COL_H_18_49, COL_M_18_49),
+        ("50+ años", COL_H_50_MAS, COL_M_50_MAS),
+    ]
 
     filas = []
-    suma_h_detectada = 0
-    suma_m_detectada = 0
-
-    for etq in claves_ordenadas:
-        cols_h = mapeo_etarios[etq]["Hombres"]
-        cols_m = mapeo_etarios[etq]["Mujeres"]
-        h_cnt = int(df_sub[cols_h].apply(pd.to_numeric, errors='coerce').fillna(0).sum().sum()) if cols_h else 0
-        m_cnt = int(df_sub[cols_m].apply(pd.to_numeric, errors='coerce').fillna(0).sum().sum()) if cols_m else 0
-        suma_h_detectada += h_cnt
-        suma_m_detectada += m_cnt
-
-        if h_cnt > 0 or m_cnt > 0:
-            h_pct = round((h_cnt / pob_total * 100), 1)
-            m_pct = round((m_cnt / pob_total * 100), 1)
-            filas.append({
-                "GrupoEdad": etq,
-                "Hombres": h_cnt,
-                "Mujeres": m_cnt,
-                "Hombres_Neg": -h_cnt,
-                "Hombres_Pct": h_pct,
-                "Mujeres_Pct": m_pct,
-                "Hombres_Lbl": f"{h_cnt:,} ({h_pct}%)",
-                "Mujeres_Lbl": f"{m_cnt:,} ({m_pct}%)"
-            })
-
-    # Reconciliación exacta con calculate_grupofamiliar_hombres y calculate_grupofamiliar_mujeres
-    dif_h = max(0, tot_h_oficial - suma_h_detectada)
-    dif_m = max(0, tot_m_oficial - suma_m_detectada)
-    if dif_h > 0 or dif_m > 0:
-        h_pct = round((dif_h / pob_total * 100), 1)
-        m_pct = round((dif_m / pob_total * 100), 1)
+    for etiqueta_grupo, col_h, col_m in tramos_definidos:
+        h_cnt = int(pd.to_numeric(df_sub[col_h], errors='coerce').fillna(0).sum()) if col_h in df_sub.columns else 0
+        m_cnt = int(pd.to_numeric(df_sub[col_m], errors='coerce').fillna(0).sum()) if col_m in df_sub.columns else 0
+        h_pct = round((h_cnt / pob_total * 100), 1)
+        m_pct = round((m_cnt / pob_total * 100), 1)
         filas.append({
-            "GrupoEdad": "Resto grupo familiar",
-            "Hombres": dif_h,
-            "Mujeres": dif_m,
-            "Hombres_Neg": -dif_h,
+            "GrupoEdad": etiqueta_grupo,
+            "Hombres": h_cnt,
+            "Mujeres": m_cnt,
+            "Hombres_Neg": -h_cnt,
             "Hombres_Pct": h_pct,
             "Mujeres_Pct": m_pct,
-            "Hombres_Lbl": f"{dif_h:,} ({h_pct}%)",
-            "Mujeres_Lbl": f"{dif_m:,} ({m_pct}%)"
+            "Hombres_Lbl": f"{h_cnt:,} ({h_pct}%)",
+            "Mujeres_Lbl": f"{m_cnt:,} ({m_pct}%)"
         })
 
     df_pir = pd.DataFrame(filas)
@@ -984,7 +883,7 @@ df_temp2 = df_temp[df_temp['municipio_clean'].isin(sel_municipios)]
 sexos_disp = sorted([s for s in df_temp2['sexo_clean'].unique() if s != 'No especificado'])
 sel_sexo = st.sidebar.selectbox("Sexo del Jefe/a de Hogar", ["Todos"] + sexos_disp)
 
-orden_grupos_edad = ["0 a 17", "18 a 40", "41 a 50", "Más de 50"]
+orden_grupos_edad = ["0 a 17 años", "18 a 49 años", "50+ años", "No especificado"]
 orden_sexos = ["Hombre", "Mujer", "Otro", "No especificado"]
 opciones_combinadas = [f"{g} - {s}" for g in orden_grupos_edad for s in orden_sexos]
 
