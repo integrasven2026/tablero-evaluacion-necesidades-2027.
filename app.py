@@ -374,7 +374,6 @@ def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
             if k in v_str:
                 return v
         return v_str.title()
-
 def limpiar_sexo(val):
 def _clasificar_edad(edad):
     if pd.isna(edad):
