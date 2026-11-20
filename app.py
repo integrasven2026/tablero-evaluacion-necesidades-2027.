@@ -800,6 +800,9 @@ df_clean['hombres_val'] = pd.to_numeric(df_raw[col_calc_hombres], errors='coerce
 df_clean['mujeres_val'] = pd.to_numeric(df_raw[col_calc_mujeres], errors='coerce').fillna(0)
 df_clean['otro_val'] = pd.to_numeric(df_raw[col_calc_otro], errors='coerce').fillna(0)
 
+# Población total por hogar derivada de la suma oficial de miembros (total general = 9,995)
+df_clean['pob_hogar_val'] = df_clean['hombres_val'] + df_clean['mujeres_val'] + df_clean['otro_val']
+
 if cols_ninos_etarios:
     df_clean['ninos_val'] = df_raw[cols_ninos_etarios].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1)
 else:
@@ -807,11 +810,9 @@ else:
 
 df_clean['gestantes_val'] = pd.to_numeric(df_raw[col_gestantes], errors='coerce').fillna(0) if col_gestantes in df_raw.columns else 0
 
-# --- VIVIENDA Y CÁLCULO DE HACINAMIENTO INE ---
-s_pers = pd.to_numeric(df_raw[col_personas_viv], errors='coerce') if col_personas_viv in df_raw.columns else pd.Series()
-s_cuart = pd.to_numeric(df_raw[col_cuartos], errors='coerce') if col_cuartos in df_raw.columns else pd.Series()
-
-df_clean['personas_viv_val'] = s_pers.fillna(4.32).replace(0, 4)
+# --- VIVIENDA Y CÁLCULO DE HACINAMIENTO INE BASADO EN POBLACIÓN DEL HOGAR ---
+s_cuart = pd.to_numeric(df_raw[col_cuartos], errors='coerce') if col_cuartos in df_raw.columns else pd.Series(dtype=float)
+df_clean['personas_viv_val'] = df_clean['pob_hogar_val']
 df_clean['cuartos_val'] = s_cuart.fillna(2.0).replace(0, 2)
 
 def calcular_hacinamiento_ine(row):
@@ -943,20 +944,22 @@ pct_disc = (tot_disc_hogares / tot_encuestas * 100) if tot_encuestas > 0 else 0.
 pct_indigena = (tot_indigenas / tot_encuestas * 100) if tot_encuestas > 0 else 0.0
 
 # --- TARJETAS KPI PRINCIPALES ---
-col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
 with col1:
     st.metric("Encuestas", f"{tot_encuestas:,}", "100.0% del total")
 with col2:
-    st.metric("Hombres", f"{tot_hombres:,}", f"{pct_hombres:.1f}% pobl.")
+    st.metric("Población Total", f"{pob_total_general:,}", f"{(pob_total_general / tot_encuestas):.1f} pers/hogar" if tot_encuestas > 0 else "0.0 pers/hogar")
 with col3:
-    st.metric("Mujeres", f"{tot_mujeres:,}", f"{pct_mujeres:.1f}% pobl.")
+    st.metric("Hombres", f"{tot_hombres:,}", f"{pct_hombres:.1f}% pobl.")
 with col4:
-    st.metric("Niños/as", f"{tot_ninos:,}", f"{pct_ninos:.1f}% pobl.")
+    st.metric("Mujeres", f"{tot_mujeres:,}", f"{pct_mujeres:.1f}% pobl.")
 with col5:
-    st.metric("Gestantes", f"{tot_gestantes:,}", f"{pct_gestantes:.1f}% hogares")
+    st.metric("Niños/as", f"{tot_ninos:,}", f"{pct_ninos:.1f}% pobl.")
 with col6:
-    st.metric("c/ Discapacidad", f"{tot_disc_hogares:,}", f"{pct_disc:.1f}% hogares")
+    st.metric("Gestantes", f"{tot_gestantes:,}", f"{pct_gestantes:.1f}% hogares")
 with col7:
+    st.metric("c/ Discapacidad", f"{tot_disc_hogares:,}", f"{pct_disc:.1f}% hogares")
+with col8:
     st.metric("Indígenas", f"{tot_indigenas:,}", f"{pct_indigena:.1f}% hogares")
 
 st.markdown("---")
@@ -1137,17 +1140,22 @@ with tab1:
 # TAB 2: VIVIENDA
 with tab2:
     st.header("Vivienda y Habitabilidad")
-    promedio_personas = df_filtered['personas_viv_val'].mean() if len(df_filtered) > 0 else 4.32
-    indice_hacinamento_prom = (df_filtered['personas_viv_val'].sum() / df_filtered['cuartos_val'].sum()) if df_filtered['cuartos_val'].sum() > 0 else 0.0
+    tot_hogs_viv = len(df_filtered)
+    pob_viv_total = df_filtered['personas_viv_val'].sum()
+    cuartos_viv_total = df_filtered['cuartos_val'].sum()
+
+    promedio_personas = (pob_viv_total / tot_hogs_viv) if tot_hogs_viv > 0 else 0.0
+    indice_hacinamento_prom = (pob_viv_total / cuartos_viv_total) if cuartos_viv_total > 0 else 0.0
     
     col_v_kpi1, col_v_kpi2, col_v_kpi3 = st.columns(3)
     with col_v_kpi1:
-        st.metric("Promedio de Personas por Hogar", f"{promedio_personas:.2f}")
+        st.metric("Promedio de Personas por Hogar", f"{promedio_personas:.1f}", f"{int(pob_viv_total):,} personas / {tot_hogs_viv:,} hogares")
     with col_v_kpi2:
         st.metric("Índice de Hacinamiento Promedio", f"{indice_hacinamento_prom:.2f} pers/cuarto")
     with col_v_kpi3:
-        total_hacinados_criticos = (df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum()
-        st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}")
+        total_hacinados_criticos = int((df_filtered['hacinamiento_cat'] == 'Hacinamiento Crítico (NBI)').sum())
+        pct_hacinados = (total_hacinados_criticos / tot_hogs_viv * 100) if tot_hogs_viv > 0 else 0.0
+        st.metric("Hogares con Hacinamiento Crítico (INE)", f"{total_hacinados_criticos:,}", f"{pct_hacinados:.1f}% hogares")
 
     st.markdown("---")
 
@@ -1156,7 +1164,7 @@ with tab2:
         st.subheader("Tenencia de la Vivienda")
         df_ten_res = df_filtered['tenencia_clean'].value_counts().reset_index()
         df_ten_res.columns = ['Tenencia', 'Total']
-        df_ten_res['Porcentaje'] = (df_ten_res['Total'] / len(df_filtered) * 100).round(1)
+        df_ten_res['Porcentaje'] = (df_ten_res['Total'] / tot_hogs_viv * 100).round(1) if tot_hogs_viv > 0 else 0.0
         
         fig_ten = px.pie(
             df_ten_res, names='Tenencia', values='Total', hole=0.4,
@@ -1169,7 +1177,7 @@ with tab2:
         st.subheader("Distribución del Hacinamiento Crítico (INE)")
         df_hac_resumen = df_filtered['hacinamiento_cat'].value_counts().reset_index()
         df_hac_resumen.columns = ['Condicion', 'Total']
-        df_hac_resumen['Porcentaje'] = (df_hac_resumen['Total'] / len(df_filtered) * 100).round(1)
+        df_hac_resumen['Porcentaje'] = (df_hac_resumen['Total'] / tot_hogs_viv * 100).round(1) if tot_hogs_viv > 0 else 0.0
         
         fig_hac_pie = px.pie(
             df_hac_resumen, names='Condicion', values='Total', hole=0.4, color='Condicion',
