@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import re
 
 # Configuración inicial de la página
 st.set_page_config(
@@ -376,18 +377,62 @@ def limpiar_codigo(val, diccionario, diccionario_respaldo=None):
 
 def limpiar_sexo(val):
     if pd.isna(val):
-        return 'No especificado'
+        return 'Otro'
     s = str(val).strip().lower()
     if s in ['', 'nan', 'none', 'nat']:
-        return 'No especificado'
+        return 'Otro'
     if s in ['masculino', 'hombre', 'm']:
         return 'Hombre'
     elif s in ['femenino', 'mujer', 'f']:
         return 'Mujer'
-    elif s in ['otro', 'otra', 'prefiero no decir', 'intersexual', 'non_binary', 'no_binario']:
-        return 'Otro'
     else:
-        return s.replace('_', ' ').capitalize()
+        return 'Otro'
+
+def clasificar_edad_numerica(edad):
+    if pd.isna(edad):
+        return 'No especificado'
+    try:
+        e = float(edad)
+    except (ValueError, TypeError):
+        return 'No especificado'
+    if e <= 17:
+        return '0 a 17'
+    elif 18 <= e <= 40:
+        return '18 a 40'
+    elif e > 50:
+        return 'Más de 50'
+    else:
+        return '41 a 50'
+
+def construir_grupo_edad(df):
+    cols_0_17 = [c for c in df.columns if re.search(r'(^|[^0-9])0\s*(a|_|-)\s*17([^0-9]|$)', str(c).lower())]
+    cols_18_40 = [c for c in df.columns if re.search(r'(^|[^0-9])18\s*(a|_|-)\s*40([^0-9]|$)', str(c).lower())]
+    cols_mas_50 = [
+        c for c in df.columns
+        if any(k in str(c).lower() for k in ['50 o más', '50 y más', 'más de 50', 'mas de 50', '51 a', '51_'])
+        or re.search(r'(>\s*50|50\s*\+)', str(c).lower())
+    ]
+
+    if cols_0_17 or cols_18_40 or cols_mas_50:
+        s_0_17 = df[cols_0_17].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_0_17 else pd.Series(0, index=df.index)
+        s_18_40 = df[cols_18_40].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_18_40 else pd.Series(0, index=df.index)
+        s_50_plus = df[cols_mas_50].apply(pd.to_numeric, errors='coerce').fillna(0).sum(axis=1) if cols_mas_50 else pd.Series(0, index=df.index)
+
+        def asignar_por_conteo(row_idx):
+            vals = {'0 a 17': s_0_17.loc[row_idx], '18 a 40': s_18_40.loc[row_idx], 'Más de 50': s_50_plus.loc[row_idx]}
+            max_grupo = max(vals, key=vals.get)
+            return max_grupo if vals[max_grupo] > 0 else 'No especificado'
+
+        return pd.Series([asignar_por_conteo(i) for i in df.index], index=df.index)
+
+    col_edad = next(
+        (c for c in df.columns if 'edad' in str(c).lower() and not any(x in str(c).lower() for x in ['grupo', 'rango', 'promedio'])),
+        None
+    )
+    if col_edad:
+        return pd.to_numeric(df[col_edad], errors='coerce').apply(clasificar_edad_numerica)
+
+    return pd.Series(['No especificado'] * len(df), index=df.index)  
 
 def limpiar_educacion(val):
     if pd.isna(val):
