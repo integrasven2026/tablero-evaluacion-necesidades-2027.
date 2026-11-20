@@ -444,27 +444,129 @@ def construir_edad_por_sexo(df, serie_sexo):
         index=df.index
     )
 
-def construir_piramide_poblacional(df_sub):
-    orden_grupos = ["0 a 17", "18 a 40", "41 a 50", "Más de 50", "No especificado"]
-    base_total = len(df_sub)
-    filas = []
+def detectar_columnas_grupo_familiar_por_edad_sexo(df):
+    """
+    Detecta automáticamente en la hoja Excel las columnas de miembros del hogar
+    desagregadas por sexo y rango etario (que alimentan calculate_grupofamiliar_mujeres
+    y calculate_grupofamiliar_hombres).
+    """
+    cols_list = list(df.columns)
+    idx_muj = cols_list.index('calculate_grupofamiliar_mujeres') if 'calculate_grupofamiliar_mujeres' in cols_list else -1
+    idx_hom = cols_list.index('calculate_grupofamiliar_hombres') if 'calculate_grupofamiliar_hombres' in cols_list else -1
 
-    for grp in orden_grupos:
-        h_cnt = int((df_sub['edad_sexo_filtro'] == f"{grp} - Hombre").sum())
-        m_cnt = int((df_sub['edad_sexo_filtro'] == f"{grp} - Mujer").sum())
-        if grp == "No especificado" and h_cnt == 0 and m_cnt == 0:
-            continue
-        h_pct = round((h_cnt / base_total * 100), 1) if base_total > 0 else 0.0
-        m_pct = round((m_cnt / base_total * 100), 1) if base_total > 0 else 0.0
+    # Ventana de columnas previas a las variables calculate_grupofamiliar_*
+    if idx_muj > 0 and idx_hom > idx_muj:
+        candidatas_m = cols_list[max(0, idx_muj - 10):idx_muj]
+        candidatas_h = cols_list[idx_muj + 1:idx_hom]
+    else:
+        candidatas_m = [c for c in cols_list if 'mujer' in str(c).lower() and 'calculate_grupofamiliar' not in str(c).lower()]
+        candidatas_h = [c for c in cols_list if 'hombre' in str(c).lower() and 'calculate_grupofamiliar' not in str(c).lower()]
+
+    def _filtrar_numericas(candidatas, excluir_palabra):
+        validas = []
+        for c in candidatas:
+            c_low = str(c).lower()
+            if 'calculate_grupofamiliar' in c_low or excluir_palabra in c_low:
+                continue
+            s_num = pd.to_numeric(df[c], errors='coerce')
+            if s_num.notna().sum() > 0:
+                validas.append(c)
+        return validas
+
+    cols_m = _filtrar_numericas(candidatas_m, 'hombre')
+    cols_h = _filtrar_numericas(candidatas_h, 'mujer')
+
+    # Fallback global por nombre si en la ventana inmediata no aparecen todas las columnas
+    if not cols_m:
+        cols_m = [
+            c for c in cols_list
+            if any(k in str(c).lower() for k in ['mujer', 'niña', 'nina', 'femenin'])
+            and 'calculate_grupofamiliar' not in str(c).lower()
+            and pd.to_numeric(df[c], errors='coerce').notna().sum() > 0
+        ]
+    if not cols_h:
+        cols_h = [
+            c for c in cols_list
+            if any(k in str(c).lower() for k in ['hombre', 'niño', 'nino', 'masculin'])
+            and 'calculate_grupofamiliar' not in str(c).lower()
+            and pd.to_numeric(df[c], errors='coerce').notna().sum() > 0
+        ]
+
+    def _clasificar_rango(nombre_col):
+        c_low = str(nombre_col).lower()
+        if re.search(r'(0\s*(a|_|-)\s*17|0\s*(a|_|-)\s*5|6\s*(a|_|-)\s*11|12\s*(a|_|-)\s*17|niñ|nin|infan|adolesc|menor)', c_low):
+            return "0 a 17 años"
+        elif re.search(r'(18\s*(a|_|-)\s*40|18\s*(a|_|-)\s*39|18\s*(a|_|-)\s*29|30\s*(a|_|-)\s*40|joven|jóven)', c_low):
+            return "18 a 40 años"
+        elif re.search(r'(41\s*(a|_|-)\s*50|40\s*(a|_|-)\s*50|41\s*(a|_|-)\s*59|18\s*(a|_|-)\s*59|18\s*(a|_|-)\s*50|adult)', c_low):
+            return "41 a 50 años"
+        elif re.search(r'(50\s*(o|\+|y)\s*m|m[aá]s\s*de\s*50|51\s*(a|_|-)|60\s*(o|\+|y)\s*m|mayor)', c_low):
+            return "Más de 50 años"
+        return str(nombre_col).strip()
+
+    mapeo_etarios = {}
+    for c in cols_m:
+        etq = _clasificar_rango(c)
+        mapeo_etarios.setdefault(etq, {"Hombres": [], "Mujeres": []})["Mujeres"].append(c)
+    for c in cols_h:
+        etq = _clasificar_rango(c)
+        mapeo_etarios.setdefault(etq, {"Hombres": [], "Mujeres": []})["Hombres"].append(c)
+
+    return mapeo_etarios
+
+def construir_piramide_poblacional(df_sub):
+    tot_h_oficial = int(df_sub['hombres_val'].sum())
+    tot_m_oficial = int(df_sub['mujeres_val'].sum())
+    tot_o_oficial = int(df_sub['otro_val'].sum())
+    pob_total = tot_h_oficial + tot_m_oficial + tot_o_oficial
+    if pob_total == 0:
+        pob_total = 1
+
+    mapeo_etarios = detectar_columnas_grupo_familiar_por_edad_sexo(df_sub)
+    orden_preferido = ["0 a 17 años", "18 a 40 años", "41 a 50 años", "Más de 50 años"]
+    claves_ordenadas = [k for k in orden_preferido if k in mapeo_etarios] + [k for k in mapeo_etarios if k not in orden_preferido]
+
+    filas = []
+    suma_h_detectada = 0
+    suma_m_detectada = 0
+
+    for etq in claves_ordenadas:
+        cols_h = mapeo_etarios[etq]["Hombres"]
+        cols_m = mapeo_etarios[etq]["Mujeres"]
+        h_cnt = int(df_sub[cols_h].apply(pd.to_numeric, errors='coerce').fillna(0).sum().sum()) if cols_h else 0
+        m_cnt = int(df_sub[cols_m].apply(pd.to_numeric, errors='coerce').fillna(0).sum().sum()) if cols_m else 0
+        suma_h_detectada += h_cnt
+        suma_m_detectada += m_cnt
+
+        if h_cnt > 0 or m_cnt > 0:
+            h_pct = round((h_cnt / pob_total * 100), 1)
+            m_pct = round((m_cnt / pob_total * 100), 1)
+            filas.append({
+                "GrupoEdad": etq,
+                "Hombres": h_cnt,
+                "Mujeres": m_cnt,
+                "Hombres_Neg": -h_cnt,
+                "Hombres_Pct": h_pct,
+                "Mujeres_Pct": m_pct,
+                "Hombres_Lbl": f"{h_cnt:,} ({h_pct}%)",
+                "Mujeres_Lbl": f"{m_cnt:,} ({m_pct}%)"
+            })
+
+    # Reconciliación exacta con calculate_grupofamiliar_hombres y calculate_grupofamiliar_mujeres
+    dif_h = max(0, tot_h_oficial - suma_h_detectada)
+    dif_m = max(0, tot_m_oficial - suma_m_detectada)
+    if dif_h > 0 or dif_m > 0:
+        h_pct = round((dif_h / pob_total * 100), 1)
+        m_pct = round((dif_m / pob_total * 100), 1)
         filas.append({
-            "GrupoEdad": grp,
-            "Hombres": h_cnt,
-            "Mujeres": m_cnt,
-            "Hombres_Neg": -h_cnt,
+            "GrupoEdad": "Resto grupo familiar",
+            "Hombres": dif_h,
+            "Mujeres": dif_m,
+            "Hombres_Neg": -dif_h,
             "Hombres_Pct": h_pct,
             "Mujeres_Pct": m_pct,
-            "Hombres_Lbl": f"{h_cnt} ({h_pct}%)",
-            "Mujeres_Lbl": f"{m_cnt} ({m_pct}%)"
+            "Hombres_Lbl": f"{dif_h:,} ({h_pct}%)",
+            "Mujeres_Lbl": f"{dif_m:,} ({m_pct}%)"
         })
 
     df_pir = pd.DataFrame(filas)
@@ -472,36 +574,36 @@ def construir_piramide_poblacional(df_sub):
         return go.Figure(), df_pir
 
     max_val = max(df_pir["Hombres"].max(), df_pir["Mujeres"].max(), 1)
-    rango_x = [-max_val * 1.35, max_val * 1.35]
+    rango_x = [-max_val * 1.40, max_val * 1.40]
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
         y=df_pir["GrupoEdad"],
         x=df_pir["Hombres_Neg"],
-        name="Hombre",
+        name="Hombres",
         orientation="h",
         marker=dict(color=INTEGRAS_COLORS[0]),
         text=df_pir["Hombres_Lbl"],
         textposition="outside",
         cliponaxis=False,
         customdata=df_pir[["Hombres", "Hombres_Pct"]],
-        hovertemplate="<b>%{y}</b><br>Hombre: %{customdata[0]} (%{customdata[1]}%)<extra></extra>"
+        hovertemplate="<b>%{y}</b><br>Hombres: %{customdata[0]:,} (%{customdata[1]}% de la pobl.)<extra></extra>"
     ))
     fig.add_trace(go.Bar(
         y=df_pir["GrupoEdad"],
         x=df_pir["Mujeres"],
-        name="Mujer",
+        name="Mujeres",
         orientation="h",
         marker=dict(color=INTEGRAS_COLORS[2]),
         text=df_pir["Mujeres_Lbl"],
         textposition="outside",
         cliponaxis=False,
         customdata=df_pir[["Mujeres", "Mujeres_Pct"]],
-        hovertemplate="<b>%{y}</b><br>Mujer: %{customdata[0]} (%{customdata[1]}%)<extra></extra>"
+        hovertemplate="<b>%{y}</b><br>Mujeres: %{customdata[0]:,} (%{customdata[1]}% de la pobl.)<extra></extra>"
     ))
 
     tick_vals = [-max_val, -max_val / 2, 0, max_val / 2, max_val]
-    tick_text = [str(int(abs(v))) for v in tick_vals]
+    tick_text = [f"{int(abs(v)):,}" for v in tick_vals]
 
     fig.update_layout(
         barmode="overlay",
@@ -510,10 +612,10 @@ def construir_piramide_poblacional(df_sub):
             range=rango_x,
             tickvals=tick_vals,
             ticktext=tick_text,
-            title="Registros (n)"
+            title="Población (n personas)"
         ),
         yaxis=dict(
-            title="Grupo de Edad Agrupada",
+            title="Grupo Etario",
             categoryorder="array",
             categoryarray=df_pir["GrupoEdad"].tolist()
         ),
@@ -1018,7 +1120,7 @@ with tab1:
 
     st.markdown("---")
 
-    st.subheader("Pirámide Poblacional por Edad Agrupada y Sexo")
+    st.subheader("Pirámide Poblacional del Grupo Familiar por Edad y Sexo")
     pir_col1, pir_col2 = st.columns([2, 1])
     fig_pir, df_pir = construir_piramide_poblacional(df_filtered)
     with pir_col1:
@@ -1030,7 +1132,7 @@ with tab1:
         st.markdown("##### Cuadro Resumen por Grupo Etario")
         if not df_pir.empty:
             df_pir_tabla = df_pir[["GrupoEdad", "Hombres", "Hombres_Pct", "Mujeres", "Mujeres_Pct"]].copy()
-            df_pir_tabla.columns = ["Grupo Edad", "Hombres", "% Hombres", "Mujeres", "% Mujeres"]
+            df_pir_tabla.columns = ["Grupo Etario", "Hombres", "% Hombres", "Mujeres", "% Mujeres"]
             st.dataframe(df_pir_tabla, use_container_width=True, hide_index=True)
 
     st.markdown("---")
